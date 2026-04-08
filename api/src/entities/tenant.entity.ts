@@ -14,7 +14,7 @@ import { Product } from './product.entity';
 import { Sale } from './sale.entity';
 import { Boleta } from './boleta.entity';
 
-@Entity('tenants')
+@Entity('tenants', { schema: 'market' })
 export class Tenant {
   @PrimaryGeneratedColumn('uuid')
   id: string;

@@ -8,7 +8,7 @@ import {
 import { Sale } from './sale.entity';
 import { Product } from './product.entity';
 
-@Entity('sale_lines')
+@Entity('sale_lines', { schema: 'market' })
 export class SaleLine {
   @PrimaryGeneratedColumn('uuid')
   id: string;

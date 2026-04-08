@@ -8,7 +8,7 @@ import {
 import { Tenant } from './tenant.entity';
 import { SubscriptionPlan, SubscriptionStatus } from './enums';
 
-@Entity('subscriptions')
+@Entity('subscriptions', { schema: 'market' })
 export class Subscription {
   @PrimaryGeneratedColumn('uuid')
   id: string;

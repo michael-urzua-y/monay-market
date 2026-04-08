@@ -9,7 +9,7 @@ import {
 import { Tenant } from './tenant.entity';
 import { SiiProvider } from './enums';
 
-@Entity('tenant_configs')
+@Entity('tenant_configs', { schema: 'market' })
 export class TenantConfig {
   @PrimaryGeneratedColumn('uuid')
   id: string;

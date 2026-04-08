@@ -11,7 +11,7 @@ import { Tenant } from './tenant.entity';
 import { Sale } from './sale.entity';
 import { UserRole } from './enums';
 
-@Entity('users')
+@Entity('users', { schema: 'market' })
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;

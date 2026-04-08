@@ -15,7 +15,7 @@ import { SaleLine } from './sale-line.entity';
 import { Boleta } from './boleta.entity';
 import { PaymentMethod, BoletaStatus } from './enums';
 
-@Entity('sales')
+@Entity('sales', { schema: 'market' })
 @Index('IDX_sale_tenant_created_at', ['tenant_id', 'created_at'])
 @Index('IDX_sale_tenant_boleta_status', ['tenant_id', 'boleta_status'])
 export class Sale {

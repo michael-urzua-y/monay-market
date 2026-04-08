@@ -9,7 +9,7 @@ import {
 import { Tenant } from './tenant.entity';
 import { Product } from './product.entity';
 
-@Entity('categories')
+@Entity('categories', { schema: 'market' })
 export class Category {
   @PrimaryGeneratedColumn('uuid')
   id: string;

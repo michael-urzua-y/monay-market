@@ -10,7 +10,7 @@ import { Sale } from './sale.entity';
 import { Tenant } from './tenant.entity';
 import { SiiProvider } from './enums';
 
-@Entity('boletas')
+@Entity('boletas', { schema: 'market' })
 export class Boleta {
   @PrimaryGeneratedColumn('uuid')
   id: string;

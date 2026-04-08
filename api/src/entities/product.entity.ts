@@ -13,7 +13,7 @@ import { Tenant } from './tenant.entity';
 import { Category } from './category.entity';
 import { SaleLine } from './sale-line.entity';
 
-@Entity('products')
+@Entity('products', { schema: 'market' })
 @Index('IDX_product_tenant_barcode', ['tenant_id', 'barcode'], { unique: true })
 @Index('IDX_product_tenant_active_stock', ['tenant_id', 'active', 'stock'])
 export class Product {
