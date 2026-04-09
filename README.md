@@ -35,9 +35,18 @@ monay-market/
 - CRUD de productos con soft-delete y validación de ventas recientes
 - Lookup de código de barras via Open Food Facts: escanea el barcode y autocompleta nombre + categoría, el admin solo pone precio y stock
 - Importación masiva de productos desde Excel (.xlsx)
+- Validación server-side del carrito (stock, subtotales, total)
+- Registro de ventas con transacción atómica y SELECT ... FOR UPDATE
+- Pago efectivo (cálculo de vuelto) y tarjeta
+- Deducción de stock atómica con alertas de stock crítico
+- Cierre de caja: resumen diario desglosado por efectivo/tarjeta
+- Módulo SII opcional: emisión de boleta electrónica con reintentos (3 intentos, 15s timeout), soporte Haulmer/OpenFactura/Facturacion.cl, IVA 19%
+- Reintento manual de boletas pendientes
+- Dashboard de métricas: ventas del día, acumulado mensual con variación %, gráfico diario, stock crítico, valorización inventario (plan Pro)
+- Comprobante visual estructurado con datos de tienda, productos, pago y boleta
 - 9 entidades con relaciones, índices compuestos y enums
 - Migraciones y seed con 41 productos chilenos reales
-- 111 tests unitarios pasando
+- 192 tests unitarios pasando
 
 ## Base de datos
 
@@ -128,6 +137,24 @@ GET    /tenant/config                 → Ver configuración
 PATCH  /tenant/config/sii             → Configurar módulo SII (dueño)
 PATCH  /tenant/config/printer         → Configurar impresora (dueño)
 GET    /tenant/subscription           → Ver estado de suscripción (dueño)
+
+# Carrito
+POST   /cart/validate                 → Validar carrito (stock, subtotales, total)
+
+# Ventas
+POST   /sales                         → Registrar venta (efectivo o tarjeta)
+GET    /sales                         → Listar ventas (filtros: ?date_from=, ?date_to=, ?boleta_status=)
+GET    /sales/:id                     → Detalle de venta con líneas y boleta
+POST   /sales/close-register          → Cierre de caja: resumen del día
+POST   /sales/:id/retry-boleta        → Reintentar emisión de boleta SII
+GET    /sales/:id/receipt             → Obtener comprobante visual de una venta
+
+# Dashboard (plan Pro, solo dueño)
+GET    /dashboard/today               → Total y cantidad de ventas del día
+GET    /dashboard/monthly             → Acumulado mensual con variación %
+GET    /dashboard/daily-chart         → Gráfico de ventas diarias del mes
+GET    /dashboard/critical-stock      → Productos con stock crítico (todos los planes)
+GET    /dashboard/inventory-value     → Valorización total del inventario
 ```
 
 ## Datos de prueba (seed)

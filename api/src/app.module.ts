@@ -5,6 +5,10 @@ import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { TenantsModule } from './tenants/tenants.module';
 import { ProductsModule } from './products/products.module';
+import { CartModule } from './cart/cart.module';
+import { SalesModule } from './sales/sales.module';
+import { SiiModule } from './sii/sii.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -31,6 +35,10 @@ import { ProductsModule } from './products/products.module';
     UsersModule,
     TenantsModule,
     ProductsModule,
+    CartModule,
+    SalesModule,
+    SiiModule,
+    DashboardModule,
   ],
 })
 export class AppModule {}
