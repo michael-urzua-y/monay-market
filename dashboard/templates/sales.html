@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Ventas{% endblock %}
+{% block page_title %}Ventas{% endblock %}
+
+{% block content %}
+<div>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <a href="{{ url_for('sales_pending') }}" class="btn btn-secondary">⏳ Pendientes de boleta</a>
+    </div>
+
+    <div class="card" style="margin-bottom: 20px;">
+        <div class="card-body">
+            <form method="get" action="{{ url_for('sales') }}" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+                <div class="form-group" style="margin-bottom: 0; min-width: 160px;">
+                    <label for="date_from">Desde</label>
+                    <input type="date" id="date_from" name="date_from" value="{{ date_from }}">
+                </div>
+                <div class="form-group" style="margin-bottom: 0; min-width: 160px;">
+                    <label for="date_to">Hasta</label>
+                    <input type="date" id="date_to" name="date_to" value="{{ date_to }}">
+                </div>
+                <div class="form-group" style="margin-bottom: 0; min-width: 180px;">
+                    <label for="boleta_status">Estado boleta</label>
+                    <select id="boleta_status" name="boleta_status">
+                        <option value="">Todos</option>
+                        <option value="emitida" {% if boleta_status == 'emitida' %}selected{% endif %}>Emitida</option>
+                        <option value="pendiente" {% if boleta_status == 'pendiente' %}selected{% endif %}>Pendiente</option>
+                        <option value="error" {% if boleta_status == 'error' %}selected{% endif %}>Error</option>
+                        <option value="no_aplica" {% if boleta_status == 'no_aplica' %}selected{% endif %}>No aplica</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+                {% if date_from or date_to or boleta_status %}
+                <a href="{{ url_for('sales') }}" class="btn btn-secondary">Limpiar</a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body" style="overflow-x: auto;">
+            {% if sales %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Total</th>
+                        <th>Método de pago</th>
+                        <th>Estado boleta</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in sales %}
+                    <tr>
+                        <td>{{ s.created_at[:16]|replace('T', ' ') if s.created_at else '—' }}</td>
+                        <td>{{ s.total|clp }}</td>
+                        <td>{{ s.payment_method|capitalize if s.payment_method else '—' }}</td>
+                        <td>
+                            {% if s.boleta_status == 'emitida' %}
+                            <span class="badge badge-success">Emitida</span>
+                            {% elif s.boleta_status == 'pendiente' %}
+                            <span class="badge badge-warning">Pendiente</span>
+                            {% elif s.boleta_status == 'error' %}
+                            <span class="badge badge-error">Error</span>
+                            {% else %}
+                            <span class="badge badge-neutral">No aplica</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="{{ url_for('sales_detail', sale_id=s.id) }}" class="btn btn-sm btn-secondary">Ver detalle</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="empty-msg">No se encontraron ventas.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

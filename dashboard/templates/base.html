@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Panel Admin{% endblock %} — Monay Market</title>
+
+    <!-- HTMX for partial page updates -->
+    <script src="https://unpkg.com/htmx.org@2.0.4" integrity="sha384-HGfztofotfshcF7+8n44JQL2oJmowVChPTg48S+jvZoztPfvwD79OC/LTtG6dMp+" crossorigin="anonymous"></script>
+
+    <!-- Alpine.js for local interactivity (modals, toggles) -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
+
+    <!-- Chart.js for dashboard charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+    <!-- Custom styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+
+    {% block head %}{% endblock %}
+</head>
+<body x-data="{ sidebarOpen: false }">
+    <div class="app-layout">
+        <!-- Mobile sidebar overlay -->
+        <div class="sidebar-overlay"
+             x-show="sidebarOpen"
+             x-transition:enter="overlay-enter"
+             x-transition:leave="overlay-leave"
+             @click="sidebarOpen = false">
+        </div>
+
+        <!-- Sidebar navigation -->
+        <aside class="sidebar" :class="{ 'sidebar-open': sidebarOpen }">
+            <div class="sidebar-header">
+                <h1 class="sidebar-logo">Monay Market</h1>
+                <button class="sidebar-close" @click="sidebarOpen = false" aria-label="Cerrar menú">
+                    ✕
+                </button>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                    <span class="nav-icon">📊</span>
+                    <span class="nav-label">Dashboard</span>
+                </a>
+                <a href="{{ url_for('products') }}" class="nav-item {% if request.endpoint in ('products', 'products_new', 'products_edit', 'products_import') %}active{% endif %}">
+                    <span class="nav-icon">📦</span>
+                    <span class="nav-label">Productos</span>
+                </a>
+                <a href="{{ url_for('sales') }}" class="nav-item {% if request.endpoint in ('sales', 'sales_detail', 'sales_pending', 'sales_retry_boleta') %}active{% endif %}">
+                    <span class="nav-icon">🧾</span>
+                    <span class="nav-label">Ventas</span>
+                </a>
+                <a href="{{ url_for('users') }}" class="nav-item {% if request.endpoint == 'users' %}active{% endif %}">
+                    <span class="nav-icon">👥</span>
+                    <span class="nav-label">Usuarios</span>
+                </a>
+                <a href="{{ url_for('settings') }}" class="nav-item {% if request.endpoint == 'settings' %}active{% endif %}">
+                    <span class="nav-icon">⚙️</span>
+                    <span class="nav-label">Configuración</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                {% if current_user %}
+                <div class="user-info">
+                    <span class="user-name">{{ current_user.email }}</span>
+                    <span class="user-role">{{ current_user.role }}</span>
+                </div>
+                {% endif %}
+                <a href="{{ url_for('logout') }}" class="nav-item logout-link">
+                    <span class="nav-icon">🚪</span>
+                    <span class="nav-label">Cerrar sesión</span>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main content area -->
+        <main class="main-content">
+            <header class="top-bar">
+                <button class="menu-toggle" @click="sidebarOpen = true" aria-label="Abrir menú">
+                    ☰
+                </button>
+                <h2 class="page-title">{% block page_title %}Dashboard{% endblock %}</h2>
+            </header>
+
+            <div class="content-area">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

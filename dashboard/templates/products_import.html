@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Importar Productos{% endblock %}
+{% block page_title %}Importar Productos{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px;">
+    <a href="{{ url_for('products') }}" style="display: inline-block; margin-bottom: 16px; color: var(--color-primary); text-decoration: none; font-size: 0.9rem;">← Volver a productos</a>
+
+    {% if success %}
+    <div class="alert alert-success">
+        Se actualizaron {{ updated }} producto{{ 's' if updated != 1 else '' }} correctamente.
+    </div>
+    {% endif %}
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    {% if import_errors %}
+    <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header">
+            <h3 class="card-title">Errores de importación</h3>
+        </div>
+        <div class="card-body" style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Fila</th>
+                        <th>Error</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for err in import_errors %}
+                    <tr>
+                        <td>{{ err.row }}</td>
+                        <td>{{ err.message }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Importar desde Excel</h3>
+        </div>
+        <div class="card-body">
+            <p style="color: var(--color-text-muted); font-size: 0.85rem; margin-bottom: 16px;">
+                Suba un archivo Excel (.xlsx) con las columnas: Código de barras, Precio, Stock.
+                Se actualizarán los productos existentes que coincidan por código de barras.
+            </p>
+            <form method="post" action="{{ url_for('products_import') }}" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="file">Archivo Excel (.xlsx)</label>
+                    <input type="file" id="file" name="file" accept=".xlsx,.xls" required>
+                </div>
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+                    <a href="{{ url_for('products') }}" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Importar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

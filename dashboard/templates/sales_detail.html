@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Detalle de venta{% endblock %}
+{% block page_title %}Detalle de venta{% endblock %}
+
+{% block content %}
+<div>
+    <div style="margin-bottom: 20px;">
+        <a href="{{ url_for('sales') }}" class="btn btn-secondary">← Volver a ventas</a>
+    </div>
+
+    <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header"><h3 class="card-title">Información de la venta</h3></div>
+        <div class="card-body">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <div>
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted); text-transform: uppercase;">Fecha</span>
+                    <p style="font-weight: 500; margin-top: 4px;">{{ sale.created_at[:16]|replace('T', ' ') if sale.created_at else '—' }}</p>
+                </div>
+                <div>
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted); text-transform: uppercase;">Total</span>
+                    <p style="font-weight: 700; font-size: 1.2rem; margin-top: 4px;">{{ sale.total|clp }}</p>
+                </div>
+                <div>
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted); text-transform: uppercase;">Método de pago</span>
+                    <p style="font-weight: 500; margin-top: 4px;">{{ sale.payment_method|capitalize if sale.payment_method else '—' }}</p>
+                </div>
+                <div>
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted); text-transform: uppercase;">Estado boleta</span>
+                    <p style="margin-top: 4px;">
+                        {% if sale.boleta_status == 'emitida' %}<span class="badge badge-success">Emitida</span>
+                        {% elif sale.boleta_status == 'pendiente' %}<span class="badge badge-warning">Pendiente</span>
+                        {% elif sale.boleta_status == 'error' %}<span class="badge badge-error">Error</span>
+                        {% else %}<span class="badge badge-neutral">No aplica</span>{% endif %}
+                    </p>
+                </div>
+            </div>
+            {% if sale.payment_method == 'efectivo' and sale.amount_received is not none %}
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--color-border);">
+                <div>
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted); text-transform: uppercase;">Monto recibido</span>
+                    <p style="font-weight: 500; margin-top: 4px;">{{ sale.amount_received|clp }}</p>
+                </div>
+                <div>
+                    <span style="font-size: 0.8rem; color: var(--color-text-muted); text-transform: uppercase;">Vuelto</span>
+                    <p style="font-weight: 500; margin-top: 4px;">{{ sale.change_amount|clp }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header"><h3 class="card-title">Detalle de productos</h3></div>
+        <div class="card-body" style="overflow-x: auto;">
+            {% if sale.lines %}
+            <table class="data-table">
+                <thead><tr><th>Producto</th><th>Precio unitario</th><th>Cantidad</th><th>Subtotal</th></tr></thead>
+                <tbody>
+                    {% for line in sale.lines %}
+                    <tr><td>{{ line.product_name }}</td><td>{{ line.unit_price|clp }}</td><td>{{ line.quantity }}</td><td>{{ line.subtotal|clp }}</td></tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot><tr><td colspan="3" style="text-align: right; font-weight: 600;">Total</td><td style="font-weight: 700;">{{ sale.total|clp }}</td></tr></tfoot>
+            </table>
+            {% else %}<p class="empty-msg">Sin líneas de detalle.</p>{% endif %}
+        </div>
+    </div>
+
+    {% if sale.boleta %}
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">Datos de boleta electrónica</h3></div>
+        <div class="card-body">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <div><span style="font-size: 0.8rem; color: var(--color-text-muted);">FOLIO</span><p style="font-weight: 500; margin-top: 4px;">{{ sale.boleta.folio }}</p></div>
+                <div><span style="font-size: 0.8rem; color: var(--color-text-muted);">PROVEEDOR</span><p style="font-weight: 500; margin-top: 4px;">{{ sale.boleta.provider|capitalize }}</p></div>
+                <div><span style="font-size: 0.8rem; color: var(--color-text-muted);">FECHA EMISIÓN</span><p style="font-weight: 500; margin-top: 4px;">{{ sale.boleta.emitted_at[:16]|replace('T', ' ') if sale.boleta.emitted_at else '—' }}</p></div>
+            </div>
+            {% if sale.boleta.pdf_url %}
+            <div style="margin-top: 16px;"><a href="{{ sale.boleta.pdf_url }}" target="_blank" class="btn btn-primary btn-sm">📄 Ver PDF</a></div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

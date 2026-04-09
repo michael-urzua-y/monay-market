@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+
+{% block title %}Configuración{% endblock %}
+{% block page_title %}Configuración{% endblock %}
+
+{% block content %}
+<div>
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+    {% if success %}
+    <div class="alert alert-success">{{ success }}</div>
+    {% endif %}
+
+    <div style="display: grid; gap: 20px;">
+
+        <!-- SII Configuration -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Módulo SII — Boleta Electrónica</h3>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('settings_sii') }}">
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" name="sii_enabled" {% if config.get('sii_enabled') %}checked{% endif %}
+                                   style="width: auto;">
+                            Activar integración SII
+                        </label>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sii_provider">Proveedor de facturación</label>
+                        <select id="sii_provider" name="sii_provider">
+                            <option value="">— Seleccionar —</option>
+                            <option value="haulmer" {% if config.get('sii_provider') == 'haulmer' %}selected{% endif %}>Haulmer</option>
+                            <option value="openfactura" {% if config.get('sii_provider') == 'openfactura' %}selected{% endif %}>OpenFactura</option>
+                            <option value="facturacion_cl" {% if config.get('sii_provider') == 'facturacion_cl' %}selected{% endif %}>Facturación.cl</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sii_api_key">API Key</label>
+                        <input type="text" id="sii_api_key" name="sii_api_key"
+                               value="{{ config.get('sii_api_key', '') or '' }}"
+                               placeholder="Clave de API del proveedor">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sii_rut_emisor">RUT Emisor</label>
+                        <input type="text" id="sii_rut_emisor" name="sii_rut_emisor"
+                               value="{{ config.get('sii_rut_emisor', '') or '' }}"
+                               placeholder="12.345.678-9">
+                    </div>
+
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" name="sii_sandbox_mode" {% if config.get('sii_sandbox_mode') %}checked{% endif %}
+                                   style="width: auto;">
+                            Modo sandbox (pruebas)
+                        </label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Guardar configuración SII</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Printer Configuration -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Impresión Térmica</h3>
+            </div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('settings_printer') }}">
+                    <div class="form-group">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" name="printer_enabled" {% if config.get('printer_enabled') %}checked{% endif %}
+                                   style="width: auto;">
+                            Activar impresión térmica
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Guardar configuración de impresora</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Subscription Info -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Suscripción</h3>
+            </div>
+            <div class="card-body">
+                {% if subscription and subscription.get('plan') %}
+                <div style="display: grid; gap: 12px;">
+                    <div>
+                        <span style="font-size: 0.85rem; color: var(--color-text-muted);">Plan</span>
+                        <p style="font-weight: 600; text-transform: capitalize;">{{ subscription.get('plan', '—') }}</p>
+                    </div>
+                    <div>
+                        <span style="font-size: 0.85rem; color: var(--color-text-muted);">Estado</span>
+                        <p>
+                            {% set sub_status = subscription.get('status', '') %}
+                            {% if sub_status == 'activa' %}
+                            <span class="badge badge-success">Activa</span>
+                            {% elif sub_status == 'expirada' %}
+                            <span class="badge badge-error">Expirada</span>
+                            {% elif sub_status == 'cancelada' %}
+                            <span class="badge badge-error">Cancelada</span>
+                            {% else %}
+                            <span class="badge badge-neutral">{{ sub_status or '—' }}</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div>
+                        <span style="font-size: 0.85rem; color: var(--color-text-muted);">Fecha inicio</span>
+                        <p>{{ subscription.get('start_date', '—')[:10] if subscription.get('start_date') else '—' }}</p>
+                    </div>
+                    <div>
+                        <span style="font-size: 0.85rem; color: var(--color-text-muted);">Fecha vencimiento</span>
+                        <p>{{ subscription.get('end_date', '—')[:10] if subscription.get('end_date') else '—' }}</p>
+                    </div>
+                </div>
+                {% else %}
+                <p class="empty-msg">No se pudo obtener información de la suscripción.</p>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

@@ -44,9 +44,11 @@ monay-market/
 - Reintento manual de boletas pendientes
 - Dashboard de métricas: ventas del día, acumulado mensual con variación %, gráfico diario, stock crítico, valorización inventario (plan Pro)
 - Comprobante visual estructurado con datos de tienda, productos, pago y boleta
+- WebSocket Gateway con autenticación JWT: eventos sale:created, stock:updated, stock:critical filtrados por tenant
+- Panel Admin Flask + HTMX: login, dashboard con métricas auto-refresh, gestión de productos (CRUD + barcode lookup + Excel import), ventas con filtros y detalle, boletas pendientes con reintento, usuarios cajeros, configuración SII/impresora/suscripción
 - 9 entidades con relaciones, índices compuestos y enums
 - Migraciones y seed con 41 productos chilenos reales
-- 192 tests unitarios pasando
+- 204 tests unitarios pasando
 
 ## Base de datos
 

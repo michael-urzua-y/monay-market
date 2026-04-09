@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid">
+    <!-- Ventas del día -->
+    <div class="card"
+         hx-get="/htmx/dashboard/today"
+         hx-trigger="load, every 30s"
+         hx-swap="innerHTML">
+        <div class="card-loading">Cargando ventas del día…</div>
+    </div>
+
+    <!-- Acumulado mensual -->
+    <div class="card"
+         hx-get="/htmx/dashboard/monthly"
+         hx-trigger="load, every 30s"
+         hx-swap="innerHTML">
+        <div class="card-loading">Cargando acumulado mensual…</div>
+    </div>
+
+    <!-- Valorización del inventario -->
+    <div class="card"
+         hx-get="/htmx/dashboard/inventory-value"
+         hx-trigger="load, every 30s"
+         hx-swap="innerHTML">
+        <div class="card-loading">Cargando valorización…</div>
+    </div>
+
+    <!-- Gráfico de ventas diarias -->
+    <div class="card card-wide">
+        <div class="card-header">
+            <h3 class="card-title">Ventas diarias del mes</h3>
+        </div>
+        <div class="card-body">
+            <canvas id="dailyChart" height="260"></canvas>
+        </div>
+    </div>
+
+    <!-- Stock crítico -->
+    <div class="card card-wide">
+        <div class="card-header">
+            <h3 class="card-title">Productos con stock crítico</h3>
+        </div>
+        <div class="card-body"
+             hx-get="/htmx/dashboard/critical-stock"
+             hx-trigger="load, every 30s"
+             hx-swap="innerHTML">
+            <div class="card-loading">Cargando stock crítico…</div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let dailyChart = null;
+
+function formatCLP(value) {
+    return '$' + Number(value).toLocaleString('es-CL');
+}
+
+function loadDailyChart() {
+    fetch('/htmx/dashboard/daily-chart')
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            const ctx = document.getElementById('dailyChart');
+            if (!ctx) return;
+
+            const labels = data.map(function(d) {
+                return d.fecha.substring(8);
+            });
+            const values = data.map(function(d) { return d.total; });
+
+            if (dailyChart) {
+                dailyChart.data.labels = labels;
+                dailyChart.data.datasets[0].data = values;
+                dailyChart.update();
+            } else {
+                dailyChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Ventas (CLP)',
+                            data: values,
+                            borderColor: '#2563eb',
+                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            fill: true,
+                            tension: 0.3,
+                            pointRadius: 3,
+                            pointHoverRadius: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(ctx) {
+                                        return formatCLP(ctx.parsed.y);
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(v) { return formatCLP(v); }
+                                }
+                            },
+                            x: {
+                                title: { display: true, text: 'Día del mes' }
+                            }
+                        }
+                    }
+                });
+            }
+        })
+        .catch(function() {
+            var el = document.getElementById('dailyChart');
+            if (el && el.parentNode) {
+                el.parentNode.innerHTML = '<p class="error-msg">Error al cargar datos</p>';
+            }
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadDailyChart();
+    setInterval(loadDailyChart, 30000);
+});
+</script>
+{% endblock %}

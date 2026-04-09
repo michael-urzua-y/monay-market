@@ -1,0 +1,13 @@
+{% if name %}
+<small style="color: var(--color-success);">Encontrado: {{ name }}</small>
+<script>
+    (function() {
+        var nameField = document.getElementById('name');
+        if (nameField && !nameField.value) {
+            nameField.value = {{ name|tojson }};
+        }
+    })();
+</script>
+{% else %}
+<small style="color: var(--color-text-muted);">No se encontró información para este código.</small>
+{% endif %}

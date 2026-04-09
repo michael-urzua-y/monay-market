@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Nuevo Producto{% endblock %}
+{% block page_title %}Nuevo Producto{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px;">
+    <a href="{{ url_for('products') }}" style="display: inline-block; margin-bottom: 16px; color: var(--color-primary); text-decoration: none; font-size: 0.9rem;">← Volver a productos</a>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Crear producto</h3>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_for('products_new') }}">
+                <div class="form-group">
+                    <label for="barcode">Código de barras</label>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="barcode" name="barcode" value="{{ form.get('barcode', '') or '' }}" placeholder="Ej: 7801234567890">
+                        <button type="button" class="btn btn-secondary"
+                                hx-get=""
+                                hx-target="#barcode-result"
+                                hx-swap="innerHTML"
+                                id="lookup-btn"
+                                onclick="this.setAttribute('hx-get', '/htmx/products/lookup-barcode/' + document.getElementById('barcode').value); htmx.process(this); htmx.trigger(this, 'click');"
+                                style="white-space: nowrap;">
+                            🔍 Buscar
+                        </button>
+                    </div>
+                    <div id="barcode-result" style="margin-top: 4px;"></div>
+                </div>
+
+                <div class="form-group">
+                    <label for="name">Nombre *</label>
+                    <input type="text" id="name" name="name" value="{{ form.get('name', '') }}" required placeholder="Nombre del producto">
+                </div>
+
+                <div class="form-group">
+                    <label for="price">Precio (CLP) *</label>
+                    <input type="number" id="price" name="price" value="{{ form.get('price', '') }}" required min="1" placeholder="Ej: 1490">
+                </div>
+
+                <div class="form-group">
+                    <label for="stock">Stock inicial *</label>
+                    <input type="number" id="stock" name="stock" value="{{ form.get('stock', 0) }}" required min="0" placeholder="0">
+                </div>
+
+                <div class="form-group">
+                    <label for="critical_stock">Stock crítico</label>
+                    <input type="number" id="critical_stock" name="critical_stock" value="{{ form.get('critical_stock', 0) }}" min="0" placeholder="0">
+                </div>
+
+                <div class="form-group">
+                    <label for="category_id">Categoría</label>
+                    <select id="category_id" name="category_id">
+                        <option value="">Sin categoría</option>
+                        {% for cat_id, cat_name in categories.items() %}
+                        <option value="{{ cat_id }}" {% if form.get('category_id') == cat_id %}selected{% endif %}>{{ cat_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+                    <a href="{{ url_for('products') }}" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Crear producto</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

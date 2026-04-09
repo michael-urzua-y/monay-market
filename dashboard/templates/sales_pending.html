@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Ventas pendientes de boleta{% endblock %}
+{% block page_title %}Ventas pendientes de boleta{% endblock %}
+
+{% block content %}
+<div>
+    <div style="margin-bottom: 20px;">
+        <a href="{{ url_for('sales') }}" class="btn btn-secondary">← Volver a ventas</a>
+    </div>
+
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+    {% if success %}<div class="alert alert-success">{{ success }}</div>{% endif %}
+
+    <div class="card">
+        <div class="card-body" style="overflow-x: auto;">
+            {% if sales %}
+            <table class="data-table">
+                <thead><tr><th>Fecha</th><th>Total</th><th>Método de pago</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody>
+                    {% for s in sales %}
+                    <tr>
+                        <td>{{ s.created_at[:16]|replace('T', ' ') if s.created_at else '—' }}</td>
+                        <td>{{ s.total|clp }}</td>
+                        <td>{{ s.payment_method|capitalize if s.payment_method else '—' }}</td>
+                        <td><span class="badge badge-warning">Pendiente</span></td>
+                        <td style="white-space: nowrap;">
+                            <form action="{{ url_for('sales_retry_boleta', sale_id=s.id) }}" method="post" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-primary">🔄 Reintentar</button>
+                            </form>
+                            <a href="{{ url_for('sales_detail', sale_id=s.id) }}" class="btn btn-sm btn-secondary">Ver detalle</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}<p class="empty-msg">No hay ventas pendientes de boleta.</p>{% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

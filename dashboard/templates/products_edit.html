@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Producto{% endblock %}
+{% block page_title %}Editar Producto{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px;">
+    <a href="{{ url_for('products') }}" style="display: inline-block; margin-bottom: 16px; color: var(--color-primary); text-decoration: none; font-size: 0.9rem;">← Volver a productos</a>
+
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Editar producto</h3>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_for('products_edit', product_id=product_id) }}">
+                <div class="form-group">
+                    <label for="barcode">Código de barras</label>
+                    <input type="text" id="barcode" name="barcode" value="{{ product.get('barcode', '') or '' }}" placeholder="Ej: 7801234567890">
+                </div>
+
+                <div class="form-group">
+                    <label for="name">Nombre *</label>
+                    <input type="text" id="name" name="name" value="{{ product.get('name', '') }}" required placeholder="Nombre del producto">
+                </div>
+
+                <div class="form-group">
+                    <label for="price">Precio (CLP) *</label>
+                    <input type="number" id="price" name="price" value="{{ product.get('price', '') }}" required min="1" placeholder="Ej: 1490">
+                </div>
+
+                <div class="form-group">
+                    <label for="stock">Stock *</label>
+                    <input type="number" id="stock" name="stock" value="{{ product.get('stock', 0) }}" required min="0" placeholder="0">
+                </div>
+
+                <div class="form-group">
+                    <label for="critical_stock">Stock crítico</label>
+                    <input type="number" id="critical_stock" name="critical_stock" value="{{ product.get('critical_stock', 0) }}" min="0" placeholder="0">
+                </div>
+
+                <div class="form-group">
+                    <label for="category_id">Categoría</label>
+                    <select id="category_id" name="category_id">
+                        <option value="">Sin categoría</option>
+                        {% for cat_id, cat_name in categories.items() %}
+                        {% set current_cat = product.get('category_id') or (product.get('category', {}).get('id', '') if product.get('category') else '') %}
+                        <option value="{{ cat_id }}" {% if current_cat == cat_id %}selected{% endif %}>{{ cat_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+                    <a href="{{ url_for('products') }}" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

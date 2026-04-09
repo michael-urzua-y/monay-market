@@ -1,0 +1,24 @@
+{% if products %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Producto</th>
+            <th>Stock actual</th>
+            <th>Stock crítico</th>
+            <th>Precio</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in products %}
+        <tr>
+            <td>{{ p.name }}</td>
+            <td><span class="badge badge-error">{{ p.stock }}</span></td>
+            <td>{{ p.critical_stock }}</td>
+            <td>{{ p.price }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-msg">No hay productos con stock crítico</p>
+{% endif %}

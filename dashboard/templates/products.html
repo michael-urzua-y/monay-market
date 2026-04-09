@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Productos{% endblock %}
+{% block page_title %}Productos{% endblock %}
+
+{% block content %}
+<div x-data="{ showDeleteModal: false, deleteId: null, deleteName: '' }">
+
+    <!-- Action bar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a href="{{ url_for('products_new') }}" class="btn btn-primary">+ Nuevo producto</a>
+            <a href="{{ url_for('products_import') }}" class="btn btn-secondary">📥 Importar Excel</a>
+        </div>
+    </div>
+
+    <!-- Search and filter -->
+    <div class="card" style="margin-bottom: 20px;">
+        <div class="card-body">
+            <form method="get" action="{{ url_for('products') }}" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+                <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">
+                    <label for="search">Buscar por nombre</label>
+                    <input type="text" id="search" name="search" value="{{ search }}" placeholder="Nombre del producto…">
+                </div>
+                <div class="form-group" style="margin-bottom: 0; min-width: 180px;">
+                    <label for="category_id">Categoría</label>
+                    <select id="category_id" name="category_id">
+                        <option value="">Todas</option>
+                        {% for cat_id, cat_name in categories.items() %}
+                        <option value="{{ cat_id }}" {% if category_id == cat_id %}selected{% endif %}>{{ cat_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+                {% if search or category_id %}
+                <a href="{{ url_for('products') }}" class="btn btn-secondary">Limpiar</a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete feedback area -->
+    {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    <!-- Products table -->
+    <div class="card">
+        <div class="card-body" style="overflow-x: auto;">
+            {% if products %}
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Código de barras</th>
+                        <th>Precio</th>
+                        <th>Stock</th>
+                        <th>Categoría</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in products %}
+                    <tr>
+                        <td>{{ p.name }}</td>
+                        <td>{{ p.barcode or '—' }}</td>
+                        <td>{{ p.price|clp }}</td>
+                        <td>
+                            {% if p.stock is defined and p.critical_stock is defined and p.stock <= p.critical_stock %}
+                            <span class="badge badge-error">{{ p.stock }}</span>
+                            {% else %}
+                            {{ p.stock }}
+                            {% endif %}
+                        </td>
+                        <td>{{ p.category.name if p.category else '—' }}</td>
+                        <td style="white-space: nowrap;">
+                            <a href="{{ url_for('products_edit', product_id=p.id) }}" class="btn btn-sm">✏️ Editar</a>
+                            <button class="btn btn-sm btn-danger"
+                                    @click="deleteId = '{{ p.id }}'; deleteName = '{{ p.name }}'; showDeleteModal = true">
+                                🗑️ Eliminar
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="empty-msg">No se encontraron productos.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Delete confirmation modal (Alpine.js) -->
+    <div x-show="showDeleteModal" x-cloak
+         style="position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 200;"
+         @keydown.escape.window="showDeleteModal = false">
+        <div class="card" style="max-width: 420px; width: 100%; margin: 16px;" @click.outside="showDeleteModal = false">
+            <div class="card-header">
+                <h3 class="card-title">Confirmar eliminación</h3>
+            </div>
+            <div class="card-body">
+                <p>¿Está seguro de que desea eliminar el producto <strong x-text="deleteName"></strong>?</p>
+                <p style="color: var(--color-text-muted); font-size: 0.85rem; margin-top: 8px;">
+                    Esta acción no se puede deshacer. Solo se puede eliminar si no tiene ventas en los últimos 30 días.
+                </p>
+                <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+                    <button class="btn btn-secondary" @click="showDeleteModal = false">Cancelar</button>
+                    <form :action="'/products/' + deleteId + '/delete'" method="post" style="display: inline;">
+                        <button type="submit" class="btn btn-danger">Eliminar</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

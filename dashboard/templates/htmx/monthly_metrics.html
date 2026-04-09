@@ -1,0 +1,14 @@
+<div class="card-header">
+    <h3 class="card-title">Acumulado mensual</h3>
+</div>
+<div class="card-body">
+    <div class="metric-value">{{ mes_actual }}</div>
+    <div class="metric-secondary">Mes anterior: {{ mes_anterior }}</div>
+    {% if variacion is not none %}
+    <span class="badge {{ 'badge-success' if variacion >= 0 else 'badge-error' }}">
+        {{ '+' if variacion >= 0 else '' }}{{ variacion }}%
+    </span>
+    {% else %}
+    <span class="badge badge-neutral">Sin datos previos</span>
+    {% endif %}
+</div>

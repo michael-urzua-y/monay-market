@@ -9,6 +9,7 @@ import { CartModule } from './cart/cart.module';
 import { SalesModule } from './sales/sales.module';
 import { SiiModule } from './sii/sii.module';
 import { DashboardModule } from './dashboard/dashboard.module';
+import { WebSocketModule } from './websocket/websocket.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
     SalesModule,
     SiiModule,
     DashboardModule,
+    WebSocketModule,
   ],
 })
 export class AppModule {}
