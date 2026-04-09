@@ -31,8 +31,9 @@
 
     <!-- Gráfico de ventas diarias -->
     <div class="card card-wide">
-        <div class="card-header">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <h3 class="card-title">Ventas diarias del mes</h3>
+            <input type="month" id="monthSelector" style="padding: 6px; border: 1px solid var(--color-border); border-radius: 4px; background: white; font-family: inherit;" onchange="loadDailyChart()">
         </div>
         <div class="card-body">
             <canvas id="dailyChart" height="260"></canvas>
@@ -63,7 +64,14 @@ function formatCLP(value) {
 }
 
 function loadDailyChart() {
-    fetch('/htmx/dashboard/daily-chart')
+    var select = document.getElementById('monthSelector');
+    var month = select ? select.value : '';
+    var url = '/htmx/dashboard/daily-chart';
+    if (month) {
+        url += '?month=' + encodeURIComponent(month);
+    }
+
+    fetch(url)
         .then(function(r) { return r.json(); })
         .then(function(data) {
             const ctx = document.getElementById('dailyChart');
@@ -130,7 +138,23 @@ function loadDailyChart() {
         });
 }
 
+function initMonthSelector() {
+    var select = document.getElementById('monthSelector');
+    if (!select) return;
+
+    var now = new Date();
+    var currentYear = now.getFullYear();
+    var currentMonth = now.getMonth() + 1; // 1-12
+    
+    var currentMonthStr = currentYear + '-' + String(currentMonth).padStart(2, '0');
+
+    select.min = '2026-03'; // Límite inferior: Marzo 2026
+    select.max = currentMonthStr; // Límite superior: Mes actual
+    select.value = currentMonthStr; // Valor por defecto
+}
+
 document.addEventListener('DOMContentLoaded', function() {
+    initMonthSelector();
     loadDailyChart();
     setInterval(loadDailyChart, 30000);
 });

@@ -10,6 +10,7 @@ import { firstValueFrom } from 'rxjs';
 import { Workbook } from 'exceljs';
 import { Product } from '../entities/product.entity';
 import { SaleLine } from '../entities/sale-line.entity';
+import { Category } from '../entities/category.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { FilterProductsDto } from './dto/filter-products.dto';
@@ -26,8 +27,17 @@ export class ProductsService {
     private readonly productRepository: Repository<Product>,
     @InjectRepository(SaleLine)
     private readonly saleLineRepository: Repository<SaleLine>,
+    @InjectRepository(Category)
+    private readonly categoryRepository: Repository<Category>,
     private readonly httpService: HttpService,
   ) {}
+
+  async getCategories(tenantId: string): Promise<Category[]> {
+    return this.categoryRepository.find({
+      where: { tenant_id: tenantId },
+      order: { name: 'ASC' },
+    });
+  }
 
   async create(tenantId: string, dto: CreateProductDto): Promise<Product> {
     if (dto.barcode) {
@@ -61,6 +71,7 @@ export class ProductsService {
 
     return this.productRepository.find({
       where,
+      relations: ['category'],
       order: { name: 'ASC' },
     });
   }

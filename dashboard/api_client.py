@@ -44,61 +44,43 @@ class APIClient:
         data["status_code"] = response.status_code
         return data
 
-    def get(self, endpoint: str, params: Optional[dict] = None) -> dict:
-        """Send GET request to API_Backend."""
+    def _make_request(self, method: str, endpoint: str, **kwargs) -> dict:
+        """Centralizes requests calls and exception handling."""
         url = f"{self.base_url}/{endpoint.lstrip('/')}"
+        
+        if "headers" not in kwargs:
+            kwargs["headers"] = self._get_headers()
+        if "timeout" not in kwargs:
+            kwargs["timeout"] = 15
+            
         try:
-            resp = requests.get(url, headers=self._get_headers(), params=params, timeout=15)
+            resp = requests.request(method, url, **kwargs)
             return self._handle_response(resp)
         except requests.exceptions.ConnectionError:
             return {"error": "CONNECTION_ERROR", "message": "No se pudo conectar con el servidor", "status_code": 503}
         except requests.exceptions.Timeout:
             return {"error": "TIMEOUT", "message": "El servidor no respondió a tiempo", "status_code": 504}
+
+    def get(self, endpoint: str, params: Optional[dict] = None) -> dict:
+        """Send GET request to API_Backend."""
+        return self._make_request("GET", endpoint, params=params)
 
     def post(self, endpoint: str, data: Optional[dict] = None) -> dict:
         """Send POST request to API_Backend."""
-        url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        try:
-            resp = requests.post(url, headers=self._get_headers(), json=data, timeout=15)
-            return self._handle_response(resp)
-        except requests.exceptions.ConnectionError:
-            return {"error": "CONNECTION_ERROR", "message": "No se pudo conectar con el servidor", "status_code": 503}
-        except requests.exceptions.Timeout:
-            return {"error": "TIMEOUT", "message": "El servidor no respondió a tiempo", "status_code": 504}
+        return self._make_request("POST", endpoint, json=data)
 
     def patch(self, endpoint: str, data: Optional[dict] = None) -> dict:
         """Send PATCH request to API_Backend."""
-        url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        try:
-            resp = requests.patch(url, headers=self._get_headers(), json=data, timeout=15)
-            return self._handle_response(resp)
-        except requests.exceptions.ConnectionError:
-            return {"error": "CONNECTION_ERROR", "message": "No se pudo conectar con el servidor", "status_code": 503}
-        except requests.exceptions.Timeout:
-            return {"error": "TIMEOUT", "message": "El servidor no respondió a tiempo", "status_code": 504}
+        return self._make_request("PATCH", endpoint, json=data)
 
     def delete(self, endpoint: str) -> dict:
         """Send DELETE request to API_Backend."""
-        url = f"{self.base_url}/{endpoint.lstrip('/')}"
-        try:
-            resp = requests.delete(url, headers=self._get_headers(), timeout=15)
-            return self._handle_response(resp)
-        except requests.exceptions.ConnectionError:
-            return {"error": "CONNECTION_ERROR", "message": "No se pudo conectar con el servidor", "status_code": 503}
-        except requests.exceptions.Timeout:
-            return {"error": "TIMEOUT", "message": "El servidor no respondió a tiempo", "status_code": 504}
+        return self._make_request("DELETE", endpoint)
 
     def post_file(self, endpoint: str, files: dict, data: Optional[dict] = None) -> dict:
         """Send POST request with file upload to API_Backend."""
-        url = f"{self.base_url}/{endpoint.lstrip('/')}"
         headers = {}
         token = session.get("jwt_token")
         if token:
             headers["Authorization"] = f"Bearer {token}"
-        try:
-            resp = requests.post(url, headers=headers, files=files, data=data, timeout=30)
-            return self._handle_response(resp)
-        except requests.exceptions.ConnectionError:
-            return {"error": "CONNECTION_ERROR", "message": "No se pudo conectar con el servidor", "status_code": 503}
-        except requests.exceptions.Timeout:
-            return {"error": "TIMEOUT", "message": "El servidor no respondió a tiempo", "status_code": 504}
+        return self._make_request("POST", endpoint, headers=headers, files=files, data=data, timeout=30)

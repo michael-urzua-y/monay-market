@@ -3,15 +3,8 @@
 // Vanilla JS PWA with screen routing and API client
 // ============================================================
 
-(function () {
-  'use strict';
-
-  // ----------------------------------------------------------
-  // Configuration
-  // ----------------------------------------------------------
-  const CONFIG = {
-    API_URL: window.MONAY_API_URL || window.location.origin,
-  };
+import { api, CONFIG } from './api.js';
+import { OfflineDB } from './offline.js';
 
   // ----------------------------------------------------------
   // Helpers
@@ -79,52 +72,6 @@
       });
     });
   }
-
-  // ----------------------------------------------------------
-  // API Client — fetch wrapper with JWT auth
-  // ----------------------------------------------------------
-  var api = {
-    getToken: function () {
-      return localStorage.getItem('monay_token');
-    },
-    setToken: function (token) {
-      localStorage.setItem('monay_token', token);
-    },
-    clearToken: function () {
-      localStorage.removeItem('monay_token');
-    },
-    request: function (method, path, body) {
-      var headers = { 'Content-Type': 'application/json' };
-      var token = this.getToken();
-      if (token) {
-        headers['Authorization'] = 'Bearer ' + token;
-      }
-      var opts = { method: method, headers: headers };
-      if (body !== undefined) {
-        opts.body = JSON.stringify(body);
-      }
-      return fetch(CONFIG.API_URL + path, opts).then(function (res) {
-        if (res.status === 401) {
-          api.clearToken();
-          router.navigate('login');
-          throw new Error('Sesión expirada');
-        }
-        return res.json().catch(function () { return null; }).then(function (data) {
-          if (!res.ok) {
-            var err = new Error((data && data.message) || 'Error del servidor');
-            err.status = res.status;
-            err.data = data;
-            throw err;
-          }
-          return data;
-        });
-      });
-    },
-    get: function (path) { return this.request('GET', path); },
-    post: function (path, body) { return this.request('POST', path, body); },
-    patch: function (path, body) { return this.request('PATCH', path, body); },
-    delete: function (path) { return this.request('DELETE', path); },
-  };
 
   // ----------------------------------------------------------
   // Router — simple screen-based navigation
@@ -589,6 +536,19 @@
       body.amount_received = parseInt(amountInput ? amountInput.value : '0', 10) || 0;
     }
 
+    if (!navigator.onLine) {
+      OfflineDB.savePendingSale(body).then(function () {
+        clearCart();
+        resetPaymentForm();
+        showToast('Sin conexión: Venta encolada para sincronizar', 'warning');
+        if (btnPay) btnPay.disabled = false;
+      }).catch(function () {
+        showToast('Error al guardar venta offline', 'error');
+        if (btnPay) btnPay.disabled = false;
+      });
+      return;
+    }
+
     api.post('/sales', body).then(function (result) {
       // result: { sale, critical_stock_alerts, receipt }
       clearCart();
@@ -701,8 +661,13 @@
 
     // Get today's sales
     var now = new Date();
-    var dateFrom = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
-    var dateTo = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
+    var y = now.getFullYear();
+    var m = String(now.getMonth() + 1).padStart(2, '0');
+    var d = String(now.getDate()).padStart(2, '0');
+    var todayStr = y + '-' + m + '-' + d;
+
+    var dateFrom = todayStr;
+    var dateTo = todayStr + 'T23:59:59Z';
 
     api.get('/sales?date_from=' + encodeURIComponent(dateFrom) + '&date_to=' + encodeURIComponent(dateTo))
       .then(function (sales) {
@@ -874,6 +839,35 @@
   }
 
   // ----------------------------------------------------------
+  // Offline Sync
+  // ----------------------------------------------------------
+  async function syncOfflineSales() {
+    try {
+      const pending = await OfflineDB.getPendingSales();
+      if (pending && pending.length > 0) {
+        showToast('Sincronizando ' + pending.length + ' ventas offline...', 'success');
+        for (let i = 0; i < pending.length; i++) {
+          const sale = pending[i];
+          try {
+            await api.post('/sales', sale.payload);
+            await OfflineDB.deletePendingSale(sale.id);
+          } catch (err) {
+            console.error('Error sincronizando venta:', err);
+          }
+        }
+        showToast('Ventas offline sincronizadas', 'success');
+        if (router.currentScreen === 'history') {
+          loadHistory();
+        }
+      }
+    } catch (err) {
+      console.error('Error al obtener ventas pendientes:', err);
+    }
+  }
+
+  window.addEventListener('online', syncOfflineSales);
+
+  // ----------------------------------------------------------
   // App Init
   // ----------------------------------------------------------
   function init() {
@@ -887,6 +881,16 @@
     initPayment();
     initReceipt();
     initHistory();
+
+    // Global auth expiration listener
+    window.addEventListener('monay-auth-expired', function () {
+      router.navigate('login');
+    });
+
+    // Sync if online
+    if (navigator.onLine) {
+      syncOfflineSales();
+    }
 
     // If we have a token, go to sale screen; otherwise login
     if (api.getToken()) {
@@ -905,4 +909,3 @@
   } else {
     init();
   }
-})();

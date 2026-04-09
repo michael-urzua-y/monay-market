@@ -27,6 +27,12 @@ import { FilterProductsDto } from './dto/filter-products.dto';
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
+  @Get('categories')
+  @Roles('dueno', 'cajero')
+  getCategories(@CurrentUser() user: JwtPayload) {
+    return this.productsService.getCategories(user.tenant_id);
+  }
+
   @Post()
   @Roles('dueno')
   create(

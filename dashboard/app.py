@@ -90,6 +90,8 @@ def products():
     """Render products listing page with search and category filter."""
     search = request.args.get("search", "").strip()
     category_id = request.args.get("category_id", "").strip()
+    page = int(request.args.get("page", 1))
+    per_page = 15
 
     params = {}
     if search:
@@ -98,23 +100,65 @@ def products():
         params["category_id"] = category_id
 
     products_data = api.get("/products", params=params)
-    categories_data = api.get("/products", params={})
-
-    # Extract unique categories from all products for the filter dropdown
     product_list = products_data if isinstance(products_data, list) else []
 
-    # Build categories list from product data
+    # Pagination
+    total = len(product_list)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * per_page
+    paginated = product_list[start:start + per_page]
+
+    # Get categories from dedicated endpoint
+    categories_data = api.get("/products/categories")
     categories = {}
-    for p in (categories_data if isinstance(categories_data, list) else []):
-        if isinstance(p, dict) and p.get("category_id") and p.get("category"):
-            cat = p["category"]
-            if isinstance(cat, dict):
-                categories[cat.get("id", "")] = cat.get("name", "")
+    if isinstance(categories_data, list):
+        for cat in categories_data:
+            if isinstance(cat, dict) and cat.get("id") and cat.get("name"):
+                categories[cat["id"]] = cat["name"]
 
     return render_template(
         "products.html",
-        products=product_list,
+        products=paginated,
         categories=categories,
+        search=search,
+        category_id=category_id,
+        page=page,
+        total_pages=total_pages,
+        total=total,
+    )
+
+
+@app.route("/htmx/products/search")
+@login_required
+def htmx_products_search():
+    """HTMX endpoint for live product search."""
+    search = request.args.get("search", "").strip()
+    category_id = request.args.get("category_id", "").strip()
+    page = int(request.args.get("page", 1))
+    per_page = 15
+
+    params = {}
+    if search:
+        params["name"] = search
+    if category_id:
+        params["category_id"] = category_id
+
+    products_data = api.get("/products", params=params)
+    product_list = products_data if isinstance(products_data, list) else []
+
+    total = len(product_list)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * per_page
+    paginated = product_list[start:start + per_page]
+
+    return render_template(
+        "htmx/products_table.html",
+        products=paginated,
+        page=page,
+        total_pages=total_pages,
+        total=total,
         search=search,
         category_id=category_id,
     )
@@ -308,21 +352,34 @@ def sales():
     date_from = request.args.get("date_from", "").strip()
     date_to = request.args.get("date_to", "").strip()
     boleta_status = request.args.get("boleta_status", "").strip()
+    page = int(request.args.get("page", 1))
+    per_page = 15
 
     params = {}
     if date_from:
         params["date_from"] = date_from
     if date_to:
-        params["date_to"] = date_to
+        # Se añade hasta el final del día para incluir ventas de la misma fecha
+        params["date_to"] = f"{date_to}T23:59:59Z"
     if boleta_status:
         params["boleta_status"] = boleta_status
 
     sales_data = api.get("/sales", params=params)
     sales_list = sales_data if isinstance(sales_data, list) else []
 
+    # Paginación idéntica a la vista de productos
+    total = len(sales_list)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * per_page
+    paginated = sales_list[start:start + per_page]
+
     return render_template(
         "sales.html",
-        sales=sales_list,
+        sales=paginated,
+        page=page,
+        total_pages=total_pages,
+        total=total,
         date_from=date_from,
         date_to=date_to,
         boleta_status=boleta_status,
@@ -562,7 +619,12 @@ def htmx_dashboard_monthly():
 @login_required
 def htmx_dashboard_daily_chart():
     """Return JSON array for Chart.js daily sales chart."""
-    data = api.get("/dashboard/daily-chart")
+    month = request.args.get("month")
+    params = {}
+    if month:
+        params["month"] = month
+        
+    data = api.get("/dashboard/daily-chart", params=params)
     if isinstance(data, dict) and (data.get("error") or data.get("status_code", 200) >= 400):
         return jsonify([])
     # data is a list from the API (with status_code injected in dict wrapper)

@@ -7,6 +7,7 @@ import { Workbook } from 'exceljs';
 import { ProductsService } from './products.service';
 import { Product } from '../entities/product.entity';
 import { SaleLine } from '../entities/sale-line.entity';
+import { Category } from '../entities/category.entity';
 
 describe('ProductsService', () => {
   let service: ProductsService;
@@ -51,6 +52,7 @@ describe('ProductsService', () => {
         ProductsService,
         { provide: getRepositoryToken(Product), useValue: mockProductRepo },
         { provide: getRepositoryToken(SaleLine), useValue: mockSaleLineRepo },
+        { provide: getRepositoryToken(Category), useValue: { find: jest.fn() } },
         { provide: HttpService, useValue: mockHttpService },
       ],
     }).compile();

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'monay-pos-v1';
+const CACHE_NAME = 'monay-pos-v3';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -35,8 +35,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
+  // Lista de todas las rutas que pertenecen al Backend (API)
+  const apiRoutes = ['/api/', '/auth/', '/sales', '/products', '/users', '/tenant', '/cart'];
+  const isApiRequest = apiRoutes.some(route => url.pathname.startsWith(route));
+
   // Network-first for API requests
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/auth/')) {
+  if (isApiRequest) {
     event.respondWith(
       fetch(event.request).catch(() => {
         return new Response(

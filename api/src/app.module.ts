@@ -28,7 +28,7 @@ import { WebSocketModule } from './websocket/websocket.module';
         password: configService.getOrThrow<string>('DB_PASSWORD'),
         database: configService.getOrThrow<string>('DB_DATABASE'),
         autoLoadEntities: true,
-        synchronize: configService.get<string>('NODE_ENV') === 'development',
+        synchronize: false,
         logging: configService.get<string>('NODE_ENV') === 'development',
       }),
     }),

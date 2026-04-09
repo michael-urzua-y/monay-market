@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards } from '@nestjs/common';
+import { Controller, Get, UseGuards, Query } from '@nestjs/common';
 import {
   JwtAuthGuard,
   TenantGuard,
@@ -43,8 +43,9 @@ export class DashboardController {
   @RequiredPlan('pro')
   async getDailyChart(
     @CurrentUser() user: JwtPayload,
+    @Query('month') month?: string,
   ): Promise<DailyChartEntry[]> {
-    return this.dashboardService.getDailyChart(user.tenant_id);
+    return this.dashboardService.getDailyChart(user.tenant_id, month);
   }
 
   @Get('critical-stock')

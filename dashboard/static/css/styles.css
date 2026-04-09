@@ -527,3 +527,31 @@ body {
 [x-cloak] {
     display: none !important;
 }
+
+/* === Pagination === */
+.pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0 0;
+    margin-top: 12px;
+    border-top: 1px solid var(--color-border);
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pagination-info {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+/* === Warning Badge === */
+.badge-warning {
+    background: rgba(234, 179, 8, 0.15);
+    color: #b45309;
+}

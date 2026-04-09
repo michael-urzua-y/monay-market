@@ -1,0 +1,59 @@
+{% if products %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Nombre</th>
+            <th>Código de barras</th>
+            <th>Precio</th>
+            <th>Stock</th>
+            <th>Categoría</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in products %}
+        <tr>
+            <td>{{ p.name }}</td>
+            <td>{{ p.barcode or '—' }}</td>
+            <td>{{ p.price|clp }}</td>
+            <td>
+                {% if p.stock is defined and p.critical_stock is defined and p.stock <= p.critical_stock %}
+                <span class="badge badge-error">{{ p.stock }}</span>
+                {% else %}
+                {{ p.stock }}
+                {% endif %}
+            </td>
+            <td>{{ p.category.name if p.category else '—' }}</td>
+            <td style="white-space: nowrap;">
+                <a href="/products/{{ p.id }}/edit" class="btn btn-sm">✏️ Editar</a>
+                <button class="btn btn-sm btn-danger"
+                        @click="deleteId = '{{ p.id }}'; deleteName = '{{ p.name }}'; showDeleteModal = true">
+                    🗑️
+                </button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Pagination -->
+{% if total_pages and total_pages > 1 %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--color-border);">
+    <span style="color: var(--color-text-muted); font-size: 0.9rem;">{{ total }} producto{{ 's' if total != 1 else '' }} — Página {{ page }} de {{ total_pages }}</span>
+    <div style="display: flex; gap: 8px;">
+        <button class="btn btn-sm btn-secondary"
+                hx-get="/htmx/products/search?search={{ search }}&category_id={{ category_id }}&page={{ page - 1 }}"
+                hx-target="#products-table-container"
+                hx-swap="innerHTML"
+                {% if page <= 1 %}style="pointer-events: none; opacity: 0.5;" disabled{% endif %}>Anterior</button>
+        <button class="btn btn-sm btn-secondary"
+                hx-get="/htmx/products/search?search={{ search }}&category_id={{ category_id }}&page={{ page + 1 }}"
+                hx-target="#products-table-container"
+                hx-swap="innerHTML"
+                {% if page >= total_pages %}style="pointer-events: none; opacity: 0.5;" disabled{% endif %}>Siguiente</button>
+    </div>
+</div>
+{% endif %}
+{% else %}
+<p class="empty-msg">No se encontraron productos.</p>
+{% endif %}

@@ -16,7 +16,7 @@ export default new DataSource({
   host: requireEnv('DB_HOST'),
   port: Number.parseInt(process.env.DB_PORT || '5432', 10),
   username: requireEnv('DB_USERNAME'),
-  password: requireEnv('DB_PASSWORD'),
+  password: process.env.DB_PASSWORD || '',
   database: requireEnv('DB_DATABASE'),
   entities: ['src/**/*.entity{.ts,.js}'],
   migrations: ['src/migrations/*{.ts,.js}'],

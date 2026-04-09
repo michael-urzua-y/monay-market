@@ -93,10 +93,21 @@ export class DashboardService {
     };
   }
 
-  async getDailyChart(tenantId: string): Promise<DailyChartEntry[]> {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth();
+  async getDailyChart(tenantId: string, targetMonth?: string): Promise<DailyChartEntry[]> {
+    let year: number;
+    let month: number;
+
+    if (targetMonth) {
+      // targetMonth viene en formato "YYYY-MM"
+      const [y, m] = targetMonth.split('-');
+      year = parseInt(y, 10);
+      month = parseInt(m, 10) - 1; // En JavaScript los meses van de 0 a 11
+    } else {
+      const now = new Date();
+      year = now.getFullYear();
+      month = now.getMonth();
+    }
+
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
     const monthStart = new Date(year, month, 1);
