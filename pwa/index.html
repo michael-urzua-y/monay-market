@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="description" content="Monay Market POS - Sistema de punto de venta">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Monay Market POS</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="src/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="src/icons/icon-192.png">
+  <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header id="app-header" class="app-header hidden">
+      <div class="header-left">
+        <h1 class="header-title">Monay POS</h1>
+      </div>
+      <nav class="header-nav">
+        <button class="nav-btn active" data-screen="sale" aria-label="Venta">
+          <span class="nav-icon">🛒</span>
+          <span class="nav-label">Venta</span>
+        </button>
+        <button class="nav-btn" data-screen="history" aria-label="Historial">
+          <span class="nav-icon">📋</span>
+          <span class="nav-label">Historial</span>
+        </button>
+      </nav>
+      <button id="btn-logout" class="btn-logout" aria-label="Cerrar sesión">Salir</button>
+    </header>
+
+    <!-- Screens -->
+    <main id="screen-container">
+      <!-- Login Screen -->
+      <section id="screen-login" class="screen active">
+        <div class="login-container">
+          <div class="login-logo">
+            <h2>Monay Market</h2>
+            <p>Punto de Venta</p>
+          </div>
+          <form id="login-form" class="login-form" novalidate>
+            <div class="form-group">
+              <label for="login-email">Correo electrónico</label>
+              <input type="email" id="login-email" name="email" required autocomplete="email" placeholder="correo@ejemplo.com">
+            </div>
+            <div class="form-group">
+              <label for="login-password">Contraseña</label>
+              <input type="password" id="login-password" name="password" required autocomplete="current-password" placeholder="••••••••">
+            </div>
+            <p id="login-error" class="error-message hidden" role="alert"></p>
+            <button type="submit" class="btn btn-primary btn-block">Iniciar sesión</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Sale Screen -->
+      <section id="screen-sale" class="screen hidden">
+        <!-- Search & Scan Bar -->
+        <div class="sale-search-bar">
+          <div class="search-input-wrap">
+            <input type="text" id="product-search" class="search-input" placeholder="Buscar producto o código de barras..." autocomplete="off">
+            <button id="btn-scan" class="btn-icon btn-scan" aria-label="Escanear código de barras">📷</button>
+          </div>
+          <div id="search-results" class="search-results hidden"></div>
+        </div>
+
+        <!-- Camera Scanner -->
+        <div id="scanner-overlay" class="scanner-overlay hidden">
+          <div class="scanner-header">
+            <span>Escanear código de barras</span>
+            <button id="btn-close-scanner" class="btn-icon" aria-label="Cerrar escáner">✕</button>
+          </div>
+          <div class="scanner-viewport">
+            <video id="scanner-video" autoplay playsinline></video>
+            <div class="scanner-guide"></div>
+          </div>
+          <p id="scanner-status" class="scanner-status">Apunte la cámara al código de barras</p>
+        </div>
+
+        <!-- Cart -->
+        <div class="cart-section">
+          <div class="cart-header">
+            <h3>Carrito</h3>
+            <button id="btn-clear-cart" class="btn-text btn-danger-text" aria-label="Vaciar carrito">Vaciar</button>
+          </div>
+          <div id="cart-items" class="cart-items">
+            <p class="cart-empty">El carrito está vacío</p>
+          </div>
+          <div class="cart-total-bar">
+            <span>Total</span>
+            <span id="cart-total" class="cart-total-amount">$0</span>
+          </div>
+        </div>
+
+        <!-- Payment Section -->
+        <div class="payment-section">
+          <div class="payment-method-selector">
+            <button class="payment-method-btn active" data-method="efectivo">💵 Efectivo</button>
+            <button class="payment-method-btn" data-method="tarjeta">💳 Tarjeta</button>
+          </div>
+
+          <div id="payment-efectivo" class="payment-details">
+            <div class="form-group">
+              <label for="amount-received">Monto recibido</label>
+              <input type="number" id="amount-received" class="amount-input" placeholder="$0" min="0" inputmode="numeric">
+            </div>
+            <div id="change-display" class="change-display hidden">
+              <span id="change-label">Vuelto:</span>
+              <span id="change-amount" class="change-amount">$0</span>
+            </div>
+          </div>
+
+          <div id="payment-tarjeta" class="payment-details hidden">
+            <p class="tarjeta-msg">El voucher del POS bancario sirve como comprobante de pago.</p>
+          </div>
+
+          <button id="btn-pay" class="btn btn-primary btn-block btn-pay" disabled>Pagado</button>
+        </div>
+      </section>
+
+      <!-- History Screen -->
+      <section id="screen-history" class="screen hidden">
+        <div class="history-header">
+          <h3>Ventas del día</h3>
+          <button id="btn-refresh-history" class="btn-icon" aria-label="Actualizar">🔄</button>
+        </div>
+        <div id="history-list" class="history-list">
+          <p class="history-empty">Cargando ventas...</p>
+        </div>
+      </section>
+
+      <!-- Receipt Screen -->
+      <section id="screen-receipt" class="screen hidden">
+        <div class="receipt-container">
+          <div id="receipt-content" class="receipt-paper">
+            <!-- Filled dynamically -->
+          </div>
+          <button id="btn-close-receipt" class="btn btn-primary btn-block receipt-close-btn">Nueva venta</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="src/app.js"></script>
+</body>
+</html>

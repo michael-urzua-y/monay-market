@@ -46,6 +46,7 @@ monay-market/
 - Comprobante visual estructurado con datos de tienda, productos, pago y boleta
 - WebSocket Gateway con autenticación JWT: eventos sale:created, stock:updated, stock:critical filtrados por tenant
 - Panel Admin Flask + HTMX: login, dashboard con métricas auto-refresh, gestión de productos (CRUD + barcode lookup + Excel import), ventas con filtros y detalle, boletas pendientes con reintento, usuarios cajeros, configuración SII/impresora/suscripción
+- PWA POS: login, escaneo de código de barras (cámara + BarcodeDetector API), carrito con control de stock, pago efectivo/tarjeta con cálculo de vuelto, comprobante visual, historial de ventas del día
 - 9 entidades con relaciones, índices compuestos y enums
 - Migraciones y seed con 41 productos chilenos reales
 - 204 tests unitarios pasando
