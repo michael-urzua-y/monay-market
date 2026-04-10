@@ -124,10 +124,11 @@ export class ProductsService {
   async lookupBarcode(
     code: string,
   ): Promise<{ barcode: string; name: string | null; category_suggestion: string | null }> {
+    // --- 1. Intento con Open Food Facts (Abarrotes y Comida) ---
     try {
       const url = `https://world.openfoodfacts.org/api/v2/product/${code}.json`;
       const response = await firstValueFrom(
-        this.httpService.get(url, { timeout: 5000 }),
+        this.httpService.get(url, { timeout: 4000 }),
       );
 
       if (response.data?.status === 1 && response.data?.product) {
@@ -142,11 +143,76 @@ export class ProductsService {
 
         return { barcode: code, name, category_suggestion: categorySuggestion };
       }
-
-      return { barcode: code, name: null, category_suggestion: null };
     } catch {
-      return { barcode: code, name: null, category_suggestion: null };
+      // Falla de red o timeout: ignorar y pasar al siguiente
     }
+
+    // --- 2. Intento con UPCItemDB (Productos generales, importados) ---
+    try {
+      const url = `https://api.upcitemdb.com/prod/trial/lookup?upc=${code}`;
+      const response = await firstValueFrom(
+        this.httpService.get(url, { timeout: 4000 }),
+      );
+
+      if (response.data?.items && response.data.items.length > 0) {
+        const item = response.data.items[0];
+        const name: string | null = item.title || null;
+        let categorySuggestion: string | null = null;
+
+        if (item.category) {
+          const parts = item.category.split('>');
+          categorySuggestion = parts[parts.length - 1].trim();
+        }
+
+        return { barcode: code, name, category_suggestion: categorySuggestion };
+      }
+    } catch {
+      // Falla de red o timeout: ignorar y pasar al siguiente
+    }
+
+    // --- 3. Intento con Open Beauty Facts (Cuidado personal, higiene, aseo) ---
+    try {
+      const url = `https://world.openbeautyfacts.org/api/v2/product/${code}.json`;
+      const response = await firstValueFrom(
+        this.httpService.get(url, { timeout: 4000 }),
+      );
+
+      if (response.data?.status === 1 && response.data?.product) {
+        const p = response.data.product;
+        const name: string | null = p.product_name || null;
+        let categorySuggestion: string | null = null;
+
+        if (p.categories_tags && p.categories_tags.length > 0) {
+          const lastTag: string = p.categories_tags[p.categories_tags.length - 1];
+          categorySuggestion = lastTag.replace(/^[a-z]{2}:/, '');
+        }
+
+        return { barcode: code, name, category_suggestion: categorySuggestion };
+      }
+    } catch {
+      // Falla de red o timeout: continuar al fallback final
+    }
+
+    // --- Fallback final: Si ninguno de los 3 encontró el producto ---
+      return { barcode: code, name: null, category_suggestion: null };
+  }
+
+  async generateTemplate(): Promise<Buffer> {
+    const workbook = new Workbook();
+    const worksheet = workbook.addWorksheet('Productos');
+
+    // Definir las columnas exactas que tu sistema necesita
+    worksheet.columns = [
+      { header: 'Código de Barras (Obligatorio)', key: 'barcode', width: 30 },
+      { header: 'Precio CLP (Obligatorio)', key: 'price', width: 25 },
+      { header: 'Stock Inicial (Obligatorio)', key: 'stock', width: 25 },
+    ];
+
+    // Poner negrita en la cabecera
+    worksheet.getRow(1).font = { bold: true };
+
+    const arrayBuffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(arrayBuffer);
   }
 
   async importFromExcel(
@@ -168,6 +234,16 @@ export class ProductsService {
     let updated = 0;
 
     const rows = worksheet.getSheetValues() as any[];
+
+    // Validar que el archivo tenga al menos nuestra cabecera con 3 columnas
+    const headerRow = rows[1];
+    if (!headerRow || headerRow.length < 4) { // length < 4 porque el índice 0 en exceljs viene vacío
+      throw new BadRequestException({
+        error: 'IMPORT_ERRORS',
+        details: [{ row: 1, message: 'Formato incorrecto. Por favor, descargue y utilice la plantilla oficial.' }],
+      });
+    }
+
     // rows[0] is undefined (exceljs is 1-indexed), rows[1] is header
     for (let i = 2; i < rows.length; i++) {
       const row = rows[i];

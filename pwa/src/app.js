@@ -5,6 +5,7 @@
 
 import { api, CONFIG } from './api.js';
 import { OfflineDB } from './offline.js';
+import { Cart } from './cart.js';
 
   // ----------------------------------------------------------
   // Helpers
@@ -118,88 +119,13 @@ import { OfflineDB } from './offline.js';
   // ----------------------------------------------------------
   // Cart State
   // ----------------------------------------------------------
-  // Each item: { product_id, product_name, unit_price, quantity, subtotal, available_stock }
-  var cart = [];
-
-  function getCartTotal() {
-    var total = 0;
-    for (var i = 0; i < cart.length; i++) {
-      total += cart[i].subtotal;
-    }
-    return total;
-  }
-
-  function addToCart(product) {
-    // product: { id, name, price, stock }
-    var existing = null;
-    for (var i = 0; i < cart.length; i++) {
-      if (cart[i].product_id === product.id) {
-        existing = cart[i];
-        break;
-      }
-    }
-    if (existing) {
-      var newQty = existing.quantity + 1;
-      if (newQty > existing.available_stock) {
-        showToast('Stock insuficiente. Disponible: ' + existing.available_stock, 'warning');
-        return;
-      }
-      existing.quantity = newQty;
-      existing.subtotal = existing.unit_price * newQty;
-    } else {
-      if (product.stock < 1) {
-        showToast('Producto sin stock disponible', 'warning');
-        return;
-      }
-      cart.push({
-        product_id: product.id,
-        product_name: product.name,
-        unit_price: product.price,
-        quantity: 1,
-        subtotal: product.price,
-        available_stock: product.stock,
-      });
-    }
-    updateCartUI();
-    showToast(product.name + ' agregado', 'success');
-  }
-
-  function updateItemQty(productId, delta) {
-    for (var i = 0; i < cart.length; i++) {
-      if (cart[i].product_id === productId) {
-        var newQty = cart[i].quantity + delta;
-        if (newQty < 1) {
-          removeFromCart(productId);
-          return;
-        }
-        if (newQty > cart[i].available_stock) {
-          showToast('Stock insuficiente. Disponible: ' + cart[i].available_stock, 'warning');
-          return;
-        }
-        cart[i].quantity = newQty;
-        cart[i].subtotal = cart[i].unit_price * newQty;
-        break;
-      }
-    }
-    updateCartUI();
-  }
-
-  function removeFromCart(productId) {
-    cart = cart.filter(function (item) { return item.product_id !== productId; });
-    updateCartUI();
-  }
-
-  function clearCart() {
-    cart = [];
-    updateCartUI();
-  }
 
   function updateCartUI() {
     var container = document.getElementById('cart-items');
     var totalEl = document.getElementById('cart-total');
     if (!container || !totalEl) return;
 
-    if (cart.length === 0) {
+    if (Cart.items.length === 0) {
       container.innerHTML = '<p class="cart-empty">El carrito está vacío</p>';
       totalEl.textContent = '$0';
       updatePaymentState();
@@ -207,8 +133,8 @@ import { OfflineDB } from './offline.js';
     }
 
     var html = '';
-    for (var i = 0; i < cart.length; i++) {
-      var item = cart[i];
+    for (var i = 0; i < Cart.items.length; i++) {
+      var item = Cart.items[i];
       html +=
         '<div class="cart-item" data-product-id="' + item.product_id + '">' +
         '<div class="cart-item-info">' +
@@ -225,7 +151,7 @@ import { OfflineDB } from './offline.js';
         '</div>';
     }
     container.innerHTML = html;
-    totalEl.textContent = formatCLP(getCartTotal());
+    totalEl.textContent = formatCLP(Cart.getTotal());
     updatePaymentState();
   }
 
@@ -273,7 +199,7 @@ import { OfflineDB } from './offline.js';
       var item = e.target.closest('.search-result-item');
       if (item) {
         var product = JSON.parse(item.dataset.product);
-        addToCart(product);
+        Cart.add(product);
         input.value = '';
         resultsEl.classList.add('hidden');
       }
@@ -406,7 +332,7 @@ import { OfflineDB } from './offline.js';
     api.get('/products?barcode=' + encodeURIComponent(code)).then(function (products) {
       if (products && products.length > 0) {
         var p = products[0];
-        addToCart({ id: p.id, name: p.name, price: p.price, stock: p.stock });
+        Cart.add({ id: p.id, name: p.name, price: p.price, stock: p.stock });
       } else {
         showToast('Producto no encontrado: ' + code, 'warning');
       }
@@ -477,9 +403,9 @@ import { OfflineDB } from './offline.js';
     var changeAmountEl = document.getElementById('change-amount');
     if (!btnPay) return;
 
-    var total = getCartTotal();
+    var total = Cart.getTotal();
 
-    if (cart.length === 0) {
+    if (Cart.items.length === 0) {
       btnPay.disabled = true;
       if (changeDisplay) changeDisplay.classList.add('hidden');
       return;
@@ -522,7 +448,7 @@ import { OfflineDB } from './offline.js';
     var btnPay = document.getElementById('btn-pay');
     if (btnPay) btnPay.disabled = true;
 
-    var lines = cart.map(function (item) {
+    var lines = Cart.items.map(function (item) {
       return { product_id: item.product_id, quantity: item.quantity };
     });
 
@@ -538,7 +464,7 @@ import { OfflineDB } from './offline.js';
 
     if (!navigator.onLine) {
       OfflineDB.savePendingSale(body).then(function () {
-        clearCart();
+        Cart.clear();
         resetPaymentForm();
         showToast('Sin conexión: Venta encolada para sincronizar', 'warning');
         if (btnPay) btnPay.disabled = false;
@@ -551,7 +477,7 @@ import { OfflineDB } from './offline.js';
 
     api.post('/sales', body).then(function (result) {
       // result: { sale, critical_stock_alerts, receipt }
-      clearCart();
+      Cart.clear();
       resetPaymentForm();
 
       if (result.receipt) {
@@ -654,6 +580,14 @@ import { OfflineDB } from './offline.js';
   // ----------------------------------------------------------
   // Sales History
   // ----------------------------------------------------------
+  var historyState = {
+    efectivo: [],
+    tarjeta: [],
+    pageEfectivo: 1,
+    pageTarjeta: 1,
+    perPage: 5
+  };
+
   function loadHistory() {
     var listEl = document.getElementById('history-list');
     if (!listEl) return;
@@ -671,34 +605,111 @@ import { OfflineDB } from './offline.js';
 
     api.get('/sales?date_from=' + encodeURIComponent(dateFrom) + '&date_to=' + encodeURIComponent(dateTo))
       .then(function (sales) {
-        if (!sales || sales.length === 0) {
-          listEl.innerHTML = '<p class="history-empty">No hay ventas hoy</p>';
-          return;
-        }
-        var html = '';
-        for (var i = 0; i < sales.length; i++) {
-          var sale = sales[i];
-          var methodLabel = sale.payment_method === 'efectivo' ? '💵 Efectivo' : '💳 Tarjeta';
-          var boletaClass = sale.boleta_status || 'no_aplica';
-          var boletaLabel = boletaStatusLabel(sale.boleta_status);
-
-          html +=
-            '<div class="history-item" data-sale-id="' + sale.id + '">' +
-            '<div class="history-item-left">' +
-            '<span class="history-item-time">' + formatTime(sale.created_at) + '</span>' +
-            '<span class="history-item-method">' + methodLabel + '</span>' +
-            '</div>' +
-            '<div class="history-item-right">' +
-            '<div class="history-item-total">' + formatCLP(sale.total) + '</div>' +
-            '<span class="boleta-badge ' + boletaClass + '">' + boletaLabel + '</span>' +
-            '</div>' +
-            '</div>';
-        }
-        listEl.innerHTML = html;
+        if (!sales) sales = [];
+        historyState.efectivo = sales.filter(function(s) { return s.payment_method === 'efectivo'; });
+        historyState.tarjeta = sales.filter(function(s) { return s.payment_method === 'tarjeta'; });
+        historyState.pageEfectivo = 1;
+        historyState.pageTarjeta = 1;
+        renderHistoryView();
       })
       .catch(function () {
         listEl.innerHTML = '<p class="history-empty">Error al cargar ventas</p>';
       });
+  }
+
+  function renderHistoryView() {
+    var listEl = document.getElementById('history-list');
+    if (!listEl) return;
+
+    var totalEfe = historyState.efectivo.reduce(function(sum, s) { return sum + s.total; }, 0);
+    var totalTar = historyState.tarjeta.reduce(function(sum, s) { return sum + s.total; }, 0);
+    var granTotal = totalEfe + totalTar;
+
+    // Wrapper con fondo gris suave para que las tarjetas resalten
+    var html = '<div style="background-color: #f8fafc; padding: 20px; border-radius: 12px; min-height: 100%;">';
+
+    // Tarjetas de Totales
+    var cardStyle = 'background: white; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; flex: 1; padding: 20px; text-align: center; min-width: 100px;';
+    html += '<div style="display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;">';
+    html += '<div style="' + cardStyle + '"><div style="color: #64748b; font-size: 0.9rem; margin-bottom: 8px;">Efectivo</div><div style="font-size: 1.5rem; font-weight: bold; color: #16a34a;">' + formatCLP(totalEfe) + '</div></div>';
+    html += '<div style="' + cardStyle + '"><div style="color: #64748b; font-size: 0.9rem; margin-bottom: 8px;">Tarjeta</div><div style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">' + formatCLP(totalTar) + '</div></div>';
+    html += '<div style="' + cardStyle + '"><div style="color: #64748b; font-size: 0.9rem; margin-bottom: 8px;">Total</div><div style="font-size: 1.5rem; font-weight: bold; color: #0f172a;">' + formatCLP(granTotal) + '</div></div>';
+    html += '</div>';
+
+    // Tablas
+    html += '<div style="display: flex; flex-wrap: wrap; gap: 20px;">';
+    
+    // Columna Efectivo
+    html += '<div style="flex: 1 1 320px; min-width: 0;">';
+    html += '<h3 style="margin-bottom: 16px; font-size: 1.1rem; color: #334155; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Ventas en Efectivo</h3>';
+    html += renderHistoryTable(historyState.efectivo, historyState.pageEfectivo, 'efectivo');
+    html += '</div>';
+
+    // Columna Tarjeta
+    html += '<div style="flex: 1 1 320px; min-width: 0;">';
+    html += '<h3 style="margin-bottom: 16px; font-size: 1.1rem; color: #334155; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Ventas con Tarjeta</h3>';
+    html += renderHistoryTable(historyState.tarjeta, historyState.pageTarjeta, 'tarjeta');
+    html += '</div>';
+
+    html += '</div></div>'; // Fin del contenedor flex y del wrapper gris
+
+    listEl.innerHTML = html;
+  }
+
+  function renderHistoryTable(salesArray, page, method) {
+    if (salesArray.length === 0) {
+      var emptyStyle = 'background: white; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; padding: 24px; text-align: center; color: #64748b;';
+      return '<div style="' + emptyStyle + '">No hay ventas registradas.</div>';
+    }
+
+    var totalPages = Math.ceil(salesArray.length / historyState.perPage);
+    if (totalPages === 0) totalPages = 1;
+    if (page > totalPages) page = totalPages;
+
+    var start = (page - 1) * historyState.perPage;
+    var end = start + historyState.perPage;
+    var paginatedSales = salesArray.slice(start, end);
+
+    var tableCardStyle = 'background: white; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; overflow: hidden;';
+    var html = '<div style="' + tableCardStyle + '"><div style="overflow-x: auto; padding: 0;">';
+    html += '<table class="data-table" style="margin: 0; width: 100%; white-space: nowrap; border-collapse: collapse;">';
+    html += '<thead style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;"><tr><th style="text-align: left; padding: 12px 16px; color: #64748b; font-weight: 600;">Hora</th><th style="text-align: left; padding: 12px 16px; color: #64748b; font-weight: 600;">Total</th><th style="text-align: left; padding: 12px 16px; color: #64748b; font-weight: 600;">Estado Boleta</th><th style="text-align: left; padding: 12px 16px; color: #64748b; font-weight: 600;">Acción</th></tr></thead>';
+    html += '<tbody>';
+
+    for (var i = 0; i < paginatedSales.length; i++) {
+      var sale = paginatedSales[i];
+      var boletaLabel = boletaStatusLabel(sale.boleta_status);
+      var badgeType = 'neutral';
+      if (sale.boleta_status === 'emitida') badgeType = 'success';
+      if (sale.boleta_status === 'pendiente') badgeType = 'warning';
+      if (sale.boleta_status === 'error') badgeType = 'error';
+
+      html += '<tr style="border-bottom: 1px solid #e2e8f0;">';
+      html += '<td style="padding: 12px 16px;">' + formatTime(sale.created_at) + '</td>';
+      html += '<td style="padding: 12px 16px;">' + formatCLP(sale.total) + '</td>';
+      html += '<td style="padding: 12px 16px;"><span class="badge badge-' + badgeType + '">' + boletaLabel + '</span></td>';
+      html += '<td style="padding: 12px 16px;"><button class="btn btn-sm btn-primary" data-action="view-receipt" data-sale-id="' + sale.id + '">Ver</button></td>';
+      html += '</tr>';
+    }
+    html += '</tbody></table>';
+
+    // Paginador
+    if (totalPages > 1) {
+      html += '<div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-top: 1px solid var(--color-border);">';
+      html += '<span style="color: var(--color-text-muted); font-size: 0.9rem;">Página ' + page + ' de ' + totalPages + '</span>';
+      html += '<div style="display: flex; gap: 8px;">';
+
+      var prevDisabled = page <= 1 ? 'pointer-events: none; opacity: 0.5;' : '';
+      html += '<button class="btn btn-sm btn-secondary" style="' + prevDisabled + '" data-action="paginate" data-method="' + method + '" data-page="' + (page - 1) + '">Anterior</button>';
+
+      var nextDisabled = page >= totalPages ? 'pointer-events: none; opacity: 0.5;' : '';
+      html += '<button class="btn btn-sm btn-secondary" style="' + nextDisabled + '" data-action="paginate" data-method="' + method + '" data-page="' + (page + 1) + '">Siguiente</button>';
+
+      html += '</div></div>';
+    }
+
+    html += '</div></div>';
+    return html;
   }
 
   function boletaStatusLabel(status) {
@@ -723,9 +734,19 @@ import { OfflineDB } from './offline.js';
 
     if (listEl) {
       listEl.addEventListener('click', function (e) {
-        var item = e.target.closest('.history-item');
-        if (item && item.dataset.saleId) {
-          viewSaleReceipt(item.dataset.saleId);
+        var btnView = e.target.closest('[data-action="view-receipt"]');
+        if (btnView && btnView.dataset.saleId) {
+          viewSaleReceipt(btnView.dataset.saleId);
+          return;
+        }
+
+        var btnPaginate = e.target.closest('[data-action="paginate"]');
+        if (btnPaginate) {
+          var method = btnPaginate.dataset.method;
+          var page = parseInt(btnPaginate.dataset.page, 10);
+          if (method === 'efectivo') historyState.pageEfectivo = page;
+          if (method === 'tarjeta') historyState.pageTarjeta = page;
+          renderHistoryView();
         }
       });
     }
@@ -751,17 +772,17 @@ import { OfflineDB } from './offline.js';
       if (!btn) return;
       var action = btn.dataset.action;
       var id = btn.dataset.id;
-      if (action === 'inc') updateItemQty(id, 1);
-      else if (action === 'dec') updateItemQty(id, -1);
-      else if (action === 'remove') removeFromCart(id);
+      if (action === 'inc') Cart.updateQty(id, 1);
+      else if (action === 'dec') Cart.updateQty(id, -1);
+      else if (action === 'remove') Cart.remove(id);
     });
 
     var btnClear = document.getElementById('btn-clear-cart');
     if (btnClear) {
       btnClear.addEventListener('click', function () {
-        if (cart.length === 0) return;
+        if (Cart.items.length === 0) return;
         showConfirm('¿Vaciar el carrito?').then(function (confirmed) {
-          if (confirmed) clearCart();
+          if (confirmed) Cart.clear();
         });
       });
     }
@@ -805,7 +826,7 @@ import { OfflineDB } from './offline.js';
     if (btn) {
       btn.addEventListener('click', function () {
         api.clearToken();
-        cart = [];
+        Cart.clear();
         router.navigate('login');
       });
     }
@@ -872,6 +893,7 @@ import { OfflineDB } from './offline.js';
   // ----------------------------------------------------------
   function init() {
     registerServiceWorker();
+    Cart.init(updateCartUI, showToast);
     initAuth();
     initLogout();
     initNav();

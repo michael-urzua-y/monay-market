@@ -20,7 +20,8 @@
                 <div class="form-group">
                     <label for="barcode">Código de barras</label>
                     <div style="display: flex; gap: 8px;">
-                        <input type="text" id="barcode" name="barcode" value="{{ form.get('barcode', '') or '' }}" placeholder="Ej: 7801234567890">
+                        <input type="text" id="barcode" name="barcode" value="{{ form.get('barcode', '') or '' }}" placeholder="Ej: 7801234567890" style="flex: 1;">
+                        <button type="button" class="btn btn-secondary" onclick="openScanner()" title="Escanear con cámara" style="padding: 0 12px; font-size: 1.2rem;">📷</button>
                         <button type="button" class="btn btn-secondary"
                                 hx-get=""
                                 hx-target="#barcode-result"
@@ -71,5 +72,92 @@
             </form>
         </div>
     </div>
+
+    <!-- Modal del Escáner de Código de Barras -->
+    <div id="scanner-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; flex-direction: column; align-items: center; justify-content: center;">
+        <div class="card" style="width: 90%; max-width: 500px; text-align: center; padding: 20px;">
+            <h3 style="margin-bottom: 16px; margin-top: 0;">Escanear producto</h3>
+            <div style="position: relative; width: 100%; max-height: 60vh; overflow: hidden; background: #000; border-radius: 8px;">
+                <video id="scanner-video" style="width: 100%; height: auto;" playsinline></video>
+            </div>
+            <p id="scanner-status" style="margin: 16px 0; color: var(--color-text-muted); font-size: 0.9rem;">Iniciando cámara...</p>
+            <button type="button" class="btn btn-secondary" onclick="closeScanner()" style="width: 100%;">Cancelar</button>
+        </div>
+    </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let scannerStream = null;
+    let scannerActive = false;
+
+    function openScanner() {
+        const overlay = document.getElementById('scanner-overlay');
+        const video = document.getElementById('scanner-video');
+        const statusEl = document.getElementById('scanner-status');
+        
+        overlay.style.display = 'flex';
+        statusEl.textContent = 'Iniciando cámara...';
+        scannerActive = true;
+
+        navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+        }).then(function (stream) {
+            scannerStream = stream;
+            video.srcObject = stream;
+            video.play();
+            statusEl.textContent = 'Apunte la cámara al código de barras';
+            startBarcodeDetection(video, statusEl);
+        }).catch(function (err) {
+            statusEl.textContent = 'No se pudo acceder a la cámara. Revise los permisos.';
+        });
+    }
+
+    function startBarcodeDetection(video, statusEl) {
+        if ('BarcodeDetector' in window) {
+            const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'upc_a', 'upc_e'] });
+            const detectFrame = function () {
+                if (!scannerActive) return;
+                detector.detect(video).then(function (barcodes) {
+                    if (barcodes.length > 0) {
+                        handleBarcodeDetected(barcodes[0].rawValue);
+                        return;
+                    }
+                    requestAnimationFrame(detectFrame);
+                }).catch(function () {
+                    requestAnimationFrame(detectFrame);
+                });
+            };
+            detectFrame();
+        } else {
+            statusEl.textContent = 'Su navegador no soporta lectura automática. Ingrese el código manualmente.';
+        }
+    }
+
+    function handleBarcodeDetected(code) {
+        closeScanner();
+        const barcodeInput = document.getElementById('barcode');
+        barcodeInput.value = code;
+        
+        // Disparar la búsqueda automáticamente
+        const lookupBtn = document.getElementById('lookup-btn');
+        if (lookupBtn) {
+            lookupBtn.click();
+        }
+    }
+
+    function closeScanner() {
+        scannerActive = false;
+        const overlay = document.getElementById('scanner-overlay');
+        overlay.style.display = 'none';
+        
+        if (scannerStream) {
+            scannerStream.getTracks().forEach(track => track.stop());
+            scannerStream = null;
+        }
+        const video = document.getElementById('scanner-video');
+        if (video) video.srcObject = null;
+    }
+</script>
 {% endblock %}

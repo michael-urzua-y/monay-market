@@ -12,8 +12,10 @@ import {
   UseGuards,
   UseInterceptors,
   BadRequestException,
+  Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 import { JwtAuthGuard, TenantGuard, RolesGuard } from '../common/guards';
 import { Roles, CurrentUser } from '../common/decorators';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
@@ -53,6 +55,17 @@ export class ProductsController {
       throw new BadRequestException('Archivo Excel es requerido');
     }
     return this.productsService.importFromExcel(user.tenant_id, file.buffer);
+  }
+
+  @Get('import-template')
+  @Roles('dueno')
+  async downloadTemplate(@Res() res: Response) {
+    const buffer = await this.productsService.generateTemplate();
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': 'attachment; filename=Plantilla_Importacion_Productos.xlsx',
+    });
+    res.send(buffer);
   }
 
   @Get()

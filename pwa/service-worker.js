@@ -1,8 +1,9 @@
-const CACHE_NAME = 'monay-pos-v3';
+const CACHE_NAME = 'monay-pos-v4';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/src/app.js',
+  '/src/cart.js',
   '/src/styles.css',
   '/manifest.json'
 ];

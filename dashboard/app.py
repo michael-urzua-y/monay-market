@@ -5,8 +5,9 @@ and tenant configuration via server-side rendered templates with HTMX.
 """
 
 from functools import wraps
+import requests
 
-from flask import Flask, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
 
 from api_client import APIClient
 from config import Config
@@ -320,6 +321,22 @@ def products_import():
         )
 
     return render_template("products_import.html")
+
+
+@app.route("/products/import/template")
+@login_required
+def products_import_template():
+    """Download the Excel template from the API."""
+    url = f"{app.config['API_URL']}/products/import-template"
+    headers = {"Authorization": f"Bearer {session.get('jwt_token')}"}
+    resp = requests.get(url, headers=headers)
+    if resp.status_code == 200:
+        return Response(
+            resp.content,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-disposition": "attachment; filename=Plantilla_Importacion_Productos.xlsx"}
+        )
+    return redirect(url_for("products_import", error="Error al generar la plantilla"))
 
 
 @app.route("/htmx/products/lookup-barcode/<code>")

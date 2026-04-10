@@ -7,8 +7,8 @@ Sistema SaaS de punto de venta (POS) y gestión de inventario para almacenes de 
 ```
 monay-market/
 ├── api/               → Backend NestJS + TypeScript
-├── dashboard/         → Panel Admin Flask + HTMX (próximamente)
-├── pwa/               → PWA Punto de Venta (próximamente)
+├── dashboard/         → Panel Admin Flask + HTMX + Alpine.js
+├── pwa/               → PWA Punto de Venta (vanilla JS)
 └── README.md
 ```
 
@@ -20,12 +20,13 @@ monay-market/
 | Base de datos | PostgreSQL (local) |
 | ORM | TypeORM |
 | Autenticación | JWT + Passport + bcrypt |
-| Panel Admin | Flask + Jinja2 + HTMX + Alpine.js (próximamente) |
-| POS | PWA con JavaScript vanilla (próximamente) |
+| Panel Admin | Flask + Jinja2 + HTMX + Alpine.js |
+| POS | PWA con JavaScript vanilla + Service Worker + IndexedDB |
 | Testing | Jest + fast-check (property-based testing) |
 
 ## Características implementadas
 
+### API Backend (NestJS)
 - Multi-tenant con aislamiento por `tenant_id` en todas las tablas (esquema `market`)
 - Autenticación JWT con roles diferenciados (dueño / cajero)
 - Guards: JwtAuth, Tenant, Roles, Subscription, Plan
@@ -33,8 +34,9 @@ monay-market/
 - Configuración de tenant: módulo SII y impresora térmica
 - Control de suscripción: planes Básico y Pro
 - CRUD de productos con soft-delete y validación de ventas recientes
-- Lookup de código de barras via Open Food Facts: escanea el barcode y autocompleta nombre + categoría, el admin solo pone precio y stock
-- Importación masiva de productos desde Excel (.xlsx)
+- Lookup de código de barras multi-fuente: Open Food Facts → UPCItemDB → Open Beauty Facts (con fallback encadenado)
+- Importación masiva de productos desde Excel (.xlsx) con validación de formato
+- Descarga de plantilla Excel oficial para importación
 - Validación server-side del carrito (stock, subtotales, total)
 - Registro de ventas con transacción atómica y SELECT ... FOR UPDATE
 - Pago efectivo (cálculo de vuelto) y tarjeta
@@ -42,14 +44,30 @@ monay-market/
 - Cierre de caja: resumen diario desglosado por efectivo/tarjeta
 - Módulo SII opcional: emisión de boleta electrónica con reintentos (3 intentos, 15s timeout), soporte Haulmer/OpenFactura/Facturacion.cl, IVA 19%
 - Reintento manual de boletas pendientes
-- Dashboard de métricas: ventas del día, acumulado mensual con variación %, gráfico diario, stock crítico, valorización inventario (plan Pro)
+- Dashboard de métricas: ventas del día, acumulado mensual con variación %, gráfico diario con selector de mes, stock crítico, valorización inventario (plan Pro)
 - Comprobante visual estructurado con datos de tienda, productos, pago y boleta
 - WebSocket Gateway con autenticación JWT: eventos sale:created, stock:updated, stock:critical filtrados por tenant
-- Panel Admin Flask + HTMX: login, dashboard con métricas auto-refresh, gestión de productos (CRUD + barcode lookup + Excel import), ventas con filtros y detalle, boletas pendientes con reintento, usuarios cajeros, configuración SII/impresora/suscripción
-- PWA POS: login, escaneo de código de barras (cámara + BarcodeDetector API), carrito con control de stock, pago efectivo/tarjeta con cálculo de vuelto, comprobante visual, historial de ventas del día
-- 9 entidades con relaciones, índices compuestos y enums
-- Migraciones y seed con 41 productos chilenos reales
-- 204 tests unitarios pasando
+
+### Panel Admin (Flask + HTMX)
+- Login con JWT almacenado en sesión Flask
+- Dashboard con métricas auto-refresh cada 30s vía HTMX: ventas del día, acumulado mensual, valorización inventario, gráfico de ventas diarias (Chart.js) con selector de mes, productos con stock crítico
+- Gestión de productos: CRUD completo, búsqueda en tiempo real con HTMX, paginación server-side, barcode lookup con autocompletado, escáner de código de barras con cámara (BarcodeDetector API), importación Excel con plantilla descargable
+- Ventas: listado con filtros por fecha (desde/hasta) y estado de boleta, paginación, detalle de venta, reintento de boletas pendientes
+- Usuarios: gestión de cajeros (crear, activar/desactivar)
+- Configuración: módulo SII (proveedor, credenciales, sandbox), impresora térmica, estado de suscripción
+
+### PWA Punto de Venta
+- Instalable en celular como app nativa (manifest.json + íconos PWA 192x192 y 512x512)
+- Service Worker: cache-first para assets, network-first para API, respuesta offline 503
+- Login con JWT almacenado en localStorage
+- Búsqueda de productos por nombre o código de barras
+- Escáner de código de barras con cámara (BarcodeDetector API)
+- Carrito modular (`cart.js`): agregar, modificar cantidad, eliminar, vaciar, control de stock
+- Pago efectivo con cálculo de vuelto y pago con tarjeta
+- Comprobante visual post-venta
+- Historial de ventas del día con paginación
+- Modo offline: ventas pendientes guardadas en IndexedDB, sincronización automática al recuperar conexión
+- Cliente HTTP centralizado (`api.js`) con manejo de expiración de token
 
 ## Base de datos
 
@@ -61,8 +79,8 @@ Todas las tablas de negocio viven en el esquema `market` (la tabla de migracione
 | `tenant_configs` | Configuración por tenant: módulo SII (activar/desactivar, credenciales proveedor) e impresora térmica | 1 config |
 | `subscriptions` | Plan de suscripción del tenant (Básico o Pro), fechas de vigencia y estado | 1 suscripción |
 | `users` | Usuarios del sistema con roles dueño (administrador) o cajero (operador POS). Contraseñas hasheadas con bcrypt | 2 usuarios |
-| `categories` | Categorías de productos por tenant (Bebidas, Snacks, Lácteos, etc.) | 7 categorías |
-| `products` | Catálogo de productos con nombre, código de barras, precio CLP, stock y umbral de stock crítico | 41 productos |
+| `categories` | Categorías de productos por tenant (Bebidas, Snacks, Lácteos, Abarrotes, etc.) | 10 categorías |
+| `products` | Catálogo de productos con nombre, código de barras, precio CLP, stock y umbral de stock crítico | 42 productos |
 | `sales` | Ventas registradas con total, método de pago (efectivo/tarjeta), monto recibido, vuelto y estado de boleta SII | vacía (se llena al vender) |
 | `sale_lines` | Líneas de detalle de cada venta: producto, cantidad, precio unitario y subtotal (snapshot al momento de la venta) | vacía |
 | `boletas` | Boletas electrónicas emitidas ante el SII: folio, timbre electrónico, PDF y proveedor | vacía |
@@ -70,6 +88,7 @@ Todas las tablas de negocio viven en el esquema `market` (la tabla de migracione
 ## Requisitos
 
 - Node.js >= 18
+- Python >= 3.10
 - PostgreSQL >= 14
 
 ## Setup local
@@ -79,28 +98,32 @@ Todas las tablas de negocio viven en el esquema `market` (la tabla de migracione
 git clone https://github.com/michael-urzua-y/monay-market.git
 cd monay-market
 
-# Instalar dependencias del API
+# --- API Backend ---
 cd api
 npm install
-
-# Configurar variables de entorno
 cp .env.example .env
 # Editar .env con tus credenciales de PostgreSQL local
-
-# Crear la base de datos
 createdb monay_market
-
-# Ejecutar migraciones
 npm run migration:run
-
-# Ejecutar tests
 npm test
-
-# Iniciar en modo desarrollo
 npm run start:dev
+
+# --- Dashboard Admin ---
+cd ../dashboard
+pip install -r requirements.txt
+cp .env.example .env
+# Editar .env con API_URL y SECRET_KEY
+python app.py
+
+# --- PWA ---
+# Servir la carpeta pwa/ con cualquier servidor estático
+# Ejemplo: npx serve pwa/ -l 8080
+# Abrir en el celular y agregar a pantalla de inicio para instalar
 ```
 
 ## Variables de entorno
+
+### API (`api/.env`)
 
 | Variable | Descripción |
 |----------|------------|
@@ -113,6 +136,13 @@ npm run start:dev
 | `JWT_EXPIRATION` | Tiempo de expiración del JWT (ej: 1h) |
 | `PORT` | Puerto del servidor (default: 3000) |
 | `NODE_ENV` | Entorno (development / production) |
+
+### Dashboard (`dashboard/.env`)
+
+| Variable | Descripción |
+|----------|------------|
+| `API_URL` | URL del backend API (ej: http://localhost:3000) |
+| `SECRET_KEY` | Secret para sesiones Flask |
 
 ## Endpoints disponibles
 
@@ -128,8 +158,10 @@ PATCH  /users/:id                     → Activar/desactivar cajero
 
 # Productos
 GET    /products                      → Listar productos (filtros: ?name=, ?category_id=, ?barcode=)
+GET    /products/categories           → Listar categorías del tenant
 GET    /products/:id                  → Obtener producto por ID
-GET    /products/lookup-barcode/:code → Consultar Open Food Facts por código de barras
+GET    /products/lookup-barcode/:code → Consultar barcode (Open Food Facts → UPCItemDB → Open Beauty Facts)
+GET    /products/import-template      → Descargar plantilla Excel para importación
 POST   /products                      → Crear producto (dueño)
 PATCH  /products/:id                  → Editar producto (dueño)
 DELETE /products/:id                  → Soft-delete producto (dueño, sin ventas recientes)
@@ -155,7 +187,7 @@ GET    /sales/:id/receipt             → Obtener comprobante visual de una vent
 # Dashboard (plan Pro, solo dueño)
 GET    /dashboard/today               → Total y cantidad de ventas del día
 GET    /dashboard/monthly             → Acumulado mensual con variación %
-GET    /dashboard/daily-chart         → Gráfico de ventas diarias del mes
+GET    /dashboard/daily-chart         → Gráfico de ventas diarias (?month=YYYY-MM)
 GET    /dashboard/critical-stock      → Productos con stock crítico (todos los planes)
 GET    /dashboard/inventory-value     → Valorización total del inventario
 ```
@@ -167,4 +199,4 @@ GET    /dashboard/inventory-value     → Valorización total del inventario
 | Dueño | dueno@example.com | password123 | dueno |
 | Cajero | cajero@example.com | password123 | cajero |
 
-Tenant: "Almacén Don Pedro" (RUT 76.123.456-7) con 7 categorías y 41 productos chilenos reales (Coca-Cola, Fruna, Nestlé, Colún, Lays, etc.) con precios estimados de almacén en CLP.
+Tenant: "Almacén Don Pedro" (RUT 76.123.456-7) con 10 categorías y 42 productos chilenos reales (Coca-Cola, Fruna, Nestlé, Colún, Lays, etc.) con precios estimados de almacén en CLP.

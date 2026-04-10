@@ -58,6 +58,7 @@
                     <input type="file" id="file" name="file" accept=".xlsx,.xls" required>
                 </div>
                 <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
+                    <a href="{{ url_for('products_import_template') }}" class="btn btn-secondary" style="margin-right: auto;">⬇️ Descargar plantilla</a>
                     <a href="{{ url_for('products') }}" class="btn btn-secondary">Cancelar</a>
                     <button type="submit" class="btn btn-primary">Importar</button>
                 </div>
