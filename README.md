@@ -33,14 +33,15 @@ monay-market/
 - Gestión de usuarios cajeros (CRUD, solo dueño)
 - Configuración de tenant: módulo SII y impresora térmica
 - Control de suscripción: planes Básico y Pro
-- CRUD de productos con soft-delete y validación de ventas recientes
+- CRUD de productos con soft-delete, validación de ventas recientes e indicador de venta a granel (`is_weighed`)
+- Soporte para productos a granel con control de stock y cantidades en decimales de alta precisión
 - Lookup de código de barras multi-fuente: Open Food Facts → UPCItemDB → Open Beauty Facts (con fallback encadenado)
 - Importación masiva de productos desde Excel (.xlsx) con validación de formato
 - Descarga de plantilla Excel oficial para importación
 - Validación server-side del carrito (stock, subtotales, total)
 - Registro de ventas con transacción atómica y SELECT ... FOR UPDATE
 - Pago efectivo (cálculo de vuelto) y tarjeta
-- Deducción de stock atómica con alertas de stock crítico
+- Deducción de stock atómica (unidades y fracciones) con alertas de stock crítico
 - Cierre de caja: resumen diario desglosado por efectivo/tarjeta
 - Módulo SII opcional: emisión de boleta electrónica con reintentos (3 intentos, 15s timeout), soporte Haulmer/OpenFactura/Facturacion.cl, IVA 19%
 - Reintento manual de boletas pendientes
@@ -51,7 +52,7 @@ monay-market/
 ### Panel Admin (Flask + HTMX)
 - Login con JWT almacenado en sesión Flask
 - Dashboard con métricas auto-refresh cada 30s vía HTMX: ventas del día, acumulado mensual, valorización inventario, gráfico de ventas diarias (Chart.js) con selector de mes, productos con stock crítico
-- Gestión de productos: CRUD completo, búsqueda en tiempo real con HTMX, paginación server-side, barcode lookup con autocompletado, escáner de código de barras con cámara (BarcodeDetector API), importación Excel con plantilla descargable
+- Gestión de productos: CRUD completo con soporte inteligente para productos a granel (decimales), búsqueda en tiempo real con HTMX, paginación server-side, barcode lookup con autocompletado, escáner de cámara
 - Ventas: listado con filtros por fecha (desde/hasta) y estado de boleta, paginación, detalle de venta, reintento de boletas pendientes
 - Usuarios: gestión de cajeros (crear, activar/desactivar)
 - Configuración: módulo SII (proveedor, credenciales, sandbox), impresora térmica, estado de suscripción
@@ -62,6 +63,7 @@ monay-market/
 - Login con JWT almacenado en localStorage
 - Búsqueda de productos por nombre o código de barras
 - Escáner de código de barras con cámara (BarcodeDetector API)
+- "Calculadora Mágica" para productos a granel (ingreso de peso exacto o monto a cobrar con cálculo automático)
 - Carrito modular (`cart.js`): agregar, modificar cantidad, eliminar, vaciar, control de stock
 - Pago efectivo con cálculo de vuelto y pago con tarjeta
 - Comprobante visual post-venta
@@ -80,9 +82,9 @@ Todas las tablas de negocio viven en el esquema `market` (la tabla de migracione
 | `subscriptions` | Plan de suscripción del tenant (Básico o Pro), fechas de vigencia y estado | 1 suscripción |
 | `users` | Usuarios del sistema con roles dueño (administrador) o cajero (operador POS). Contraseñas hasheadas con bcrypt | 2 usuarios |
 | `categories` | Categorías de productos por tenant (Bebidas, Snacks, Lácteos, Abarrotes, etc.) | 10 categorías |
-| `products` | Catálogo de productos con nombre, código de barras, precio CLP, stock y umbral de stock crítico | 42 productos |
+| `products` | Catálogo de productos con nombre, código de barras, precio CLP, stock (entero o decimal), umbral de stock crítico e indicador a granel (`is_weighed`) | 42 productos |
 | `sales` | Ventas registradas con total, método de pago (efectivo/tarjeta), monto recibido, vuelto y estado de boleta SII | vacía (se llena al vender) |
-| `sale_lines` | Líneas de detalle de cada venta: producto, cantidad, precio unitario y subtotal (snapshot al momento de la venta) | vacía |
+| `sale_lines` | Líneas de detalle de cada venta: producto, cantidad (entera o fraccional), precio unitario y subtotal | vacía |
 | `boletas` | Boletas electrónicas emitidas ante el SII: folio, timbre electrónico, PDF y proveedor | vacía |
 
 ## Requisitos
