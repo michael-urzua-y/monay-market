@@ -174,8 +174,9 @@ def products_new():
             "name": request.form.get("name", "").strip(),
             "barcode": request.form.get("barcode", "").strip() or None,
             "price": int(request.form.get("price", 0) or 0),
-            "stock": int(request.form.get("stock", 0) or 0),
-            "critical_stock": int(request.form.get("critical_stock", 0) or 0),
+            "stock": float(str(request.form.get("stock", 0) or 0).replace(",", ".")),
+            "critical_stock": float(str(request.form.get("critical_stock", 0) or 0).replace(",", ".")),
+            "is_weighed": request.form.get("is_weighed") == "on",
         }
         cat_id = request.form.get("category_id", "").strip()
         if cat_id:
@@ -214,8 +215,9 @@ def products_edit(product_id):
             "name": request.form.get("name", "").strip(),
             "barcode": request.form.get("barcode", "").strip() or None,
             "price": int(request.form.get("price", 0) or 0),
-            "stock": int(request.form.get("stock", 0) or 0),
-            "critical_stock": int(request.form.get("critical_stock", 0) or 0),
+            "stock": float(str(request.form.get("stock", 0) or 0).replace(",", ".")),
+            "critical_stock": float(str(request.form.get("critical_stock", 0) or 0).replace(",", ".")),
+            "is_weighed": request.form.get("is_weighed") == "on",
         }
         cat_id = request.form.get("category_id", "").strip()
         if cat_id:

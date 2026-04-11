@@ -7,6 +7,7 @@ import {
   Min,
   ValidateNested,
   ArrayMinSize,
+  IsNumber,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaymentMethod } from '../../entities/enums';
@@ -15,8 +16,8 @@ export class SaleLineDto {
   @IsUUID()
   product_id: string;
 
-  @IsInt()
-  @Min(1)
+  @IsNumber({ maxDecimalPlaces: 3 })
+  @Min(0.001)
   quantity: number;
 }
 

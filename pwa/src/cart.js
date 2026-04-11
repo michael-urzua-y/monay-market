@@ -18,7 +18,8 @@ export const Cart = {
     return total;
   },
 
-  add: function (product) {
+  add: function (product, qty) {
+    var quantity = qty || 1;
     var existing = null;
     for (var i = 0; i < this.items.length; i++) {
       if (this.items[i].product_id === product.id) {
@@ -27,15 +28,15 @@ export const Cart = {
       }
     }
     if (existing) {
-      var newQty = existing.quantity + 1;
+      var newQty = existing.quantity + quantity;
       if (newQty > existing.available_stock) {
         this.callbacks.onToast('Stock insuficiente. Disponible: ' + existing.available_stock, 'warning');
         return;
       }
-      existing.quantity = newQty;
-      existing.subtotal = existing.unit_price * newQty;
+      existing.quantity = Math.round(newQty * 1000) / 1000;
+      existing.subtotal = Math.round(existing.unit_price * existing.quantity);
     } else {
-      if (product.stock < 1) {
+      if (product.stock < quantity) {
         this.callbacks.onToast('Producto sin stock disponible', 'warning');
         return;
       }
@@ -43,9 +44,10 @@ export const Cart = {
         product_id: product.id,
         product_name: product.name,
         unit_price: product.price,
-        quantity: 1,
-        subtotal: product.price,
+        quantity: Math.round(quantity * 1000) / 1000,
+        subtotal: Math.round(product.price * quantity),
         available_stock: product.stock,
+        is_weighed: product.is_weighed || false
       });
     }
     this.callbacks.onUpdate();
@@ -65,7 +67,7 @@ export const Cart = {
           return;
         }
         this.items[i].quantity = newQty;
-        this.items[i].subtotal = this.items[i].unit_price * newQty;
+        this.items[i].subtotal = Math.round(this.items[i].unit_price * newQty);
         break;
       }
     }

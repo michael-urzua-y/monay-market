@@ -35,11 +35,14 @@ export class Product {
   @Column({ type: 'integer' })
   price: number;
 
-  @Column({ type: 'integer', default: 0 })
+  @Column({ type: 'numeric', precision: 10, scale: 3, default: 0, transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) } })
   stock: number;
 
-  @Column({ name: 'critical_stock', type: 'integer', default: 0 })
+  @Column({ name: 'critical_stock', type: 'numeric', precision: 10, scale: 3, default: 0, transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) } })
   critical_stock: number;
+
+  @Column({ type: 'boolean', default: false })
+  is_weighed: boolean;
 
   @Column({ type: 'boolean', default: true })
   active: boolean;

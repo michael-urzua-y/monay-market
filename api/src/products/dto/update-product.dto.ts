@@ -2,10 +2,12 @@ import {
   IsOptional,
   IsString,
   IsInt,
+  IsNumber,
   IsUUID,
   Min,
   MaxLength,
   IsNotEmpty,
+  IsBoolean,
 } from 'class-validator';
 
 export class UpdateProductDto {
@@ -26,16 +28,20 @@ export class UpdateProductDto {
   price?: number;
 
   @IsOptional()
-  @IsInt({ message: 'El stock debe ser un número entero' })
+  @IsNumber({ maxDecimalPlaces: 3 }, { message: 'El stock debe ser un número con hasta 3 decimales' })
   @Min(0, { message: 'El stock debe ser mayor o igual a 0' })
   stock?: number;
 
   @IsOptional()
-  @IsInt()
+  @IsNumber({ maxDecimalPlaces: 3 })
   @Min(0)
   critical_stock?: number;
 
   @IsOptional()
   @IsUUID('4', { message: 'category_id debe ser un UUID válido' })
   category_id?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  is_weighed?: boolean;
 }

@@ -47,12 +47,17 @@
 
                 <div class="form-group">
                     <label for="stock">Stock inicial *</label>
-                    <input type="number" id="stock" name="stock" value="{{ form.get('stock', 0) }}" required min="0" placeholder="0">
+                    <input type="number" id="stock" name="stock" value="{{ form.get('stock', 0) }}" required min="0" step="any" placeholder="0.000">
                 </div>
 
                 <div class="form-group">
                     <label for="critical_stock">Stock crítico</label>
-                    <input type="number" id="critical_stock" name="critical_stock" value="{{ form.get('critical_stock', 0) }}" min="0" placeholder="0">
+                    <input type="number" id="critical_stock" name="critical_stock" value="{{ form.get('critical_stock', 0) }}" min="0" step="any" placeholder="0.000">
+                </div>
+
+                <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 16px; margin-bottom: 16px;">
+                    <input type="checkbox" id="is_weighed" name="is_weighed" {% if form.get('is_weighed') %}checked{% endif %} style="width: 20px; height: 20px; accent-color: var(--color-primary);">
+                    <label for="is_weighed" style="margin: 0; font-weight: 600; cursor: pointer;">Se vende por peso / a granel</label>
                 </div>
 
                 <div class="form-group">

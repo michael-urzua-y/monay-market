@@ -25,7 +25,7 @@ export class SaleLine {
   @Column({ name: 'unit_price', type: 'integer' })
   unit_price: number;
 
-  @Column({ type: 'integer' })
+  @Column({ type: 'numeric', precision: 10, scale: 3, transformer: { to: (v: number) => v, from: (v: string) => parseFloat(v) } })
   quantity: number;
 
   @Column({ type: 'integer' })

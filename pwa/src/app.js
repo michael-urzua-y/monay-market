@@ -135,17 +135,23 @@ import { Cart } from './cart.js';
     var html = '';
     for (var i = 0; i < Cart.items.length; i++) {
       var item = Cart.items[i];
+      
+      var qtyHtml = '';
+      if (item.is_weighed) {
+        qtyHtml = '<span class="qty-value" style="margin: 0 10px; font-size: 0.9rem; color: #3b82f6; font-weight: 600;">' + Number(item.quantity).toFixed(3) + ' Kg</span>';
+      } else {
+        qtyHtml = '<button class="qty-btn" data-action="dec" data-id="' + item.product_id + '">−</button>' +
+                  '<span class="qty-value">' + item.quantity + '</span>' +
+                  '<button class="qty-btn" data-action="inc" data-id="' + item.product_id + '">+</button>';
+      }
+
       html +=
         '<div class="cart-item" data-product-id="' + item.product_id + '">' +
         '<div class="cart-item-info">' +
         '<div class="cart-item-name">' + escapeHtml(item.product_name) + '</div>' +
-        '<div class="cart-item-price">' + formatCLP(item.unit_price) + ' c/u</div>' +
+        '<div class="cart-item-price">' + formatCLP(item.unit_price) + ' ' + (item.is_weighed ? 'x Kg' : 'c/u') + '</div>' +
         '</div>' +
-        '<div class="cart-item-qty">' +
-        '<button class="qty-btn" data-action="dec" data-id="' + item.product_id + '">−</button>' +
-        '<span class="qty-value">' + item.quantity + '</span>' +
-        '<button class="qty-btn" data-action="inc" data-id="' + item.product_id + '">+</button>' +
-        '</div>' +
+        '<div class="cart-item-qty">' + qtyHtml + '</div>' +
         '<div class="cart-item-subtotal">' + formatCLP(item.subtotal) + '</div>' +
         '<button class="cart-item-remove" data-action="remove" data-id="' + item.product_id + '">✕</button>' +
         '</div>';
@@ -199,7 +205,11 @@ import { Cart } from './cart.js';
       var item = e.target.closest('.search-result-item');
       if (item) {
         var product = JSON.parse(item.dataset.product);
-        Cart.add(product);
+        if (product.is_weighed) {
+          openWeighModal(product);
+        } else {
+          Cart.add(product);
+        }
         input.value = '';
         resultsEl.classList.add('hidden');
       }
@@ -232,7 +242,7 @@ import { Cart } from './cart.js';
       var html = '';
       for (var i = 0; i < products.length; i++) {
         var p = products[i];
-        var productData = JSON.stringify({ id: p.id, name: p.name, price: p.price, stock: p.stock }).replace(/"/g, '&quot;');
+        var productData = JSON.stringify({ id: p.id, name: p.name, price: p.price, stock: p.stock, is_weighed: p.is_weighed }).replace(/"/g, '&quot;');
         html +=
           '<div class="search-result-item" data-product="' + productData + '">' +
           '<div>' +
@@ -245,6 +255,77 @@ import { Cart } from './cart.js';
       resultsEl.innerHTML = html;
     }
     resultsEl.classList.remove('hidden');
+  }
+
+  // ----------------------------------------------------------
+  // Weighing Modal
+  // ----------------------------------------------------------
+  var weighProduct = null;
+
+  function initWeighModal() {
+    var weightInput = document.getElementById('weigh-weight-input');
+    var amountInput = document.getElementById('weigh-amount-input');
+    var btnCancel = document.getElementById('btn-weigh-cancel');
+    var btnConfirm = document.getElementById('btn-weigh-confirm');
+
+    if(weightInput && amountInput) {
+      weightInput.addEventListener('input', function() {
+        if (!weighProduct) return;
+        var w = parseFloat(weightInput.value);
+        if (w > 0) {
+          amountInput.value = Math.round(w * weighProduct.price);
+          btnConfirm.disabled = false;
+        } else {
+          amountInput.value = '';
+          btnConfirm.disabled = true;
+        }
+      });
+
+      amountInput.addEventListener('input', function() {
+        if (!weighProduct) return;
+        var amt = parseInt(amountInput.value, 10);
+        if (amt > 0) {
+          weightInput.value = (amt / weighProduct.price).toFixed(3);
+          btnConfirm.disabled = false;
+        } else {
+          weightInput.value = '';
+          btnConfirm.disabled = true;
+        }
+      });
+    }
+
+    if(btnCancel) btnCancel.addEventListener('click', closeWeighModal);
+    if(btnConfirm) {
+      btnConfirm.addEventListener('click', function() {
+        if (!weighProduct) return;
+        var qty = parseFloat(weightInput.value);
+        if (qty > 0) {
+          weighProduct.is_weighed = true;
+          Cart.add(weighProduct, qty);
+          closeWeighModal();
+        }
+      });
+    }
+  }
+
+  function openWeighModal(product) {
+    weighProduct = product;
+    document.getElementById('weigh-product-name').textContent = product.name;
+    document.getElementById('weigh-product-price').textContent = formatCLP(product.price);
+    document.getElementById('weigh-weight-input').value = '';
+    document.getElementById('weigh-amount-input').value = '';
+    document.getElementById('btn-weigh-confirm').disabled = true;
+    
+    var modal = document.getElementById('weigh-modal');
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+  }
+
+  function closeWeighModal() {
+    weighProduct = null;
+    var modal = document.getElementById('weigh-modal');
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
   }
 
   // ----------------------------------------------------------
@@ -332,7 +413,11 @@ import { Cart } from './cart.js';
     api.get('/products?barcode=' + encodeURIComponent(code)).then(function (products) {
       if (products && products.length > 0) {
         var p = products[0];
-        Cart.add({ id: p.id, name: p.name, price: p.price, stock: p.stock });
+        if (p.is_weighed) {
+          openWeighModal({ id: p.id, name: p.name, price: p.price, stock: p.stock, is_weighed: true });
+        } else {
+          Cart.add({ id: p.id, name: p.name, price: p.price, stock: p.stock, is_weighed: false });
+        }
       } else {
         showToast('Producto no encontrado: ' + code, 'warning');
       }
@@ -899,6 +984,7 @@ import { Cart } from './cart.js';
     initNav();
     initSearch();
     initScanner();
+    initWeighModal();
     initCartEvents();
     initPayment();
     initReceipt();

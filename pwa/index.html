@@ -83,6 +83,33 @@
           <p id="scanner-status" class="scanner-status">Apunte la cámara al código de barras</p>
         </div>
 
+        <!-- Calculadora de Peso (Modal) -->
+        <div id="weigh-modal" class="hidden" style="position: fixed; inset: 0; z-index: 2000; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); padding: 20px;">
+          <div class="card" style="width: 100%; max-width: 380px; background: white; border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+            <h3 id="weigh-product-name" style="margin-top: 0; color: #0f172a; font-size: 1.25rem;">Producto a granel</h3>
+            <p style="color: #64748b; margin-bottom: 20px; font-size: 0.95rem;">Precio por Kg: <span id="weigh-product-price" style="font-weight: 700; color: #2563eb;">$0</span></p>
+            
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+              <div class="form-group" style="margin: 0;">
+                <label for="weigh-weight-input" style="font-size: 0.9rem; font-weight: 600;">Peso exacto (Kg)</label>
+                <input type="number" id="weigh-weight-input" class="amount-input" placeholder="Ej: 0.540" min="0" step="0.001" inputmode="decimal" style="font-size: 1.2rem; text-align: center;">
+              </div>
+              
+              <div style="text-align: center; color: #94a3b8; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;">O ingresa el monto</div>
+              
+              <div class="form-group" style="margin: 0;">
+                <label for="weigh-amount-input" style="font-size: 0.9rem; font-weight: 600;">Monto a cobrar ($)</label>
+                <input type="number" id="weigh-amount-input" class="amount-input" placeholder="Ej: 1000" min="0" step="1" inputmode="numeric" style="font-size: 1.2rem; text-align: center;">
+              </div>
+            </div>
+            
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+              <button id="btn-weigh-cancel" class="btn btn-secondary" style="flex: 1; padding: 12px;">Cancelar</button>
+              <button id="btn-weigh-confirm" class="btn btn-primary" style="flex: 1; padding: 12px;" disabled>Agregar</button>
+            </div>
+          </div>
+        </div>
+
         <!-- Cart -->
         <div class="cart-section">
           <div class="cart-header">
@@ -147,7 +174,7 @@
     </main>
   </div>
 
-  <script>window.MONAY_API_URL = 'http://localhost:3000';</script>
+  <script>window.MONAY_API_URL = 'http://' + window.location.hostname + ':3000';</script>
   <script type="module" src="src/app.js"></script>
 </body>
 </html>
