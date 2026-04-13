@@ -18,8 +18,57 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 
     {% block head %}{% endblock %}
+
+    <style>
+        /* Estilos inyectados para el menú contraíble en escritorio */
+        @media (min-width: 769px) {
+            body.sidebar-collapsed .app-layout {
+                grid-template-columns: 80px 1fr !important;
+            }
+            body.sidebar-collapsed .sidebar {
+                width: 80px !important;
+                flex: 0 0 80px !important;
+            }
+            body.sidebar-collapsed .main-content {
+                margin-left: 80px !important; /* Resguardo por si usa position: absolute */
+            }
+            body.sidebar-collapsed .sidebar-logo,
+            body.sidebar-collapsed .nav-label {
+                display: none !important;
+            }
+            body.sidebar-collapsed .nav-item {
+                justify-content: center !important;
+                padding: 15px 0 !important;
+                margin: 4px 10px !important;
+            }
+            body.sidebar-collapsed .nav-icon {
+                margin-right: 0 !important;
+                font-size: 1.5rem !important;
+            }
+        
+        body.sidebar-collapsed .sidebar-header {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            justify-content: center !important;
+        }
+        body.sidebar-collapsed .desktop-toggle {
+            margin-right: 0 !important;
+        }
+    }
+    /* Ocultar el botón de colapsar escritorio en celulares */
+    @media (max-width: 768px) {
+        .desktop-toggle { display: none !important; }
+        }
+        /* Ocultar textos en móviles para que encaje bien en la barra superior */
+        @media (max-width: 600px) {
+            .top-bar-right .user-info { display: none !important; }
+            .top-bar-right .hide-mobile { display: none !important; }
+        }
+    </style>
 </head>
-<body x-data="{ sidebarOpen: false }">
+<body x-data="{ sidebarOpen: false, sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true' }" 
+      :class="{ 'sidebar-collapsed': sidebarCollapsed }"
+      x-init="$watch('sidebarCollapsed', val => localStorage.setItem('sidebarCollapsed', val))">
     <div class="app-layout">
         <!-- Mobile sidebar overlay -->
         <div class="sidebar-overlay"
@@ -31,8 +80,11 @@
 
         <!-- Sidebar navigation -->
         <aside class="sidebar" :class="{ 'sidebar-open': sidebarOpen }">
-            <div class="sidebar-header">
-                <h1 class="sidebar-logo">Monay Market</h1>
+            <div class="sidebar-header" style="display: flex; align-items: center; justify-content: space-between; overflow: hidden; white-space: nowrap;">
+                <button @click="sidebarCollapsed = !sidebarCollapsed" class="desktop-toggle" style="background: transparent; border: none; color: inherit; cursor: pointer; font-size: 1.5rem; padding: 0; margin-right: 12px; display: flex; align-items: center; justify-content: center; line-height: 1;">
+                    ☰
+                </button>
+                <h1 class="sidebar-logo" style="margin: 0; font-size: 1.25rem; flex: 1;">Monay Market</h1>
                 <button class="sidebar-close" @click="sidebarOpen = false" aria-label="Cerrar menú">
                     ✕
                 </button>
@@ -47,9 +99,17 @@
                     <span class="nav-icon">📦</span>
                     <span class="nav-label">Productos</span>
                 </a>
+                <a href="{{ url_for('shopping_list') }}" class="nav-item {% if request.endpoint == 'shopping_list' %}active{% endif %}">
+                    <span class="nav-icon">🛒</span>
+                    <span class="nav-label">Lista Compras</span>
+                </a>
                 <a href="{{ url_for('sales') }}" class="nav-item {% if request.endpoint in ('sales', 'sales_detail', 'sales_pending', 'sales_retry_boleta') %}active{% endif %}">
                     <span class="nav-icon">🧾</span>
                     <span class="nav-label">Ventas</span>
+                </a>
+                <a href="{{ url_for('arqueos') }}" class="nav-item {% if request.endpoint == 'arqueos' %}active{% endif %}">
+                    <span class="nav-icon">💵</span>
+                    <span class="nav-label">Cuadraturas</span>
                 </a>
                 <a href="{{ url_for('users') }}" class="nav-item {% if request.endpoint == 'users' %}active{% endif %}">
                     <span class="nav-icon">👥</span>
@@ -60,28 +120,30 @@
                     <span class="nav-label">Configuración</span>
                 </a>
             </nav>
-
-            <div class="sidebar-footer">
-                {% if current_user %}
-                <div class="user-info">
-                    <span class="user-name">{{ current_user.email }}</span>
-                    <span class="user-role">{{ current_user.role }}</span>
-                </div>
-                {% endif %}
-                <a href="{{ url_for('logout') }}" class="nav-item logout-link">
-                    <span class="nav-icon">🚪</span>
-                    <span class="nav-label">Cerrar sesión</span>
-                </a>
-            </div>
         </aside>
 
         <!-- Main content area -->
         <main class="main-content">
-            <header class="top-bar">
-                <button class="menu-toggle" @click="sidebarOpen = true" aria-label="Abrir menú">
-                    ☰
-                </button>
-                <h2 class="page-title">{% block page_title %}Dashboard{% endblock %}</h2>
+            <header class="top-bar" style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="menu-toggle" @click="sidebarOpen = true" aria-label="Abrir menú">
+                        ☰
+                    </button>
+                    <h2 class="page-title" style="margin: 0;">{% block page_title %}Dashboard{% endblock %}</h2>
+                </div>
+
+                <div class="top-bar-right" style="display: flex; align-items: center; gap: 16px;">
+                    {% if current_user %}
+                    <div class="user-info" style="text-align: right; line-height: 1.2;">
+                        <div class="user-name" style="font-weight: 600; font-size: 0.95rem; color: #1e293b;">{{ current_user.email }}</div>
+                        <div class="user-role" style="font-size: 0.8rem; color: #64748b; text-transform: capitalize;">{{ current_user.role }}</div>
+                    </div>
+                    {% endif %}
+                    <a href="{{ url_for('logout') }}" class="btn btn-secondary" style="padding: 6px 12px; display: flex; align-items: center; gap: 6px; text-decoration: none; border: 1px solid #cbd5e1; background: #f8fafc; color: #334155; border-radius: 6px; cursor: pointer;">
+                        <span>🚪</span>
+                        <span class="hide-mobile">Salir</span>
+                    </a>
+                </div>
             </header>
 
             <div class="content-area">
@@ -89,6 +151,40 @@
             </div>
         </main>
     </div>
+
+    <!-- Lógica global para validación de fechas (Bloquear futuro y cruces de fechas) -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const dateInputs = document.querySelectorAll('input[type="date"]');
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const dd = String(today.getDate()).padStart(2, '0');
+        const todayStr = `${yyyy}-${mm}-${dd}`;
+
+        // 1. Bloquear fechas futuras en absolutamente todos los calendarios del sistema
+        dateInputs.forEach(function(input) {
+            input.setAttribute('max', todayStr);
+        });
+
+        // 2. Sincronizar "Desde" y "Hasta" para que "Hasta" no sea menor que "Desde"
+        const dateFrom = document.getElementById('date_from');
+        const dateTo = document.getElementById('date_to');
+        
+        if (dateFrom && dateTo) {
+            if (dateFrom.value) {
+                dateTo.setAttribute('min', dateFrom.value);
+            }
+            dateFrom.addEventListener('change', function() {
+                dateTo.setAttribute('min', this.value);
+                // Si la fecha "Hasta" es menor a la nueva "Desde", la corregimos automáticamente
+                if (dateTo.value && dateTo.value < this.value) {
+                    dateTo.value = this.value;
+                }
+            });
+        }
+    });
+    </script>
 
     {% block scripts %}{% endblock %}
 </body>

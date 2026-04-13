@@ -19,6 +19,25 @@
         {% endfor %}
     </tbody>
 </table>
+
+<!-- Paginación -->
+{% if total_pages and total_pages > 1 %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--color-border);">
+    <span style="color: var(--color-text-muted); font-size: 0.9rem;">{{ total }} producto{{ 's' if total != 1 else '' }} — Página {{ page }} de {{ total_pages }}</span>
+    <div style="display: flex; gap: 8px;">
+        <button class="btn btn-sm btn-secondary"
+                hx-get="/htmx/dashboard/critical-stock?page={{ page - 1 }}"
+                hx-target="closest .card-body"
+                hx-swap="innerHTML"
+                {% if page <= 1 %}style="pointer-events: none; opacity: 0.5;" disabled{% endif %}>Anterior</button>
+        <button class="btn btn-sm btn-secondary"
+                hx-get="/htmx/dashboard/critical-stock?page={{ page + 1 }}"
+                hx-target="closest .card-body"
+                hx-swap="innerHTML"
+                {% if page >= total_pages %}style="pointer-events: none; opacity: 0.5;" disabled{% endif %}>Siguiente</button>
+    </div>
+</div>
+{% endif %}
 {% else %}
 <p class="empty-msg">No hay productos con stock crítico</p>
 {% endif %}

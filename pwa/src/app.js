@@ -79,7 +79,7 @@ import { Cart } from './cart.js';
   // ----------------------------------------------------------
   var router = {
     currentScreen: null,
-    screens: ['login', 'sale', 'history', 'receipt'],
+    screens: ['login', 'sale', 'history', 'receipt', 'arqueo'],
     navigate: function (screenId) {
       this.screens.forEach(function (id) {
         var el = document.getElementById('screen-' + id);
@@ -105,6 +105,9 @@ import { Cart } from './cart.js';
         btn.classList.toggle('active', btn.dataset.screen === screenId);
       });
       this.currentScreen = screenId;
+
+      // Hacer scroll siempre hacia arriba al cambiar de pantalla
+      window.scrollTo(0, 0);
 
       // Trigger screen-specific actions
       if (screenId === 'history') {
@@ -846,6 +849,81 @@ import { Cart } from './cart.js';
   }
 
   // ----------------------------------------------------------
+  // Arqueo de Caja Visual
+  // ----------------------------------------------------------
+  var expectedArqueoCash = 0;
+  var lastCountedCash = 0;
+
+  function initArqueo() {
+    var btnArqueo = document.getElementById('btn-arqueo');
+    if (btnArqueo) {
+      btnArqueo.addEventListener('click', function() {
+        router.navigate('arqueo');
+        loadArqueoData();
+      });
+    }
+
+    document.querySelectorAll('.arqueo-input').forEach(function(input) {
+      input.addEventListener('input', calculateArqueo);
+    });
+
+    var btnSubmit = document.getElementById('btn-submit-arqueo');
+    if (btnSubmit) {
+      btnSubmit.addEventListener('click', function() {
+        showConfirm('¿Está seguro de cerrar el turno? Esto registrará la cuadratura.').then(function(confirmed) {
+          if(confirmed) {
+            api.post('/sales/close-register', { counted_efectivo: lastCountedCash }).then(function(res) {
+               showToast('Caja cuadrada y turno cerrado con éxito', 'success');
+               router.navigate('history');
+            }).catch(function(err) {
+               showToast('Error al guardar cuadratura: ' + (err.message || 'Error del servidor'), 'error');
+            });
+          }
+        });
+      });
+    }
+  }
+
+  function loadArqueoData() {
+    document.querySelectorAll('.arqueo-input').forEach(function(input) { input.value = ''; });
+    expectedArqueoCash = historyState.efectivo.reduce(function(sum, s) { return sum + s.total; }, 0);
+    document.getElementById('arqueo-expected').textContent = formatCLP(expectedArqueoCash);
+    calculateArqueo();
+  }
+
+  function calculateArqueo() {
+    var totalCounted = 0;
+    document.querySelectorAll('.arqueo-input').forEach(function(input) {
+      var qty = parseInt(input.value, 10) || 0;
+      var val = parseInt(input.dataset.val, 10) || 0;
+      if(qty > 0) totalCounted += (qty * val);
+    });
+
+    lastCountedCash = totalCounted;
+    document.getElementById('arqueo-counted').textContent = formatCLP(totalCounted);
+    
+    var diff = totalCounted - expectedArqueoCash;
+    var diffEl = document.getElementById('arqueo-diff');
+    var statusEl = document.getElementById('arqueo-status-msg');
+
+    diffEl.textContent = formatCLP(diff);
+
+    if (diff === 0) {
+      diffEl.style.color = '#16a34a';
+      statusEl.textContent = '¡Caja cuadrada perfectamente! ✅';
+      statusEl.style.color = '#16a34a';
+    } else if (diff > 0) {
+      diffEl.style.color = '#2563eb';
+      statusEl.textContent = 'Sobra dinero en caja 🧐';
+      statusEl.style.color = '#2563eb';
+    } else {
+      diffEl.style.color = '#dc2626';
+      statusEl.textContent = 'Falta dinero en caja ⚠️';
+      statusEl.style.color = '#dc2626';
+    }
+  }
+
+  // ----------------------------------------------------------
   // Cart Event Delegation
   // ----------------------------------------------------------
   function initCartEvents() {
@@ -989,6 +1067,7 @@ import { Cart } from './cart.js';
     initPayment();
     initReceipt();
     initHistory();
+    initArqueo();
 
     // Global auth expiration listener
     window.addEventListener('monay-auth-expired', function () {

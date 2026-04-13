@@ -1,0 +1,31 @@
+<div style="display: flex; flex-wrap: wrap; gap: 24px;">
+    <!-- Más vendidos -->
+    <div style="flex: 1; min-width: 250px;">
+        <h4 style="color: #16a34a; margin-bottom: 12px; margin-top: 0; display: flex; align-items: center; gap: 8px;">📈 Los 5 Más Vendidos</h4>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+            {% for p in top %}
+            <li style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+                <span style="font-weight: 500; color: #334155;">{{ p.name }}</span>
+                <span style="color: #64748b; font-size: 0.9rem;">{{ p.total_quantity }} vendidas</span>
+            </li>
+            {% else %}
+            <li style="color: #64748b; font-size: 0.9rem;">No hay ventas recientes registradas.</li>
+            {% endfor %}
+        </ul>
+    </div>
+    
+    <!-- Menos vendidos -->
+    <div style="flex: 1; min-width: 250px;">
+        <h4 style="color: #dc2626; margin-bottom: 12px; margin-top: 0; display: flex; align-items: center; gap: 8px;">📉 Los 5 Menos Vendidos</h4>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+            {% for p in bottom %}
+            <li style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+                <span style="font-weight: 500; color: #334155;">{{ p.name }}</span>
+                <span style="color: #64748b; font-size: 0.9rem;">{{ p.total_quantity }} vendidas</span>
+            </li>
+            {% else %}
+            <li style="color: #64748b; font-size: 0.9rem;">No hay ventas recientes registradas.</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>

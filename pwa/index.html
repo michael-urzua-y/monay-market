@@ -157,8 +157,57 @@
           <h3>Ventas del día</h3>
           <button id="btn-refresh-history" class="btn-icon" aria-label="Actualizar">🔄</button>
         </div>
+        
+        <div style="padding: 16px 20px 0 20px;">
+          <button id="btn-arqueo" class="btn btn-primary btn-block" style="display: flex; justify-content: center; align-items: center; gap: 8px; padding: 14px; font-size: 1.05rem; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">
+            <span style="font-size: 1.3rem;">💵</span> Realizar Cuadratura de Caja
+          </button>
+        </div>
+
         <div id="history-list" class="history-list">
           <p class="history-empty">Cargando ventas...</p>
+        </div>
+      </section>
+
+      <!-- Arqueo Screen -->
+      <section id="screen-arqueo" class="screen hidden">
+        <div class="arqueo-header" style="display: flex; align-items: center; padding: 16px; background: white; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 10;">
+          <button class="btn-icon" onclick="MonayPOS.router.navigate('history')" style="margin-right: 16px;">←</button>
+          <h3 style="margin: 0; font-size: 1.2rem; color: #0f172a;">Cuadratura de Caja</h3>
+        </div>
+        <div style="padding: 16px; max-width: 600px; margin: 0 auto; padding-bottom: 100px;">
+          <p style="color: #64748b; margin-bottom: 20px;">Ingrese la cantidad de billetes y monedas que hay físicamente en la caja.</p>
+          
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; margin-bottom: 24px;">
+            <div class="card" style="padding: 10px; text-align: center;"><label style="color: #ea580c; font-weight: 700; display: block; margin-bottom: 6px;">$20.000</label><input type="number" class="amount-input arqueo-input" data-val="20000" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
+            <div class="card" style="padding: 10px; text-align: center;"><label style="color: #2563eb; font-weight: 700; display: block; margin-bottom: 6px;">$10.000</label><input type="number" class="amount-input arqueo-input" data-val="10000" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
+            <div class="card" style="padding: 10px; text-align: center;"><label style="color: #dc2626; font-weight: 700; display: block; margin-bottom: 6px;">$5.000</label><input type="number" class="amount-input arqueo-input" data-val="5000" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
+            <div class="card" style="padding: 10px; text-align: center;"><label style="color: #9333ea; font-weight: 700; display: block; margin-bottom: 6px;">$2.000</label><input type="number" class="amount-input arqueo-input" data-val="2000" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
+            <div class="card" style="padding: 10px; text-align: center;"><label style="color: #65a30d; font-weight: 700; display: block; margin-bottom: 6px;">$1.000</label><input type="number" class="amount-input arqueo-input" data-val="1000" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
+            <div class="card" style="padding: 10px; text-align: center; background: #f8fafc;"><label style="color: #475569; font-weight: 700; display: block; margin-bottom: 6px;">$500</label><input type="number" class="amount-input arqueo-input" data-val="500" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
+            <div class="card" style="padding: 10px; text-align: center; background: #f8fafc;"><label style="color: #475569; font-weight: 700; display: block; margin-bottom: 6px;">$100</label><input type="number" class="amount-input arqueo-input" data-val="100" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
+            <div class="card" style="padding: 10px; text-align: center; background: #f8fafc;"><label style="color: #475569; font-weight: 700; display: block; margin-bottom: 6px;">$50</label><input type="number" class="amount-input arqueo-input" data-val="50" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
+            <div class="card" style="padding: 10px; text-align: center; background: #f8fafc;"><label style="color: #475569; font-weight: 700; display: block; margin-bottom: 6px;">$10</label><input type="number" class="amount-input arqueo-input" data-val="10" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
+          </div>
+
+          <div class="card" style="padding: 20px; background: #f8fafc; border: 2px solid #e2e8f0;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 1.1rem;">
+              <span style="color: #64748b;">Efectivo Esperado (Sistema):</span>
+              <strong id="arqueo-expected">$0</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 1.1rem;">
+              <span style="color: #64748b;">Efectivo Contado (Físico):</span>
+              <strong id="arqueo-counted" style="color: #2563eb;">$0</strong>
+            </div>
+            <hr style="border: 0; border-top: 1px solid #cbd5e1; margin: 16px 0;">
+            <div style="display: flex; justify-content: space-between; font-size: 1.3rem; font-weight: 800;">
+              <span>Diferencia:</span>
+              <span id="arqueo-diff" style="color: #0f172a;">$0</span>
+            </div>
+            <p id="arqueo-status-msg" style="margin-top: 12px; font-size: 0.95rem; font-weight: 600; text-align: center;"></p>
+          </div>
+
+          <button id="btn-submit-arqueo" class="btn btn-primary btn-block" style="margin-top: 24px; padding: 16px; font-size: 1.1rem;">Cerrar Turno</button>
         </div>
       </section>
 

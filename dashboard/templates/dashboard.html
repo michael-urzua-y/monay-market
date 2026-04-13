@@ -47,9 +47,36 @@
         </div>
         <div class="card-body"
              hx-get="/htmx/dashboard/critical-stock"
-             hx-trigger="load, every 30s"
+             hx-trigger="load"
              hx-swap="innerHTML">
             <div class="card-loading">Cargando stock crítico…</div>
+        </div>
+    </div>
+
+    <!-- Ranking de Productos -->
+    <div class="card card-wide">
+        <div class="card-header">
+            <h3 class="card-title">Ranking de Productos (Últimos 30 días)</h3>
+        </div>
+        <div class="card-body"
+             hx-get="/htmx/dashboard/top-products"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <div class="card-loading">Cargando ranking…</div>
+        </div>
+    </div>
+
+    <!-- Horas Punta -->
+    <div class="card card-wide">
+        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <h3 class="card-title">Horas Punta de Ventas</h3>
+            <select id="peakHoursPeriod" style="padding: 6px; border: 1px solid var(--color-border); border-radius: 4px; background: white; font-family: inherit;" onchange="loadPeakHoursChart()">
+                <option value="month">Últimos 30 días</option>
+                <option value="week">Esta semana</option>
+            </select>
+        </div>
+        <div class="card-body">
+            <canvas id="peakHoursChart" height="260"></canvas>
         </div>
     </div>
 </div>
@@ -58,6 +85,7 @@
 {% block scripts %}
 <script>
 let dailyChart = null;
+let peakHoursChart = null;
 
 function formatCLP(value) {
     return '$' + Number(value).toLocaleString('es-CL');
@@ -138,6 +166,61 @@ function loadDailyChart() {
         });
 }
 
+function loadPeakHoursChart() {
+    var select = document.getElementById('peakHoursPeriod');
+    var period = select ? select.value : 'month';
+
+    fetch('/htmx/dashboard/peak-hours?period=' + encodeURIComponent(period))
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            const ctx = document.getElementById('peakHoursChart');
+            if (!ctx) return;
+
+            // Crear horas del 0 al 23 para llenar espacios vacíos
+            const hours = Array.from({length: 24}, function(_, i) { return i; });
+            const values = hours.map(function(h) {
+                const match = data.find(function(d) { return d.hour === h; });
+                return match ? match.count : 0;
+            });
+            const labels = hours.map(function(h) { return String(h).padStart(2, '0') + ':00'; });
+
+            // Paleta multicolor vibrante y moderna
+            const colors = [
+                '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e',
+                '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
+                '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#ef4444',
+                '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#0ea5e9', '#6366f1'
+            ];
+
+            if (peakHoursChart) {
+                peakHoursChart.data.datasets[0].data = values;
+                peakHoursChart.update();
+            } else {
+                peakHoursChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Cantidad de Ventas',
+                            data: values,
+                            backgroundColor: colors,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                            x: { title: { display: true, text: 'Hora del día' } }
+                        }
+                    }
+                });
+            }
+        });
+}
+
 function initMonthSelector() {
     var select = document.getElementById('monthSelector');
     if (!select) return;
@@ -156,7 +239,11 @@ function initMonthSelector() {
 document.addEventListener('DOMContentLoaded', function() {
     initMonthSelector();
     loadDailyChart();
-    setInterval(loadDailyChart, 30000);
+    loadPeakHoursChart();
+    setInterval(function() {
+        loadDailyChart();
+        loadPeakHoursChart();
+    }, 30000);
 });
 </script>
 {% endblock %}

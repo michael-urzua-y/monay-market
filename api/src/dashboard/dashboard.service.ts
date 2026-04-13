@@ -167,4 +167,61 @@ export class DashboardService {
       valor_total: Number(result.valor_total),
     };
   }
+
+  async getTopProducts(tenantId: string) {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Los 5 Más Vendidos
+    const top = await this.saleRepository.query(`
+      SELECT sl.product_name AS name, SUM(sl.quantity) AS total_quantity
+      FROM market.sale_lines sl
+      JOIN market.sales s ON s.id = sl.sale_id
+      WHERE s.tenant_id = $1 AND s.created_at >= $2
+      GROUP BY sl.product_name
+      ORDER BY total_quantity DESC
+      LIMIT 5
+    `, [tenantId, thirtyDaysAgo]);
+
+    // Los 5 Menos Vendidos
+    const bottom = await this.saleRepository.query(`
+      SELECT sl.product_name AS name, SUM(sl.quantity) AS total_quantity
+      FROM market.sale_lines sl
+      JOIN market.sales s ON s.id = sl.sale_id
+      WHERE s.tenant_id = $1 AND s.created_at >= $2
+      GROUP BY sl.product_name
+      ORDER BY total_quantity ASC
+      LIMIT 5
+    `, [tenantId, thirtyDaysAgo]);
+
+    return { top, bottom };
+  }
+
+  async getPeakHours(tenantId: string, period?: string) {
+    let startDate = new Date();
+
+    if (period === 'week') {
+      // Obtener el lunes de la semana actual
+      const day = startDate.getDay();
+      const diff = startDate.getDate() - day + (day === 0 ? -6 : 1);
+      startDate = new Date(startDate.setDate(diff));
+      startDate.setHours(0, 0, 0, 0);
+    } else {
+      // Por defecto: Últimos 30 días
+      startDate.setDate(startDate.getDate() - 30);
+    }
+
+    const hours = await this.saleRepository.query(`
+      SELECT EXTRACT(HOUR FROM created_at AT TIME ZONE 'America/Santiago') AS hour, COUNT(id) AS count
+      FROM market.sales
+      WHERE tenant_id = $1 AND created_at >= $2
+      GROUP BY EXTRACT(HOUR FROM created_at AT TIME ZONE 'America/Santiago')
+      ORDER BY hour ASC
+    `, [tenantId, startDate]);
+
+    return hours.map((h: any) => ({
+      hour: Math.floor(h.hour),
+      count: Number(h.count)
+    }));
+  }
 }

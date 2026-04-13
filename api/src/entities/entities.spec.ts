@@ -8,6 +8,7 @@ import { Product } from './product.entity';
 import { Sale } from './sale.entity';
 import { SaleLine } from './sale-line.entity';
 import { Boleta } from './boleta.entity';
+import { Arqueo } from './arqueo.entity';
 import {
   SubscriptionPlan,
   SubscriptionStatus,
@@ -20,11 +21,11 @@ import {
 describe('TypeORM Entities', () => {
   const metadata = getMetadataArgsStorage();
 
-  it('should register all 9 entities', () => {
+  it('should register all 10 entities', () => {
     const entityNames = metadata.tables.map((t) => t.target);
     const expectedEntities = [
       Tenant, TenantConfig, Subscription, User,
-      Category, Product, Sale, SaleLine, Boleta,
+      Category, Product, Sale, SaleLine, Boleta, Arqueo,
     ];
     for (const entity of expectedEntities) {
       expect(entityNames).toContain(entity);
@@ -44,6 +45,7 @@ describe('TypeORM Entities', () => {
     expect(tableMap.get(Sale)).toBe('sales');
     expect(tableMap.get(SaleLine)).toBe('sale_lines');
     expect(tableMap.get(Boleta)).toBe('boletas');
+    expect(tableMap.get(Arqueo)).toBe('arqueos');
   });
 
   describe('Tenant entity', () => {

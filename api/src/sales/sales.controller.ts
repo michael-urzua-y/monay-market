@@ -73,8 +73,20 @@ export class SalesController {
   @HttpCode(HttpStatus.OK)
   async closeRegister(
     @CurrentUser() user: JwtPayload,
+    @Body('counted_efectivo') counted_efectivo: number,
   ): Promise<CloseRegisterResult> {
-    return this.salesService.closeRegister(user.tenant_id);
+    const userId = (user as any).id || user.user_id;
+    return this.salesService.closeRegister(user.tenant_id, userId, counted_efectivo || 0);
+  }
+
+  @Get('arqueos')
+  @Roles('dueno')
+  async getArqueos(
+    @CurrentUser() user: JwtPayload,
+    @Query('date_from') dateFrom?: string,
+    @Query('date_to') dateTo?: string,
+  ) {
+    return this.salesService.getArqueos(user.tenant_id, dateFrom, dateTo);
   }
 
   @Get(':id/receipt')

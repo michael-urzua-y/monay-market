@@ -130,6 +130,43 @@ def products():
     )
 
 
+@app.route("/shopping-list")
+@login_required
+def shopping_list():
+    """Renderiza el Asistente Inteligente de Compras."""
+    products_data = api.get("/products", params={})
+    products = products_data if isinstance(products_data, list) else []
+
+    grouped_list = {}
+    for p in products:
+        try:
+            stock = float(p.get("stock", 0))
+            crit = float(p.get("critical_stock", 0))
+        except (ValueError, TypeError):
+            stock, crit = 0.0, 0.0
+
+        # Mostrar si el stock crítico está configurado (>0) y el stock está por debajo o igual
+        if crit > 0 and stock <= crit:
+            cat_name = "Sin categoría"
+            if p.get("category") and isinstance(p["category"], dict) and p["category"].get("name"):
+                cat_name = p["category"]["name"]
+
+            if cat_name not in grouped_list:
+                grouped_list[cat_name] = []
+
+            # Inteligencia: Sugerir comprar hasta llegar al doble del stock crítico
+            suggested = (crit * 2) - stock
+            if suggested <= 0:
+                suggested = 1
+
+            p["suggested_qty"] = round(suggested, 3) if p.get("is_weighed") else int(suggested)
+            grouped_list[cat_name].append(p)
+
+    # Ordenar las categorías alfabéticamente para que la lista sea ordenada
+    grouped_list = dict(sorted(grouped_list.items()))
+    return render_template("shopping_list.html", grouped_list=grouped_list)
+
+
 @app.route("/htmx/products/search")
 @login_required
 def htmx_products_search():
@@ -405,6 +442,45 @@ def sales():
     )
 
 
+@app.route("/arqueos")
+@login_required
+def arqueos():
+    """Renderiza el historial de cuadraturas (cierres de caja)."""
+    user = session.get("user", {})
+    if user.get("role") != "dueno":
+        return redirect(url_for("dashboard"))
+
+    date_from = request.args.get("date_from", "").strip()
+    date_to = request.args.get("date_to", "").strip()
+    page = int(request.args.get("page", 1))
+    per_page = 10
+
+    params = {}
+    if date_from:
+        params["date_from"] = date_from
+    if date_to:
+        params["date_to"] = f"{date_to}T23:59:59Z"
+
+    data = api.get("/sales/arqueos", params=params)
+    arqueos_list = data if isinstance(data, list) else []
+
+    total = len(arqueos_list)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * per_page
+    paginated = arqueos_list[start:start + per_page]
+
+    return render_template(
+        "arqueos.html",
+        arqueos=paginated,
+        page=page,
+        total_pages=total_pages,
+        total=total,
+        date_from=date_from,
+        date_to=date_to,
+    )
+
+
 @app.route("/sales/pending-boleta")
 @login_required
 def sales_pending():
@@ -659,15 +735,34 @@ def htmx_dashboard_daily_chart():
 @login_required
 def htmx_dashboard_critical_stock():
     """Return HTML table rows for critical stock products."""
+    page = int(request.args.get("page", 1))
+    per_page = 5
+
     data = api.get("/dashboard/critical-stock")
     if isinstance(data, dict) and (data.get("error") or data.get("status_code", 200) >= 400):
         return render_template("htmx/critical_stock_table.html", products=[])
+    
     products = data if isinstance(data, list) else []
+    
+    # Paginación
+    total = len(products)
+    total_pages = max(1, (total + per_page - 1) // per_page)
+    page = max(1, min(page, total_pages))
+    start = (page - 1) * per_page
+    paginated = products[start:start + per_page]
+
     # Format prices for display
-    for p in products:
+    for p in paginated:
         if isinstance(p, dict):
             p["price"] = format_clp(p.get("price", 0))
-    return render_template("htmx/critical_stock_table.html", products=products)
+            
+    return render_template(
+        "htmx/critical_stock_table.html", 
+        products=paginated,
+        page=page,
+        total_pages=total_pages,
+        total=total
+    )
 
 
 @app.route("/htmx/dashboard/inventory-value")
@@ -683,5 +778,41 @@ def htmx_dashboard_inventory_value():
     )
 
 
+@app.route("/htmx/dashboard/top-products")
+@login_required
+def htmx_dashboard_top_products():
+    """Return HTML fragment with top and bottom selling products."""
+    data = api.get("/dashboard/top-products")
+    if isinstance(data, dict) and (data.get("error") or data.get("status_code", 200) >= 400):
+        return render_template("htmx/error_fragment.html", title="Ranking de Productos")
+    
+    top = data.get("top", []) if isinstance(data, dict) else []
+    bottom = data.get("bottom", []) if isinstance(data, dict) else []
+    
+    # Formatear números para que no salgan decimales vacíos (ej: 5.000 -> 5)
+    for p in top + bottom:
+        try:
+            qty = float(p.get("total_quantity", 0))
+            # 'g' quita los ceros finales, y replace cambia el punto por la coma chilena
+            p["total_quantity"] = f"{qty:g}".replace(".", ",")
+        except (ValueError, TypeError):
+            pass
+
+    return render_template("htmx/top_products.html", top=top, bottom=bottom)
+
+
+@app.route("/htmx/dashboard/peak-hours")
+@login_required
+def htmx_dashboard_peak_hours():
+    """Return JSON array for Chart.js peak hours chart."""
+    period = request.args.get("period", "month")
+    data = api.get("/dashboard/peak-hours", params={"period": period})
+    if isinstance(data, dict) and (data.get("error") or data.get("status_code", 200) >= 400):
+        return jsonify([])
+    if isinstance(data, list):
+        return jsonify(data)
+    return jsonify([])
+
+
 if __name__ == "__main__":
-    app.run(debug=app.config["FLASK_ENV"] == "development", port=5000)
+    app.run(host="0.0.0.0", debug=app.config["FLASK_ENV"] == "development", port=5000)

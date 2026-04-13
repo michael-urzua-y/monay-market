@@ -62,4 +62,17 @@ export class DashboardController {
   ): Promise<InventoryValue> {
     return this.dashboardService.getInventoryValue(user.tenant_id);
   }
+
+  @Get('top-products')
+  async getTopProducts(@CurrentUser() user: JwtPayload) {
+    return this.dashboardService.getTopProducts(user.tenant_id);
+  }
+
+  @Get('peak-hours')
+  async getPeakHours(
+    @CurrentUser() user: JwtPayload,
+    @Query('period') period?: string,
+  ) {
+    return this.dashboardService.getPeakHours(user.tenant_id, period);
+  }
 }

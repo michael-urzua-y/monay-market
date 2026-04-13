@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Cuadraturas de Caja{% endblock %}
+{% block page_title %}Historial de Cuadraturas 💵{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+        <h3 class="card-title" style="margin: 0;">Cierres de turno</h3>
+        <form method="GET" action="{{ url_for('arqueos') }}" style="display: flex; gap: 10px; align-items: flex-end; margin: 0;">
+            <div style="display: flex; flex-direction: column;">
+                <label for="date_from" style="font-size: 0.85rem; color: #64748b; margin-bottom: 4px;">Desde:</label>
+                <input type="date" id="date_from" name="date_from" value="{{ date_from }}" class="form-control" style="padding: 6px 10px; font-size: 0.9rem; border: 1px solid #cbd5e1; border-radius: 6px;">
+            </div>
+            <div style="display: flex; flex-direction: column;">
+                <label for="date_to" style="font-size: 0.85rem; color: #64748b; margin-bottom: 4px;">Hasta:</label>
+                <input type="date" id="date_to" name="date_to" value="{{ date_to }}" class="form-control" style="padding: 6px 10px; font-size: 0.9rem; border: 1px solid #cbd5e1; border-radius: 6px;">
+            </div>
+            <button type="submit" class="btn btn-primary" style="padding: 6px 12px; height: 35px;">Filtrar</button>
+            {% if date_from or date_to %}
+            <a href="{{ url_for('arqueos') }}" class="btn btn-secondary" style="padding: 6px 12px; height: 35px; line-height: 20px; box-sizing: border-box;">Limpiar</a>
+            {% endif %}
+        </form>
+    </div>
+    <div class="card-body" style="padding: 0; overflow-x: auto;">
+        {% if arqueos %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Fecha y Hora</th>
+                    <th>Cajero</th>
+                    <th>Esperado (Sistema)</th>
+                    <th>Contado (Físico)</th>
+                    <th>Diferencia</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in arqueos %}
+                {% set raw_diff = a.get('difference') %}
+                {% set diff = raw_diff | int if raw_diff is not none else 0 %}
+                
+                <tr>
+                    <td class="local-date" data-date="{{ a.get('created_at', '') }}">{{ a.get('created_at', '')[:10] if a.get('created_at') else '—' }}</td>
+                    <td>{{ a.get('user', {}).get('email', 'Desconocido') if a.get('user') else 'Desconocido' }}</td>
+                    <td>{{ a.get('expected_amount', 0) | clp }}</td>
+                    <td>{{ a.get('counted_amount', 0) | clp }}</td>
+                    {% if diff == 0 %}
+                    <td style="font-weight: bold; color: #16a34a;">
+                    {% elif diff < 0 %}
+                    <td style="font-weight: bold; color: #dc2626;">
+                    {% else %}
+                    <td style="font-weight: bold; color: #2563eb;">
+                    {% endif %}
+                        {{ diff | clp }}
+                    </td>
+                    <td>
+                        {% if diff == 0 %}
+                            <span class="badge badge-success">Cuadrada</span>
+                        {% elif diff < 0 %}
+                            <span class="badge badge-error">Faltante</span>
+                        {% else %}
+                            <span class="badge" style="background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe;">Sobrante</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        {% if total_pages > 1 %}
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-top: 1px solid #e2e8f0; background-color: #f8fafc;">
+            <span style="color: #64748b; font-size: 0.9rem;">Mostrando página {{ page }} de {{ total_pages }} ({{ total }} registros)</span>
+            <div style="display: flex; gap: 8px;">
+                {% if page <= 1 %}
+                <a href="{{ url_for('arqueos', page=page-1, date_from=date_from, date_to=date_to) }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.9rem; pointer-events: none; opacity: 0.5;">Anterior</a>
+                {% else %}
+                <a href="{{ url_for('arqueos', page=page-1, date_from=date_from, date_to=date_to) }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.9rem;">Anterior</a>
+                {% endif %}
+                
+                {% if page >= total_pages %}
+                <a href="{{ url_for('arqueos', page=page+1, date_from=date_from, date_to=date_to) }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.9rem; pointer-events: none; opacity: 0.5;">Siguiente</a>
+                {% else %}
+                <a href="{{ url_for('arqueos', page=page+1, date_from=date_from, date_to=date_to) }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.9rem;">Siguiente</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+
+        {% else %}
+        <p class="empty-msg">Aún no hay cuadraturas registradas.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.local-date').forEach(function(el) {
+        var dateStr = el.getAttribute('data-date');
+        if (dateStr) {
+            var d = new Date(dateStr);
+            if (!isNaN(d.getTime())) {
+                var formattedDate = d.toLocaleDateString('es-CL', { year: 'numeric', month: '2-digit', day: '2-digit' });
+                var formattedTime = d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+                el.textContent = formattedDate + ' a las ' + formattedTime;
+            }
+        } else {
+            el.textContent = '—';
+        }
+    });
+});
+</script>
+{% endblock %}

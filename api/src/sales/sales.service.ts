@@ -9,6 +9,7 @@ import { Sale } from '../entities/sale.entity';
 import { SaleLine } from '../entities/sale-line.entity';
 import { Product } from '../entities/product.entity';
 import { PaymentMethod, BoletaStatus } from '../entities/enums';
+import { Arqueo } from '../entities/arqueo.entity';
 import { CreateSaleDto, SaleLineDto } from './dto/create-sale.dto';
 import { FilterSalesDto } from './dto/filter-sales.dto';
 
@@ -175,7 +176,7 @@ export class SalesService {
     for (const line of lines) {
       const product = productMap.get(line.product_id);
       if (!product) continue;
-      const subtotal = line.quantity * product.price;
+      const subtotal = Math.round(line.quantity * product.price);
       total += subtotal;
 
       saleLines.push({
@@ -325,7 +326,7 @@ export class SalesService {
     return sale;
   }
 
-  async closeRegister(tenantId: string): Promise<CloseRegisterResult> {
+  async closeRegister(tenantId: string, userId: string, countedEfectivo: number): Promise<CloseRegisterResult> {
     const now = new Date();
     const startOfDay = new Date(
       now.getFullYear(),
@@ -368,6 +369,18 @@ export class SalesService {
       }
     }
 
+    // Guardar el registro físico del arqueo en la base de datos
+    const arqueoRepo = this.dataSource.getRepository(Arqueo);
+    const arqueo = arqueoRepo.create({
+      tenant_id: tenantId,
+      user_id: userId,
+      expected_amount: total_efectivo,
+      counted_amount: countedEfectivo,
+      difference: countedEfectivo - total_efectivo,
+    });
+    
+    await arqueoRepo.save(arqueo);
+
     return {
       total_ventas,
       cantidad_ventas: ventas.length,
@@ -377,5 +390,22 @@ export class SalesService {
       cantidad_tarjeta,
       ventas,
     };
+  }
+
+  async getArqueos(tenantId: string, dateFrom?: string, dateTo?: string): Promise<Arqueo[]> {
+    const qb = this.dataSource.getRepository(Arqueo)
+      .createQueryBuilder('arqueo')
+      .leftJoinAndSelect('arqueo.user', 'user')
+      .where('arqueo.tenant_id = :tenantId', { tenantId })
+      .orderBy('arqueo.created_at', 'DESC');
+
+    if (dateFrom) {
+      qb.andWhere('arqueo.created_at >= :dateFrom', { dateFrom });
+    }
+    if (dateTo) {
+      qb.andWhere('arqueo.created_at <= :dateTo', { dateTo });
+    }
+
+    return qb.getMany();
   }
 }
