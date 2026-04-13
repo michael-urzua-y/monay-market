@@ -34,7 +34,8 @@ monay-market/
 - Configuración de tenant: módulo SII y impresora térmica
 - Control de suscripción: planes Básico y Pro
 - CRUD de productos con soft-delete, validación de ventas recientes e indicador de venta a granel (`is_weighed`)
-- Soporte para productos a granel con control de stock y cantidades en decimales de alta precisión
+- Soporte para productos a granel con control de stock y cantidades en decimales de alta precisión (numeric(10,3) en PostgreSQL)
+- Migración automática para convertir stock entero a decimal con 3 decimales
 - Lookup de código de barras multi-fuente: Open Food Facts → UPCItemDB → Open Beauty Facts (con fallback encadenado)
 - Importación masiva de productos desde Excel (.xlsx) con validación de formato
 - Descarga de plantilla Excel oficial para importación
@@ -42,7 +43,7 @@ monay-market/
 - Registro de ventas con transacción atómica y SELECT ... FOR UPDATE
 - Pago efectivo (cálculo de vuelto) y tarjeta
 - Deducción de stock atómica (unidades y fracciones) con alertas de stock crítico
-- Cierre de caja: resumen diario desglosado por efectivo/tarjeta
+- Cierre de caja: resumen diario desglosado y registro de cuadratura (arqueo)
 - Módulo SII opcional: emisión de boleta electrónica con reintentos (3 intentos, 15s timeout), soporte Haulmer/OpenFactura/Facturacion.cl, IVA 19%
 - Reintento manual de boletas pendientes
 - Dashboard de métricas: ventas del día, acumulado mensual con variación %, gráfico diario con selector de mes, stock crítico, valorización inventario (plan Pro)
@@ -51,8 +52,9 @@ monay-market/
 
 ### Panel Admin (Flask + HTMX)
 - Login con JWT almacenado en sesión Flask
-- Dashboard con métricas auto-refresh cada 30s vía HTMX: ventas del día, acumulado mensual, valorización inventario, gráfico de ventas diarias (Chart.js) con selector de mes, productos con stock crítico
+- Dashboard con métricas auto-refresh vía HTMX: ventas del día, acumulado mensual, valorización inventario, gráfico diario (Chart.js), productos con stock crítico (paginado)
 - Gestión de productos: CRUD completo con soporte inteligente para productos a granel (decimales), búsqueda en tiempo real con HTMX, paginación server-side, barcode lookup con autocompletado, escáner de cámara
+- Asistente Inteligente de Compras: generación automática de lista de reposición optimizada para móviles, calculando faltantes y agrupada por categorías
 - Ventas: listado con filtros por fecha (desde/hasta) y estado de boleta, paginación, detalle de venta, reintento de boletas pendientes
 - Usuarios: gestión de cajeros (crear, activar/desactivar)
 - Configuración: módulo SII (proveedor, credenciales, sandbox), impresora térmica, estado de suscripción
@@ -68,6 +70,7 @@ monay-market/
 - Pago efectivo con cálculo de vuelto y pago con tarjeta
 - Comprobante visual post-venta
 - Historial de ventas del día con paginación
+- Arqueo de Caja Visual: herramienta interactiva para contar billetes/monedas chilenas y cuadrar el turno
 - Modo offline: ventas pendientes guardadas en IndexedDB, sincronización automática al recuperar conexión
 - Cliente HTTP centralizado (`api.js`) con manejo de expiración de token
 
@@ -202,3 +205,47 @@ GET    /dashboard/inventory-value     → Valorización total del inventario
 | Cajero | cajero@example.com | password123 | cajero |
 
 Tenant: "Almacén Don Pedro" (RUT 76.123.456-7) con 10 categorías y 42 productos chilenos reales (Coca-Cola, Fruna, Nestlé, Colún, Lays, etc.) con precios estimados de almacén en CLP.
+
+## Migraciones
+
+El proyecto incluye migraciones TypeORM para manejar cambios en el esquema de base de datos:
+
+```bash
+# Ejecutar migraciones pendientes
+npm run migration:run
+
+# Revertir la última migración
+npm run migration:revert
+
+# Generar nueva migración (después de cambios en entidades)
+npm run migration:generate -- -n NombreMigracion
+```
+
+### Migración importante: Productos a granel
+La migración `1775941896491-AddIsWeighedToProducts.ts`:
+- Agrega columna `is_weighed` (boolean) a productos
+- Convierte `stock`, `critical_stock` y `sale_lines.quantity` de `integer` a `numeric(10,3)`
+- Permite manejar productos a granel con 3 decimales de precisión
+- Mantiene compatibilidad con productos unitarios existentes
+
+## Desarrollo
+
+### Estructura de módulos
+- **API**: NestJS con TypeScript, TypeORM, PostgreSQL
+- **Dashboard**: Flask con HTMX para interacciones sin JavaScript pesado
+- **PWA**: Vanilla JavaScript con Service Worker para funcionamiento offline
+
+### Pruebas
+```bash
+# Ejecutar tests unitarios
+cd api && npm test
+
+# Ejecutar tests con coverage
+cd api && npm run test:cov
+```
+
+### Despliegue
+1. **API**: Desplegar en servidor Node.js (PM2, Docker, etc.)
+2. **Dashboard**: Desplegar con Gunicorn + Nginx
+3. **PWA**: Servir archivos estáticos desde CDN o servidor web
+4. **Base de datos**: PostgreSQL con réplica para producción
