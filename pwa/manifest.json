@@ -4,8 +4,8 @@
   "description": "Punto de Venta para Almacenes y Minimarkets",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f8fafc",
-  "theme_color": "#2563eb",
+  "background_color": "#111827",
+  "theme_color": "#c9952a",
   "orientation": "portrait-primary",
   "icons": [
     {

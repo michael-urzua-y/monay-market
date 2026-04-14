@@ -9,6 +9,13 @@
         <a href="{{ url_for('sales_pending') }}" class="btn btn-secondary">⏳ Pendientes de boleta</a>
     </div>
 
+    {% if request.args.get('error') %}
+    <div class="alert alert-error">{{ request.args.get('error') }}</div>
+    {% endif %}
+    {% if request.args.get('success') %}
+    <div class="alert alert-success">{{ request.args.get('success') }}</div>
+    {% endif %}
+
     <div class="card" style="margin-bottom: 20px;">
         <div class="card-body">
             <form method="get" action="{{ url_for('sales') }}" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
@@ -70,7 +77,12 @@
                             <span class="badge badge-neutral">No aplica</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td style="white-space: nowrap;">
+                            {% if s.boleta_status in ['pendiente', 'error'] %}
+                            <form action="{{ url_for('sales_retry_boleta', sale_id=s.id) }}" method="post" style="display: inline;">
+                                <button type="submit" class="btn btn-sm btn-primary">🔄 Reintentar</button>
+                            </form>
+                            {% endif %}
                             <a href="{{ url_for('sales_detail', sale_id=s.id) }}" class="btn btn-sm btn-secondary">Ver detalle</a>
                         </td>
                     </tr>

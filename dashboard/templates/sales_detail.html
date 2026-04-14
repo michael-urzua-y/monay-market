@@ -9,6 +9,13 @@
         <a href="{{ url_for('sales') }}" class="btn btn-secondary">← Volver a ventas</a>
     </div>
 
+    {% if request.args.get('error') %}
+    <div class="alert alert-error">{{ request.args.get('error') }}</div>
+    {% endif %}
+    {% if request.args.get('success') %}
+    <div class="alert alert-success">{{ request.args.get('success') }}</div>
+    {% endif %}
+
     <div class="card" style="margin-bottom: 20px;">
         <div class="card-header"><h3 class="card-title">Información de la venta</h3></div>
         <div class="card-body">
@@ -33,6 +40,11 @@
                         {% elif sale.boleta_status == 'error' %}<span class="badge badge-error">Error</span>
                         {% else %}<span class="badge badge-neutral">No aplica</span>{% endif %}
                     </p>
+                    {% if sale.boleta_status in ['pendiente', 'error'] %}
+                    <form action="{{ url_for('sales_retry_boleta', sale_id=sale.id) }}" method="post" style="margin-top: 8px;">
+                        <button type="submit" class="btn btn-sm btn-primary">🔄 Reintentar Boleta</button>
+                    </form>
+                    {% endif %}
                 </div>
             </div>
             {% if sale.payment_method == 'efectivo' and sale.amount_received is not none %}

@@ -11,8 +11,8 @@
   
   <!-- Conexión de la PWA -->
   <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#2563eb">
-  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192x192.png">
+  <meta name="theme-color" content="#c9952a">
+  <link rel="icon" type="image/png" href="/icons/logo-crown.png">
   <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
 </head>
 <body>
@@ -20,7 +20,8 @@
     <!-- Header -->
     <header id="app-header" class="app-header hidden">
       <div class="header-left">
-        <h1 class="header-title">Monay POS</h1>
+        <img src="/icons/logo-crown.png" alt="Monay" style="height: 28px; width: auto; margin-right: 8px; filter: drop-shadow(0 2px 4px rgba(201,149,42,0.3));">
+        <h1 class="header-title">MONAY MARKET</h1>
       </div>
       <nav class="header-nav">
         <button class="nav-btn active" data-screen="sale" aria-label="Venta">
@@ -39,23 +40,31 @@
     <main id="screen-container">
       <!-- Login Screen -->
       <section id="screen-login" class="screen active">
-        <div class="login-container">
-          <div class="login-logo">
-            <h2>Monay Market</h2>
-            <p>Punto de Venta</p>
-          </div>
-          <form id="login-form" class="login-form" novalidate>
-            <div class="form-group">
-              <label for="login-email">Correo electrónico</label>
-              <input type="email" id="login-email" name="email" required autocomplete="email" placeholder="correo@ejemplo.com">
+        <div class="login-container" style="background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #111827 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
+            <div style="width: 100%; max-width: 420px;">
+              <div class="login-card" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(201,149,42,0.2); border-radius: 20px; padding: 48px 40px 40px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); text-align: center;">
+                <div style="margin: 0 auto 24px; width: 160px;">
+                  <img src="/icons/logo-crown.png" alt="Monay Market" style="width: 100%; height: auto;">
+                </div>
+                <h1 style="font-family: Georgia, 'Times New Roman', serif; font-size: 1.8rem; font-weight: 700; margin: 0 0 4px 0; background: linear-gradient(135deg, #f0d060, #c9952a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: 3px; text-align: center;">MONAY MARKET</h1>
+                <div class="login-subtitle" style="color: #94a3b8; text-align: center; margin-bottom: 28px; letter-spacing: 1px; font-size: 0.9rem;">Punto de Venta</div>
+
+                <div id="login-error" class="login-error hidden" style="background: rgba(220,38,38,0.1); color: #fca5a5; padding: 12px; border-radius: 10px; font-size: 0.9rem; margin-bottom: 20px; border: 1px solid rgba(220,38,38,0.3);"></div>
+
+                <form id="login-form">
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label for="login-email" style="color: #94a3b8; font-size: 0.85rem; letter-spacing: 0.5px;">Correo Electrónico</label>
+                        <input type="email" id="login-email" placeholder="cajero@tienda.com" required autocomplete="email" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(201,149,42,0.25); color: #f1f5f9; border-radius: 10px; padding: 14px 16px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label for="login-password" style="color: #94a3b8; font-size: 0.85rem; letter-spacing: 0.5px;">Contraseña</label>
+                        <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(201,149,42,0.25); color: #f1f5f9; border-radius: 10px; padding: 14px 16px;">
+                    </div>
+                    <button type="submit" class="login-btn" style="background: linear-gradient(135deg, #c9952a, #d4a843); color: #0f0f1a; font-weight: 700; letter-spacing: 1px; border: none; padding: 15px; border-radius: 10px; font-size: 1rem; width: 100%; cursor: pointer;">Abrir Caja</button>
+                </form>
+              </div>
+              <div style="text-align: center; margin-top: 24px; color: #475569; font-size: 0.8rem;">© 2026 Monay Market — Todos los derechos reservados</div>
             </div>
-            <div class="form-group">
-              <label for="login-password">Contraseña</label>
-              <input type="password" id="login-password" name="password" required autocomplete="current-password" placeholder="••••••••">
-            </div>
-            <p id="login-error" class="error-message hidden" role="alert"></p>
-            <button type="submit" class="btn btn-primary btn-block">Iniciar sesión</button>
-          </form>
         </div>
       </section>
 

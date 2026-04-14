@@ -516,13 +516,25 @@ def sales_retry_boleta(sale_id):
     """Retry boleta emission for a sale via API."""
     result = api.post(f"/sales/{sale_id}/retry-boleta")
 
+    referer = request.referrer or ""
+    if "pending-boleta" in referer:
+        target = "sales_pending"
+    elif f"/sales/{sale_id}" in referer:
+        target = "sales_detail"
+    else:
+        target = "sales"
+
     if isinstance(result, dict) and result.get("status_code", 200) >= 400:
         error_msg = result.get("message", "Error al reintentar boleta")
         if isinstance(error_msg, list):
             error_msg = ", ".join(error_msg)
-        return redirect(url_for("sales_pending", error=error_msg))
+        if target == "sales_detail":
+            return redirect(url_for("sales_detail", sale_id=sale_id, error=error_msg))
+        return redirect(url_for(target, error=error_msg))
 
-    return redirect(url_for("sales_pending", success="Boleta procesada correctamente"))
+    if target == "sales_detail":
+        return redirect(url_for("sales_detail", sale_id=sale_id, success="Boleta procesada correctamente"))
+    return redirect(url_for(target, success="Boleta procesada correctamente"))
 
 
 @app.route("/users")

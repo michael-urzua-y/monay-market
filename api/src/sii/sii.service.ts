@@ -146,10 +146,10 @@ export class SiiService {
       return { boleta_status: BoletaStatus.ERROR, error: 'Venta no encontrada' };
     }
 
-    if (sale.boleta_status !== BoletaStatus.PENDIENTE) {
+    if (sale.boleta_status !== BoletaStatus.PENDIENTE && sale.boleta_status !== BoletaStatus.ERROR) {
       return {
         boleta_status: sale.boleta_status,
-        error: `Solo se pueden reintentar ventas con estado "pendiente". Estado actual: ${sale.boleta_status}`,
+        error: `Solo se pueden reintentar ventas con estado "pendiente" o "error". Estado actual: ${sale.boleta_status}`,
       };
     }
 
