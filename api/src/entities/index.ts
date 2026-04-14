@@ -8,3 +8,4 @@ export * from './product.entity';
 export * from './sale.entity';
 export * from './sale-line.entity';
 export * from './boleta.entity';
+export * from './merma.entity';

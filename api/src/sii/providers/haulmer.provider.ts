@@ -17,6 +17,16 @@ export class HaulmerProvider implements ISiiProvider {
     saleData: SiiSaleData,
     sandbox: boolean,
   ): Promise<SiiEmitResult> {
+    // Modo de prueba: si la API key es "test" o "sandbox", devolver respuesta simulada
+    if (apiKey === 'test' || apiKey === 'sandbox') {
+      this.logger.log('Modo prueba: retornando boleta simulada');
+      return {
+        folio: Math.floor(Math.random() * 9000000) + 1000000,
+        pdf_url: 'https://www.haullmer.com/test.pdf',
+        timbre_electronico: '<TED><DD><RE>76123456-7</RE><TD>39</TD><F>123456</F><FD>2026-04-14</FD><TST>2026-04-14T12:00:00</TST></DD><FR>76123456-7</FR><RR>1-9</RR><RSR>ALMACEN DON PEDRO</RSR><MNT>10000</MNT><IT1>Producto Prueba</IT1></TED>',
+      };
+    }
+
     const url = sandbox
       ? 'https://dev-api.haulmer.com/v2/dte/document'
       : 'https://api.haulmer.com/v2/dte/document';

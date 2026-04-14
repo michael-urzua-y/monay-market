@@ -13,6 +13,7 @@ import { Category } from './category.entity';
 import { Product } from './product.entity';
 import { Sale } from './sale.entity';
 import { Boleta } from './boleta.entity';
+import { Merma } from './merma.entity';
 
 @Entity('tenants', { schema: 'market' })
 export class Tenant {
@@ -48,4 +49,7 @@ export class Tenant {
 
   @OneToMany(() => Boleta, (boleta) => boleta.tenant)
   boletas: Boleta[];
+
+  @OneToMany(() => Merma, (merma) => merma.tenant)
+  mermas: Merma[];
 }

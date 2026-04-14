@@ -10,6 +10,7 @@ import { SalesModule } from './sales/sales.module';
 import { SiiModule } from './sii/sii.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { WebSocketModule } from './websocket/websocket.module';
+import { MermasModule } from './mermas/mermas.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { WebSocketModule } from './websocket/websocket.module';
     SiiModule,
     DashboardModule,
     WebSocketModule,
+    MermasModule,
   ],
 })
 export class AppModule {}
