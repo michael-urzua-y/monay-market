@@ -12,7 +12,7 @@
     </thead>
     <tbody>
         {% for p in products %}
-        <tr>
+        <tr data-id="{{ p.id }}">
             <td>{{ p.name }}</td>
             <td>{{ p.barcode or '—' }}</td>
             <td>{{ p.price|clp }}</td>

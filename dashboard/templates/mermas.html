@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+
+{% block title %}Mermas{% endblock %}
+{% block page_title %}Control de Mermas{% endblock %}
+
+{% block content %}
+{% set products_list = [] if not (products is iterable and products is not string and products is not mapping) else products %}
+{% set mermas_list = [] if not (mermas is iterable and mermas is not string and mermas is not mapping) else mermas %}
+{% set mermas_stats = stats if stats is mapping else {} %}
+{% set monthly = mermas_stats.get('monthly', 0) %}
+{% set weekly = mermas_stats.get('weekly', 0) %}
+
+{% set per_page = 5 %}
+{% set page = page|default(1)|int %}
+{% set total = mermas_list|length %}
+{% set total_pages = ((total + per_page - 1) / per_page)|int %}
+{% set start = (page - 1) * per_page %}
+{% set paginated = mermas_list[start:start + per_page] %}
+
+<div x-data="{
+    searchQuery: '',
+    selectedProductId: null,
+    selectedProductPrice: 0,
+    products: [],
+    loading: false,
+    currentMonth: '{{ range(2024, 2027)|last }}-04',
+    async search() {
+        if (this.searchQuery.length < 2) {
+            this.products = [];
+            return;
+        }
+        this.loading = true;
+        try {
+            const resp = await fetch('/htmx/products/search?search=' + encodeURIComponent(this.searchQuery), {
+                headers: { 'HX-Request': 'true' }
+            });
+            const html = await resp.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const rows = doc.querySelectorAll('tbody tr');
+            this.products = [];
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 3) {
+                    const name = cells[0].textContent.trim();
+                    const price = parseInt(cells[2].textContent.replace(/[^0-9]/g, '')) || 0;
+                    const id = row.dataset?.id || name;
+                    this.products.push({ id, name, price });
+                }
+            });
+        } catch (e) {
+            this.products = [];
+        }
+        this.loading = false;
+    },
+    selectProduct(product) {
+        this.selectedProductId = product.id;
+        this.selectedProductPrice = product.price;
+        this.searchQuery = product.name;
+        this.products = [];
+    }
+}">
+
+    <!-- Stats summary -->
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
+        <div class="card">
+            <div class="card-body" style="text-align: center;">
+                <div style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 4px;">Esta Semana</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-error);">
+                    ${{ "{:,}".format(weekly|int)|replace(',', '.') }}
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body" style="text-align: center;">
+                <div style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 4px;">Este Mes</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-error);">
+                    ${{ "{:,}".format(monthly|int)|replace(',', '.') }}
+                </div>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-body" style="text-align: center;">
+                <div style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 4px;">Total Registradas</div>
+                <div style="font-size: 1.5rem; font-weight: 700;">{{ total }}</div>
+            </div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+        <!-- Form to register new merma -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Registrar Merma</h3>
+            </div>
+            <div class="card-body">
+                {% if error %}
+                <div class="alert alert-error" style="margin-bottom: 16px;">{{ error }}</div>
+                {% endif %}
+
+                <form method="post">
+                    <div class="form-group" style="position: relative;">
+                        <label for="search-input">Producto</label>
+                        <input type="text" 
+                               id="search-input"
+                               x-model="searchQuery"
+                               @input.debounce.300ms="search()"
+                               @focus="searchQuery.length >= 2 && search()"
+                               placeholder="Buscar producto por nombre..."
+                               autocomplete="off"
+                               style="width: 100%;">
+                        <input type="hidden" name="product_id" :value="selectedProductId">
+                        
+                        <div x-show="products.length > 0"
+                             style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid var(--color-border); border-top: none; border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto; z-index: 50; box-shadow: var(--shadow-md);">
+                            <template x-for="p in products" :key="p.id">
+                                <div @click="selectProduct(p)"
+                                     style="padding: 10px 12px; cursor: pointer; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between;"
+                                     onmouseover="this.style.background='var(--color-bg)';"
+                                     onmouseout="this.style.background='white';">
+                                    <span x-text="p.name"></span>
+                                    <span style="font-weight: 600; color: var(--color-text-muted);" x-text="formatCLP(p.price)"></span>
+                                </div>
+                            </template>
+                        </div>
+                        <div x-show="loading" style="position: absolute; top: 100%; left: 0; right: 0; padding: 10px; text-align: center; color: var(--color-text-muted);">
+                            Buscando...
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="quantity">Cantidad</label>
+                        <input type="number" id="quantity" name="quantity" step="0.001" min="0.001" required placeholder="0">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cause">Causa</label>
+                        <select id="cause" name="cause" required>
+                            <option value="">Seleccionar causa</option>
+                            <option value="vencido">Vencido</option>
+                            <option value="roto">Roto</option>
+                            <option value="robo">Robo</option>
+                            <option value="consumo_interno">Consumo interno</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="note">Nota (opcional)</label>
+                        <input type="text" id="note" name="note" placeholder="Comentario adicional...">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">Registrar Merma</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Mermas history table -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Historial de Mermas</h3>
+            </div>
+            <div class="card-body" style="padding: 0; overflow-x: auto;">
+                {% if paginated %}
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th>Causa</th>
+                            <th style="text-align: right;">Pérdida</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for m in paginated %}
+                        {% set qty = m.quantity|default(0) %}
+                        {% set is_weighed = m.product.is_weighed if m.product and m.product.is_weighed else false %}
+                        <tr>
+                            <td class="local-date" data-date="{{ m.created_at if m.created_at else '' }}">{{ m.created_at[:10] if m.created_at else '-' }}</td>
+                            <td>{{ m.product.name if m.product else '-' }}</td>
+                            <td>{% if is_weighed %}{{ qty }}{% else %}{{ qty|int }}{% endif %}</td>
+                            <td>
+                                <span style="
+                                    {% if m.cause == 'vencido' %}background: #fef3c7; color: #92400e;
+                                    {% elif m.cause == 'roto' %}background: #fecaca; color: #991b1b;
+                                    {% elif m.cause == 'robo' %}background: #e0e7ff; color: #3730a3;
+                                    {% else %}background: #f3f4f6; color: #374151;
+                                    {% endif %}
+                                    padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 500;
+                                ">
+                                {% if m.cause == 'vencido' %}Vencido{% elif m.cause == 'roto' %}Roto{% elif m.cause == 'robo' %}Robo{% else %}Consumo{% endif %}
+                                </span>
+                            </td>
+                            <td style="text-align: right; font-weight: 600; color: var(--color-error);">
+                                ${{ "{:,}".format(m.value_loss|default(0)|int)|replace(',', '.') }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <!-- Pagination -->
+                {% if total_pages > 1 %}
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding: 12px 16px; border-top: 1px solid var(--color-border);">
+                    <span style="color: var(--color-text-muted); font-size: 0.85rem;">
+                        {{ total }} merma{{ 's' if total != 1 else '' }} — Página {{ page }} de {{ total_pages }}
+                    </span>
+                    <div style="display: flex; gap: 8px;">
+                        <a href="{{ url_for('mermas') }}?page={{ page - 1 }}"
+                           class="btn btn-sm btn-secondary"
+                           {% if page <= 1 %}style="pointer-events: none; opacity: 0.5;"{% endif %}>Anterior</a>
+                        <a href="{{ url_for('mermas') }}?page={{ page + 1 }}"
+                           class="btn btn-sm btn-secondary"
+                           {% if page >= total_pages %}style="pointer-events: none; opacity: 0.5;"{% endif %}>Siguiente</a>
+                    </div>
+                </div>
+                {% endif %}
+                {% else %}
+                <p class="empty-msg" style="padding: 40px; text-align: center; color: var(--color-text-muted);">No hay mermas registradas.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function formatCLP(value) {
+    if (value == null) return '$0';
+    return '$' + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+</script>
+{% endblock %}

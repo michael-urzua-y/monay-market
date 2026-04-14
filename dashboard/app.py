@@ -826,5 +826,84 @@ def htmx_dashboard_peak_hours():
     return jsonify([])
 
 
+# --- Mermas routes ---
+
+@app.route("/mermas", methods=["GET", "POST"])
+@login_required
+def mermas():
+    """Render merma registration page (GET) or create merma (POST)."""
+    products_data = api.get("/products", params={})
+    product_list = products_data if isinstance(products_data, list) else []
+
+    # Get current month for stats
+    from datetime import datetime
+    current_month = datetime.now().strftime("%Y-%m")
+    stats_data = api.get("/mermas/stats", params={"month": current_month})
+    stats = stats_data if isinstance(stats_data, dict) else {"monthly": 0, "weekly": 0}
+
+    if request.method == "POST":
+        product_id = request.form.get("product_id", "").strip()
+        quantity = float(str(request.form.get("quantity", 0) or 0).replace(",", "."))
+        cause = request.form.get("cause", "").strip()
+        note = request.form.get("note", "").strip() or None
+
+        if not product_id or not quantity or not cause:
+            return render_template(
+                "mermas.html",
+                products=product_list,
+                mermas=api.get("/mermas") or [],
+                stats=stats,
+                error="Complete todos los campos requeridos",
+            )
+
+        data = {
+            "product_id": product_id,
+            "quantity": quantity,
+            "cause": cause,
+            "note": note,
+        }
+
+        result = api.post("/mermas", data=data)
+
+        if isinstance(result, dict) and result.get("status_code", 200) >= 400:
+            error_msg = result.get("message", "Error al registrar merma")
+            return render_template(
+                "mermas.html",
+                products=product_list,
+                mermas=api.get("/mermas") or [],
+                stats=stats,
+                error=str(error_msg),
+            )
+
+        return redirect(url_for("mermas"))
+
+    mermas_list = api.get("/mermas") or []
+    page = int(request.args.get("page", 1))
+    return render_template("mermas.html", products=product_list, mermas=mermas_list, stats=stats, page=page)
+
+
+# --- Helper functions ---
+
+def format_clp(value):
+    """Format number as CLP currency."""
+    try:
+        return f"${int(value):,}".replace(",", ".")
+    except (ValueError, TypeError):
+        return "$0"
+
+
+def _extract_categories(products_data):
+    """Extract unique categories from products response."""
+    categories = {}
+    if isinstance(products_data, list):
+        for p in products_data:
+            if p.get("category") and isinstance(p["category"], dict):
+                cat_id = p["category"].get("id")
+                cat_name = p["category"].get("name")
+                if cat_id and cat_name:
+                    categories[cat_id] = cat_name
+    return categories
+
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", debug=app.config["FLASK_ENV"] == "development", port=5000)
