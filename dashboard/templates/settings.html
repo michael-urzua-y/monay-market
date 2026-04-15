@@ -9,7 +9,7 @@
     <div class="alert alert-error">{{ error }}</div>
     {% endif %}
     {% if success %}
-    <div class="alert alert-success">{{ success }}</div>
+    <div class="alert alert-success" x-data x-init="setTimeout(() => $el.remove(), 4000)">{{ success }}</div>
     {% endif %}
 
     <div style="display: grid; gap: 20px;">
@@ -36,21 +36,37 @@
                             <option value="haulmer" {% if config.get('sii_provider') == 'haulmer' %}selected{% endif %}>Haulmer</option>
                             <option value="openfactura" {% if config.get('sii_provider') == 'openfactura' %}selected{% endif %}>OpenFactura</option>
                             <option value="facturacion_cl" {% if config.get('sii_provider') == 'facturacion_cl' %}selected{% endif %}>Facturación.cl</option>
+                            <option value="simple_api" {% if config.get('sii_provider') == 'simple_api' %}selected{% endif %}>SimpleAPI</option>
+                            <option value="base_api" {% if config.get('sii_provider') == 'base_api' %}selected{% endif %}>BaseAPI</option>
                         </select>
                     </div>
 
                     <div class="form-group">
                         <label for="sii_api_key">API Key</label>
+                        {% if config.get('sii_api_key') %}
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="color: var(--color-success);">✅ Configurada</span>
+                            <a href="{{ url_for('settings') }}?clear_sii_key=1" style="font-size: 12px; color: var(--color-error);">Limpiar</a>
+                        </div>
+                        {% else %}
                         <input type="text" id="sii_api_key" name="sii_api_key"
-                               value="{{ config.get('sii_api_key', '') or '' }}"
+                               value=""
                                placeholder="Clave de API del proveedor">
+                        {% endif %}
                     </div>
 
                     <div class="form-group">
                         <label for="sii_rut_emisor">RUT Emisor</label>
+                        {% if config.get('sii_rut_emisor') %}
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="color: var(--color-success);">✅ {{ config.get('sii_rut_emisor') }}</span>
+                            <a href="{{ url_for('settings') }}?clear_sii_rut=1" style="font-size: 12px; color: var(--color-error);">Limpiar</a>
+                        </div>
+                        {% else %}
                         <input type="text" id="sii_rut_emisor" name="sii_rut_emisor"
-                               value="{{ config.get('sii_rut_emisor', '') or '' }}"
+                               value=""
                                placeholder="12.345.678-9">
+                        {% endif %}
                     </div>
 
                     <div class="form-group">

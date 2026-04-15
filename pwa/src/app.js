@@ -475,6 +475,29 @@ import { Cart } from './cart.js';
       });
     }
 
+    // Quick amount buttons
+    var quickAmountBtns = document.querySelectorAll('.quick-amount-btn');
+    quickAmountBtns.forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var amount = parseInt(btn.dataset.amount, 10);
+        if (amountInput) {
+          amountInput.value = amount;
+          updatePaymentState();
+        }
+      });
+    });
+
+    // Clear amount button
+    var btnClearAmount = document.getElementById('btn-clear-amount');
+    if (btnClearAmount) {
+      btnClearAmount.addEventListener('click', function() {
+        if (amountInput) {
+          amountInput.value = '';
+          updatePaymentState();
+        }
+      });
+    }
+
     // Pay button
     var btnPay = document.getElementById('btn-pay');
     if (btnPay) {
@@ -647,6 +670,15 @@ import { Cart } from './cart.js';
     // Boleta
     if (receipt.boleta_folio) {
       html += '<div class="receipt-boleta">Boleta N° ' + escapeHtml(receipt.boleta_folio) + '</div>';
+      if (receipt.boleta_timbre) {
+        html += '<div class="receipt-timbre">';
+        html += '<div class="receipt-timbre-label">Timbre Electrónico SII</div>';
+        html += '<div class="receipt-timbre-code">' + escapeHtml(receipt.boleta_timbre.replace(/</g, '&lt;').replace(/>/g, '&gt;')) + '</div>';
+        html += '</div>';
+      }
+      if (receipt.boleta_pdf_url) {
+        html += '<div class="receipt-pdf-link"><a href="' + escapeHtml(receipt.boleta_pdf_url) + '" target="_blank">Ver PDF oficial</a></div>';
+      }
     }
 
     html += '<hr class="receipt-divider">';

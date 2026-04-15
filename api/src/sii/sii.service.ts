@@ -15,6 +15,8 @@ import {
 import { HaulmerProvider } from './providers/haulmer.provider';
 import { OpenFacturaProvider } from './providers/openfactura.provider';
 import { FacturacionClProvider } from './providers/facturacion-cl.provider';
+import { SimpleApiProvider } from './providers/simple-api.provider';
+import { BaseApiProvider } from './providers/base-api.provider';
 
 /** IVA rate in Chile: 19% */
 const IVA_RATE = 0.19;
@@ -49,11 +51,15 @@ export class SiiService {
     haulmerProvider: HaulmerProvider,
     openFacturaProvider: OpenFacturaProvider,
     facturacionClProvider: FacturacionClProvider,
+    simpleApiProvider: SimpleApiProvider,
+    baseApiProvider: BaseApiProvider,
   ) {
     this.providers = new Map<SiiProvider, ISiiProvider>([
       [SiiProvider.HAULMER, haulmerProvider],
       [SiiProvider.OPENFACTURA, openFacturaProvider],
       [SiiProvider.FACTURACION_CL, facturacionClProvider],
+      [SiiProvider.SIMPLE_API, simpleApiProvider],
+      [SiiProvider.BASE_API, baseApiProvider],
     ]);
   }
 

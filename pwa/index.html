@@ -144,7 +144,17 @@
           <div id="payment-efectivo" class="payment-details">
             <div class="form-group">
               <label for="amount-received">Monto recibido</label>
-              <input type="number" id="amount-received" class="amount-input" placeholder="$0" min="0" inputmode="numeric">
+              <div class="amount-input-wrapper">
+                <input type="number" id="amount-received" class="amount-input" placeholder="$0" min="0" inputmode="numeric">
+                <button type="button" id="btn-clear-amount" class="btn-clear-amount" title="Limpiar">✕</button>
+              </div>
+            </div>
+            <div class="quick-amount-btns">
+              <button type="button" class="quick-amount-btn" data-amount="1000">$1.000</button>
+              <button type="button" class="quick-amount-btn" data-amount="2000">$2.000</button>
+              <button type="button" class="quick-amount-btn" data-amount="5000">$5.000</button>
+              <button type="button" class="quick-amount-btn" data-amount="10000">$10.000</button>
+              <button type="button" class="quick-amount-btn" data-amount="20000">$20.000</button>
             </div>
             <div id="change-display" class="change-display hidden">
               <span id="change-label">Vuelto:</span>

@@ -44,11 +44,12 @@ monay-market/
 - Pago efectivo (cálculo de vuelto) y tarjeta
 - Deducción de stock atómica (unidades y fracciones) con alertas de stock crítico
 - Cierre de caja: resumen diario desglosado y registro de cuadratura (arqueo)
-- Módulo SII opcional: emisión de boleta electrónica con reintentos (3 intentos, 15s timeout), soporte Haulmer/OpenFactura/Facturacion.cl, IVA 19%
+- Módulo SII opcional: emisión de boleta electrónica con reintentos (3 intentos, 15s timeout), soporte Haulmer/OpenFactura/Facturación.cl/SimpleAPI/BaseAPI, IVA 19%
 - Reintento manual de boletas pendientes
 - Dashboard de métricas: ventas del día, acumulado mensual con variación %, gráfico diario con selector de mes, stock crítico, valorización inventario (plan Pro)
 - Comprobante visual estructurado con datos de tienda, productos, pago y boleta
 - WebSocket Gateway con autenticación JWT: eventos sale:created, stock:updated, stock:critical filtrados por tenant
+- Módulo de mermas: registro de pérdidas de inventario por causas (vencido, roto, robo, consumo interno), estadísticas mensuales
 
 ### Panel Admin (Flask + HTMX)
 - Login con JWT almacenado en sesión Flask
@@ -58,6 +59,7 @@ monay-market/
 - Ventas: listado con filtros por fecha (desde/hasta) y estado de boleta, paginación, detalle de venta, reintento de boletas pendientes
 - Usuarios: gestión de cajeros (crear, activar/desactivar)
 - Configuración: módulo SII (proveedor, credenciales, sandbox), impresora térmica, estado de suscripción
+- Mermas: registro de pérdidas de inventario (causa, cantidad, valor), estadísticas mensuales, paginación
 
 ### PWA Punto de Venta
 - Instalable en celular como app nativa (manifest.json + íconos PWA 192x192 y 512x512)
@@ -68,11 +70,12 @@ monay-market/
 - "Calculadora Mágica" para productos a granel (ingreso de peso exacto o monto a cobrar con cálculo automático)
 - Carrito modular (`cart.js`): agregar, modificar cantidad, eliminar, vaciar, control de stock
 - Pago efectivo con cálculo de vuelto y pago con tarjeta
-- Comprobante visual post-venta
+- Comprobante visual post-venta con timbre electrónico SII y enlace a PDF
 - Historial de ventas del día con paginación
 - Arqueo de Caja Visual: herramienta interactiva para contar billetes/monedas chilenas y cuadrar el turno
 - Modo offline: ventas pendientes guardadas en IndexedDB, sincronización automática al recuperar conexión
 - Cliente HTTP centralizado (`api.js`) con manejo de expiración de token
+- Botones de monto rápido para vuelto ($1.000, $2.000, $5.000, $10.000, $20.000)
 
 ## Base de datos
 
@@ -89,6 +92,7 @@ Todas las tablas de negocio viven en el esquema `market` (la tabla de migracione
 | `sales` | Ventas registradas con total, método de pago (efectivo/tarjeta), monto recibido, vuelto y estado de boleta SII | vacía (se llena al vender) |
 | `sale_lines` | Líneas de detalle de cada venta: producto, cantidad (entera o fraccional), precio unitario y subtotal | vacía |
 | `boletas` | Boletas electrónicas emitidas ante el SII: folio, timbre electrónico, PDF y proveedor | vacía |
+| `mermas` | Registro de pérdidas de inventario por causa (vencido, roto, robo, consumo interno) | vacía |
 
 ## Requisitos
 
@@ -195,6 +199,11 @@ GET    /dashboard/monthly             → Acumulado mensual con variación %
 GET    /dashboard/daily-chart         → Gráfico de ventas diarias (?month=YYYY-MM)
 GET    /dashboard/critical-stock      → Productos con stock crítico (todos los planes)
 GET    /dashboard/inventory-value     → Valorización total del inventario
+
+# Mermas (solo dueño)
+POST   /mermas                        → Registrar pérdida de inventario
+GET    /mermas                        → Listar mermas del tenant
+GET    /mermas/stats                  → Estadísticas de mermas por período (?month=YYYY-MM)
 ```
 
 ## Datos de prueba (seed)

@@ -9,6 +9,8 @@ import { SiiController } from './sii.controller';
 import { HaulmerProvider } from './providers/haulmer.provider';
 import { OpenFacturaProvider } from './providers/openfactura.provider';
 import { FacturacionClProvider } from './providers/facturacion-cl.provider';
+import { SimpleApiProvider } from './providers/simple-api.provider';
+import { BaseApiProvider } from './providers/base-api.provider';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { FacturacionClProvider } from './providers/facturacion-cl.provider';
     HaulmerProvider,
     OpenFacturaProvider,
     FacturacionClProvider,
+    SimpleApiProvider,
+    BaseApiProvider,
   ],
   exports: [SiiService],
 })

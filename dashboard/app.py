@@ -606,6 +606,13 @@ def settings():
     if user.get("role") != "dueno":
         return redirect(url_for("dashboard"))
 
+    if request.args.get("clear_sii_key") == "1":
+        api.patch("/tenant/config/sii", data={"sii_api_key": ""})
+        return redirect(url_for("settings"))
+    if request.args.get("clear_sii_rut") == "1":
+        api.patch("/tenant/config/sii", data={"sii_rut_emisor": ""})
+        return redirect(url_for("settings"))
+
     config_data = api.get("/tenant/config")
     subscription_data = api.get("/tenant/subscription")
 

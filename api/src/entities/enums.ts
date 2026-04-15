@@ -30,4 +30,6 @@ export enum SiiProvider {
   HAULMER = 'haulmer',
   OPENFACTURA = 'openfactura',
   FACTURACION_CL = 'facturacion_cl',
+  SIMPLE_API = 'simple_api',
+  BASE_API = 'base_api',
 }

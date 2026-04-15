@@ -14,6 +14,7 @@ export interface ReceiptItem {
 
 export interface ReceiptData {
   store_name: string;
+  store_rut: string;
   date: string;
   items: ReceiptItem[];
   total: number;
@@ -21,6 +22,8 @@ export interface ReceiptData {
   amount_received: number | null;
   change_amount: number | null;
   boleta_folio: string | null;
+  boleta_timbre: string | null;
+  boleta_pdf_url: string | null;
 }
 
 @Injectable()
@@ -51,9 +54,18 @@ export class ReceiptService {
       sale.boleta_status === BoletaStatus.EMITIDA && sale.boleta
         ? sale.boleta.folio
         : null;
+    const boletaTimbre =
+      sale.boleta_status === BoletaStatus.EMITIDA && sale.boleta
+        ? sale.boleta.timbre_electronico
+        : null;
+    const boletaPdfUrl =
+      sale.boleta_status === BoletaStatus.EMITIDA && sale.boleta
+        ? sale.boleta.pdf_url
+        : null;
 
     return {
       store_name: storeName,
+      store_rut: tenant?.rut || '',
       date: sale.created_at.toISOString(),
       items,
       total: sale.total,
@@ -67,6 +79,8 @@ export class ReceiptService {
           ? sale.change_amount
           : null,
       boleta_folio: boletaFolio,
+      boleta_timbre: boletaTimbre,
+      boleta_pdf_url: boletaPdfUrl,
     };
   }
 }
