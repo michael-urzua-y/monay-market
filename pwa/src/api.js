@@ -13,7 +13,10 @@ export const api = {
     localStorage.removeItem('monay_token');
   },
   request: function (method, path, body) {
-    const headers = { 'Content-Type': 'application/json' };
+    const headers = {
+      'Content-Type': 'application/json',
+      'bypass-tunnel-reminder': 'true',
+    };
     const token = this.getToken();
     if (token) {
       headers['Authorization'] = 'Bearer ' + token;

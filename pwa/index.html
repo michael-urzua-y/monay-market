@@ -6,14 +6,15 @@
   <meta name="description" content="Monay Market POS - Sistema de punto de venta">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Monay POS">
+  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
   <title>Monay Market POS</title>
   <link rel="stylesheet" href="src/styles.css">
   
   <!-- Conexión de la PWA -->
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#c9952a">
-  <link rel="icon" type="image/png" href="/icons/logo-crown.png">
-  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <link rel="icon" type="image/png" href="/icons/icon-192x192.png">
 </head>
 <body>
   <div id="app">
@@ -242,7 +243,7 @@
     </main>
   </div>
 
-  <script>window.MONAY_API_URL = 'http://' + window.location.hostname + ':3000';</script>
+  <script>window.MONAY_API_URL = window.location.origin;</script>
   <script type="module" src="src/app.js"></script>
 </body>
 </html>
