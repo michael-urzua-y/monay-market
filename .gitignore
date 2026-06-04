@@ -8,6 +8,12 @@ node_modules/
 dist/
 coverage/
 
+# Local tool output
+.playwright-mcp/
+
+# Legacy/local-only proxy experiment
+proxy-squid/
+
 # Environment
 .env
 .env.local
