@@ -30,6 +30,7 @@ class TestLoginRoute:
         """GET /login should redirect to dashboard if already logged in."""
         with client.session_transaction() as sess:
             sess["jwt_token"] = "some-token"
+            sess["user"] = {"email": "dueno@example.com", "role": "dueno"}
         resp = client.get("/login")
         assert resp.status_code == 302
         assert "/dashboard" in resp.headers["Location"]
@@ -53,6 +54,24 @@ class TestLoginRoute:
             assert sess["user"]["email"] == "admin@test.com"
 
     @patch("app.api")
+    def test_post_login_rejects_non_owner(self, mock_api, client):
+        """POST /login should reject users that are not owners."""
+        mock_api.post.return_value = {
+            "status_code": 201,
+            "accessToken": "jwt-cajero-123",
+            "user": {"email": "cajero@example.com", "role": "cajero"},
+        }
+        resp = client.post(
+            "/login",
+            data={"email": "cajero@example.com", "password": "secret123"},
+            follow_redirects=True,
+        )
+        assert resp.status_code == 200
+        assert "perfil due" in resp.data.decode("utf-8")
+        with client.session_transaction() as sess:
+            assert "jwt_token" not in sess
+
+    @patch("app.api")
     def test_post_login_failure_shows_error(self, mock_api, client):
         """POST /login with invalid credentials shows error message."""
         mock_api.post.return_value = {
@@ -62,6 +81,7 @@ class TestLoginRoute:
         resp = client.post(
             "/login",
             data={"email": "bad@test.com", "password": "wrong"},
+            follow_redirects=True,
         )
         assert resp.status_code == 200
         assert "Credenciales inv" in resp.data.decode("utf-8")
@@ -76,6 +96,7 @@ class TestLoginRoute:
         resp = client.post(
             "/login",
             data={"email": "admin@test.com", "password": "secret123"},
+            follow_redirects=True,
         )
         assert resp.status_code == 200
         assert "Credenciales inv" in resp.data.decode("utf-8")
@@ -107,11 +128,21 @@ class TestLoginRequired:
         assert "/login" in resp.headers["Location"]
 
     def test_protected_route_accessible_with_token(self, client):
-        """Protected routes should be accessible with JWT in session."""
+        """Protected routes should be accessible for owner sessions."""
         with client.session_transaction() as sess:
             sess["jwt_token"] = "valid-token"
+            sess["user"] = {"email": "dueno@example.com", "role": "dueno"}
         resp = client.get("/dashboard")
         assert resp.status_code == 200
+
+    def test_protected_route_redirects_for_non_owner(self, client):
+        """Protected routes should redirect non-owner sessions."""
+        with client.session_transaction() as sess:
+            sess["jwt_token"] = "valid-token"
+            sess["user"] = {"email": "cajero@example.com", "role": "cajero"}
+        resp = client.get("/dashboard")
+        assert resp.status_code == 302
+        assert "/login" in resp.headers["Location"]
 
     def test_root_redirects_to_login_without_token(self, client):
         """Root / should redirect to login without JWT."""

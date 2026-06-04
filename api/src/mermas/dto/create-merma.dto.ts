@@ -1,13 +1,22 @@
-import { IsNotEmpty, IsNumber, IsEnum, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { MermaCause } from '../../entities/merma.entity';
 
 export class CreateMermaDto {
   @IsNotEmpty()
-  @IsString()
+  @IsUUID('4')
   product_id: string;
 
   @IsNotEmpty()
-  @IsNumber()
+  @IsNumber({ maxDecimalPlaces: 3 })
   @Min(0.001)
   quantity: number;
 
@@ -17,5 +26,6 @@ export class CreateMermaDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(500)
   note?: string;
 }

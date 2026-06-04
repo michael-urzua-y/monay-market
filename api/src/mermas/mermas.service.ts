@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, MoreThanOrEqual, LessThan } from 'typeorm';
-import { Merma, MermaCause } from '../entities/merma.entity';
+import { Repository, Between, DataSource, MoreThanOrEqual } from 'typeorm';
+import { Merma } from '../entities/merma.entity';
 import { Product } from '../entities/product.entity';
 import { CreateMermaDto } from './dto/create-merma.dto';
 
@@ -10,8 +10,7 @@ export class MermasService {
   constructor(
     @InjectRepository(Merma)
     private mermasRepository: Repository<Merma>,
-    @InjectRepository(Product)
-    private productsRepository: Repository<Product>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async getStatsByPeriod(tenantId: string, month: string): Promise<{ monthly: number; weekly: number }> {
@@ -46,33 +45,39 @@ export class MermasService {
   }
 
   async create(tenantId: string, dto: CreateMermaDto): Promise<Merma> {
-    const product = await this.productsRepository.findOne({
-      where: { id: dto.product_id, tenant_id: tenantId },
+    return this.dataSource.transaction(async (manager) => {
+      const product = await manager
+        .createQueryBuilder(Product, 'product')
+        .setLock('pessimistic_write')
+        .where('product.id = :productId', { productId: dto.product_id })
+        .andWhere('product.tenant_id = :tenantId', { tenantId })
+        .andWhere('product.active = :active', { active: true })
+        .getOne();
+
+      if (!product) {
+        throw new NotFoundException('Producto no encontrado');
+      }
+
+      if (product.stock < dto.quantity) {
+        throw new BadRequestException('Stock insuficiente');
+      }
+
+      const valueLoss = Math.round(product.price * dto.quantity);
+
+      const merma = manager.create(Merma, {
+        tenant_id: tenantId,
+        product_id: dto.product_id,
+        quantity: dto.quantity,
+        cause: dto.cause,
+        value_loss: valueLoss,
+        note: dto.note || null,
+      });
+
+      product.stock = this.roundQuantity(Number(product.stock) - dto.quantity);
+      await manager.save(Product, product);
+
+      return manager.save(Merma, merma);
     });
-
-    if (!product) {
-      throw new NotFoundException('Producto no encontrado');
-    }
-
-    if (product.stock < dto.quantity) {
-      throw new BadRequestException('Stock insuficiente');
-    }
-
-    const valueLoss = product.price * dto.quantity;
-
-    const merma = this.mermasRepository.create({
-      tenant_id: tenantId,
-      product_id: dto.product_id,
-      quantity: dto.quantity,
-      cause: dto.cause,
-      value_loss: valueLoss,
-      note: dto.note || null,
-    });
-
-    product.stock = Number(product.stock) - dto.quantity;
-    await this.productsRepository.save(product);
-
-    return this.mermasRepository.save(merma);
   }
 
   async findAll(tenantId: string): Promise<Merma[]> {
@@ -105,5 +110,9 @@ export class MermasService {
     }));
 
     return { totalPerdido, porCausa };
+  }
+
+  private roundQuantity(value: number): number {
+    return Math.round(value * 1000) / 1000;
   }
 }

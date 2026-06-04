@@ -27,6 +27,26 @@ export class UpdateSiiConfigDto {
   sii_rut_emisor?: string | null;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  sii_razon_social?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  sii_giro?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  sii_certificado_path?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  sii_certificado_password?: string | null;
+
+  @IsOptional()
   @IsBoolean()
   sii_sandbox_mode?: boolean;
 }

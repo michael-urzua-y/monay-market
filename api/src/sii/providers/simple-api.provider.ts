@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SiiProvider } from '../../entities/enums';
 import {
   ISiiProvider,
@@ -11,6 +12,8 @@ import {
 export class SimpleApiProvider implements ISiiProvider {
   private readonly logger = new Logger(SimpleApiProvider.name);
   readonly providerName = SiiProvider.SIMPLE_API;
+
+  constructor(private readonly configService: ConfigService) {}
 
   async emitBoleta(
     apiKey: string,
@@ -32,6 +35,14 @@ export class SimpleApiProvider implements ISiiProvider {
       : 'https://api.simpleapi.cl';
 
     const fecha = saleData.fecha.toISOString().split('T')[0];
+    const credentialRut = this.getRequiredCredential(
+      'SII_SIMPLEAPI_RUT',
+      'RUT SimpleAPI',
+    );
+    const credentialPassword = this.getRequiredCredential(
+      'SII_SIMPLEAPI_PASSWORD',
+      'password SimpleAPI',
+    );
 
     const detalles = saleData.items.map((item, index) => ({
       NroLinDet: index + 1,
@@ -60,6 +71,10 @@ export class SimpleApiProvider implements ISiiProvider {
         total: saleData.monto_total,
       },
       detalles,
+      credentials: {
+        rut: credentialRut,
+        password: credentialPassword,
+      },
     };
 
     const endpoints = [
@@ -112,5 +127,13 @@ export class SimpleApiProvider implements ISiiProvider {
 
     this.logger.error(`Todos los endpoints de SimpleAPI fallaron`);
     throw lastError || new Error('No se pudo conectar a SimpleAPI');
+  }
+
+  private getRequiredCredential(envKey: string, label: string): string {
+    const value = this.configService.get<string>(envKey)?.trim();
+    if (!value) {
+      throw new SiiCredentialError(`${label} no configurado en variables de entorno`);
+    }
+    return value;
   }
 }

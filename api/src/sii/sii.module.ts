@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { HttpModule } from '@nestjs/axios';
 import { TenantConfig } from '../entities/tenant-config.entity';
@@ -14,6 +15,7 @@ import { BaseApiProvider } from './providers/base-api.provider';
 
 @Module({
   imports: [
+    ConfigModule,
     TypeOrmModule.forFeature([TenantConfig, Sale, Boleta]),
     HttpModule.register({ timeout: 15000 }),
   ],

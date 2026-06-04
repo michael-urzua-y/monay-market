@@ -9,6 +9,8 @@ import { BoletaStatus, SiiProvider } from '../entities/enums';
 import { HaulmerProvider } from './providers/haulmer.provider';
 import { OpenFacturaProvider } from './providers/openfactura.provider';
 import { FacturacionClProvider } from './providers/facturacion-cl.provider';
+import { SimpleApiProvider } from './providers/simple-api.provider';
+import { BaseApiProvider } from './providers/base-api.provider';
 import {
   SiiCredentialError,
   SiiEmitResult,
@@ -113,6 +115,14 @@ describe('SiiService', () => {
         {
           provide: FacturacionClProvider,
           useValue: { providerName: SiiProvider.FACTURACION_CL, emitBoleta: jest.fn() },
+        },
+        {
+          provide: SimpleApiProvider,
+          useValue: { providerName: SiiProvider.SIMPLE_API, emitBoleta: jest.fn() },
+        },
+        {
+          provide: BaseApiProvider,
+          useValue: { providerName: SiiProvider.BASE_API, emitBoleta: jest.fn() },
         },
       ],
     }).compile();

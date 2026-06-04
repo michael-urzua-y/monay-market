@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SiiProvider } from '../../entities/enums';
 import {
   ISiiProvider,
@@ -11,6 +12,8 @@ import {
 export class BaseApiProvider implements ISiiProvider {
   private readonly logger = new Logger(BaseApiProvider.name);
   readonly providerName = SiiProvider.BASE_API;
+
+  constructor(private readonly configService: ConfigService) {}
 
   async emitBoleta(
     apiKey: string,
@@ -29,33 +32,40 @@ export class BaseApiProvider implements ISiiProvider {
 
     const baseUrl = 'https://api.baseapi.cl/api/v1';
 
-    const fecha = saleData.fecha.toISOString().split('T')[0];
+    const rutSinPuntos = saleData.rut_emisor.replace(/\./g, '');
+    const rutPersonal = this.getRequiredCredential(
+      'SII_BASEAPI_RUT',
+      'RUT BaseAPI',
+    ).replace(/\./g, '');
+    const password = this.getRequiredCredential(
+      'SII_BASEAPI_PASSWORD',
+      'password BaseAPI',
+    );
+    const certPassword = this.getRequiredCredential(
+      'SII_BASEAPI_CERT_PASSWORD',
+      'clave de certificado BaseAPI',
+    );
 
     const payload = {
-      tipo: 39,
-      folio: 0,
-      fecha_emision: fecha,
-      emisor: {
-        rut: saleData.rut_emisor,
-        razon_social: 'Almacén Don Pedro',
-      },
+      rut: rutPersonal,
+      password,
+      clave_certificado: certPassword,
+      rut_empresa: rutSinPuntos,
       receptor: {
         rut: '66666666-6',
-        razon_social: 'Cliente Final',
       },
       items: saleData.items.map((item) => ({
         nombre: item.nombre.substring(0, 80),
         cantidad: Number(item.cantidad.toFixed(3)),
         precio: Math.round(item.precio_unitario),
-        total: Math.round(item.subtotal),
       })),
-      neto: saleData.monto_neto,
-      iva: saleData.iva,
-      total: saleData.monto_total,
+      forma_pago: 'CONTADO',
+      tipo_dte: 33,
+      descargar_pdf: false,
     };
 
     try {
-      const response = await fetch(`${baseUrl}/sii/dte/emitir`, {
+      const response = await fetch(`${baseUrl}/sii/dte/emitir/factura`, {
         method: 'POST',
         headers: {
           'X-API-Key': apiKey,
@@ -93,5 +103,13 @@ export class BaseApiProvider implements ISiiProvider {
       this.logger.error(`Error emitiendo boleta en BaseAPI: ${errorMessage}`);
       throw new Error(`Error BaseAPI: ${errorMessage}`);
     }
+  }
+
+  private getRequiredCredential(envKey: string, label: string): string {
+    const value = this.configService.get<string>(envKey)?.trim();
+    if (!value) {
+      throw new SiiCredentialError(`${label} no configurado en variables de entorno`);
+    }
+    return value;
   }
 }

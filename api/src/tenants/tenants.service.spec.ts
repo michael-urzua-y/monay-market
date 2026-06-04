@@ -21,6 +21,10 @@ describe('TenantsService', () => {
     sii_provider: null,
     sii_api_key: null,
     sii_rut_emisor: null,
+    sii_razon_social: null,
+    sii_giro: null,
+    sii_certificado_path: null,
+    sii_certificado_password: null,
     sii_sandbox_mode: true,
     printer_enabled: false,
     updated_at: new Date(),
@@ -61,9 +65,21 @@ describe('TenantsService', () => {
 
   describe('getConfig', () => {
     it('should return tenant config when found', async () => {
-      configFindOne.mockResolvedValue(mockConfig);
+      configFindOne.mockResolvedValue({
+        ...mockConfig,
+        sii_api_key: 'secret-api-key',
+        sii_certificado_path: '/private/cert.pfx',
+        sii_certificado_password: 'secret-password',
+      });
       const result = await service.getConfig(tenantId);
-      expect(result).toEqual(mockConfig);
+      expect(result).toEqual(
+        expect.objectContaining({
+          ...mockConfig,
+          sii_api_key: 'configured',
+          sii_certificado_path: 'configured',
+          sii_certificado_password: null,
+        }),
+      );
       expect(configFindOne).toHaveBeenCalledWith({
         where: { tenant_id: tenantId },
       });

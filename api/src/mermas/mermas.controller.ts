@@ -1,12 +1,13 @@
 import { Controller, Post, Get, Body, UseGuards, Query } from '@nestjs/common';
 import { JwtAuthGuard, TenantGuard, RolesGuard } from '../common/guards';
-import { CurrentUser } from '../common/decorators';
+import { CurrentUser, Roles } from '../common/decorators';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { MermasService } from './mermas.service';
 import { CreateMermaDto } from './dto/create-merma.dto';
 
 @Controller('mermas')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
+@Roles('dueno')
 export class MermasController {
   constructor(private readonly mermasService: MermasService) {}
 

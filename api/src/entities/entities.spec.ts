@@ -9,6 +9,7 @@ import { Sale } from './sale.entity';
 import { SaleLine } from './sale-line.entity';
 import { Boleta } from './boleta.entity';
 import { Arqueo } from './arqueo.entity';
+import { Merma } from './merma.entity';
 import {
   SubscriptionPlan,
   SubscriptionStatus,
@@ -21,11 +22,11 @@ import {
 describe('TypeORM Entities', () => {
   const metadata = getMetadataArgsStorage();
 
-  it('should register all 10 entities', () => {
+  it('should register all 11 entities', () => {
     const entityNames = metadata.tables.map((t) => t.target);
     const expectedEntities = [
       Tenant, TenantConfig, Subscription, User,
-      Category, Product, Sale, SaleLine, Boleta, Arqueo,
+      Category, Product, Sale, SaleLine, Boleta, Arqueo, Merma,
     ];
     for (const entity of expectedEntities) {
       expect(entityNames).toContain(entity);
@@ -66,6 +67,8 @@ describe('TypeORM Entities', () => {
         expect.arrayContaining([
           'id', 'tenant_id', 'sii_enabled', 'sii_provider',
           'sii_api_key', 'sii_rut_emisor', 'sii_sandbox_mode',
+          'sii_razon_social', 'sii_giro', 'sii_certificado_path',
+          'sii_certificado_password',
           'printer_enabled', 'updated_at',
         ]),
       );
@@ -108,7 +111,7 @@ describe('TypeORM Entities', () => {
         .map((c) => c.propertyName);
       expect(columns).toEqual(
         expect.arrayContaining([
-          'id', 'tenant_id', 'user_id', 'total',
+          'id', 'tenant_id', 'user_id', 'client_sale_id', 'total',
           'payment_method', 'amount_received', 'change_amount',
           'boleta_status', 'created_at',
         ]),
@@ -160,10 +163,12 @@ describe('TypeORM Entities', () => {
       expect(BoletaStatus.ERROR).toBe('error');
     });
 
-    it('should define SiiProvider with all 3 providers', () => {
+    it('should define SiiProvider with all 5 providers', () => {
       expect(SiiProvider.HAULMER).toBe('haulmer');
       expect(SiiProvider.OPENFACTURA).toBe('openfactura');
       expect(SiiProvider.FACTURACION_CL).toBe('facturacion_cl');
+      expect(SiiProvider.SIMPLE_API).toBe('simple_api');
+      expect(SiiProvider.BASE_API).toBe('base_api');
     });
   });
 

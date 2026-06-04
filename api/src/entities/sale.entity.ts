@@ -18,6 +18,10 @@ import { PaymentMethod, BoletaStatus } from './enums';
 @Entity('sales', { schema: 'market' })
 @Index('IDX_sale_tenant_created_at', ['tenant_id', 'created_at'])
 @Index('IDX_sale_tenant_boleta_status', ['tenant_id', 'boleta_status'])
+@Index('IDX_sale_tenant_client_sale_id', ['tenant_id', 'client_sale_id'], {
+  unique: true,
+  where: '"client_sale_id" IS NOT NULL',
+})
 export class Sale {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -27,6 +31,9 @@ export class Sale {
 
   @Column({ name: 'user_id', type: 'uuid' })
   user_id: string;
+
+  @Column({ name: 'client_sale_id', type: 'varchar', length: 100, nullable: true })
+  client_sale_id: string | null;
 
   @Column({ type: 'integer' })
   total: number;

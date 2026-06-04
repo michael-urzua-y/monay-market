@@ -14,7 +14,7 @@ export class CreatePosAlmacenSchema1700000000000 implements MigrationInterface {
     await queryRunner.query(`CREATE TYPE "market"."user_role_enum" AS ENUM ('dueno', 'cajero')`);
     await queryRunner.query(`CREATE TYPE "market"."payment_method_enum" AS ENUM ('efectivo', 'tarjeta')`);
     await queryRunner.query(`CREATE TYPE "market"."boleta_status_enum" AS ENUM ('no_aplica', 'emitida', 'pendiente', 'error')`);
-    await queryRunner.query(`CREATE TYPE "market"."sii_provider_enum" AS ENUM ('haulmer', 'openfactura', 'facturacion_cl')`);
+    await queryRunner.query(`CREATE TYPE "market"."sii_provider_enum" AS ENUM ('haulmer', 'openfactura', 'facturacion_cl', 'simple_api', 'base_api')`);
 
     // Create tables
     await queryRunner.query(`
@@ -100,6 +100,7 @@ export class CreatePosAlmacenSchema1700000000000 implements MigrationInterface {
         "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
         "tenant_id" uuid NOT NULL,
         "user_id" uuid NOT NULL,
+        "client_sale_id" varchar(100),
         "total" integer NOT NULL,
         "payment_method" "market"."payment_method_enum" NOT NULL,
         "amount_received" integer,
@@ -146,6 +147,7 @@ export class CreatePosAlmacenSchema1700000000000 implements MigrationInterface {
     await queryRunner.query(`CREATE INDEX "IDX_product_tenant_active_stock" ON "market"."products" ("tenant_id", "active", "stock")`);
     await queryRunner.query(`CREATE INDEX "IDX_sale_tenant_created_at" ON "market"."sales" ("tenant_id", "created_at")`);
     await queryRunner.query(`CREATE INDEX "IDX_sale_tenant_boleta_status" ON "market"."sales" ("tenant_id", "boleta_status")`);
+    await queryRunner.query(`CREATE UNIQUE INDEX "IDX_sale_tenant_client_sale_id" ON "market"."sales" ("tenant_id", "client_sale_id") WHERE "client_sale_id" IS NOT NULL`);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

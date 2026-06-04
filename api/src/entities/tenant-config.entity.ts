@@ -34,6 +34,18 @@ export class TenantConfig {
   @Column({ name: 'sii_rut_emisor', type: 'varchar', length: 20, nullable: true })
   sii_rut_emisor: string | null;
 
+  @Column({ name: 'sii_razon_social', type: 'varchar', length: 200, nullable: true })
+  sii_razon_social: string | null;
+
+  @Column({ name: 'sii_giro', type: 'varchar', length: 200, nullable: true })
+  sii_giro: string | null;
+
+  @Column({ name: 'sii_certificado_path', type: 'varchar', length: 500, nullable: true })
+  sii_certificado_path: string | null;
+
+  @Column({ name: 'sii_certificado_password', type: 'varchar', length: 100, nullable: true })
+  sii_certificado_password: string | null;
+
   @Column({ name: 'sii_sandbox_mode', type: 'boolean', default: true })
   sii_sandbox_mode: boolean;
 

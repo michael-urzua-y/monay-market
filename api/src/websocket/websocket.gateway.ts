@@ -10,9 +10,18 @@ import { Server, Socket } from 'socket.io';
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 
+function parseAllowedOrigins(value?: string): string[] | boolean {
+  if (!value) return true;
+  const origins = value
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  return origins.length > 0 ? origins : true;
+}
+
 @WebSocketGateway({
   cors: {
-    origin: '*',
+    origin: parseAllowedOrigins(process.env.WS_CORS_ORIGIN || process.env.CORS_ORIGIN),
   },
 })
 export class AppWebSocketGateway

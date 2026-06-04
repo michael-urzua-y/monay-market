@@ -130,7 +130,54 @@ python app.py
 # Abrir en el celular y agregar a pantalla de inicio para instalar
 ```
 
+## Setup con Docker
+
+El stack Docker levanta PostgreSQL, API NestJS, PWA y Dashboard Flask.
+
+```bash
+cp postgres/.env.example postgres/.env
+cp api/.env.example api/.env
+cp dashboard/.env.example dashboard/.env
+# Editar cada .env con sus secrets reales antes de levantar.
+
+docker compose up --build
+```
+
+URLs por defecto:
+
+| Servicio | URL |
+|----------|-----|
+| PWA + API | http://localhost:3000 |
+| Dashboard | http://localhost:5000 |
+| PostgreSQL | interno en Docker |
+
+Comandos útiles:
+
+```bash
+# Levantar en segundo plano
+docker compose up -d --build
+
+# Ver logs
+docker compose logs -f api dashboard
+
+# Bajar servicios
+docker compose down
+
+# Bajar servicios y borrar datos locales de PostgreSQL
+docker compose down -v
+```
+
+Para VPS, configurar `CORS_ORIGIN` y `WS_CORS_ORIGIN` con los dominios reales del dashboard/PWA, y mantener `postgres/.env`, `api/.env` y `dashboard/.env` fuera de git.
+
 ## Variables de entorno
+
+### PostgreSQL (`postgres/.env`)
+
+| Variable | Descripción |
+|----------|------------|
+| `POSTGRES_DB` | Nombre de la base creada por el contenedor |
+| `POSTGRES_USER` | Usuario dueño de la base |
+| `POSTGRES_PASSWORD` | Contraseña del usuario de PostgreSQL |
 
 ### API (`api/.env`)
 
@@ -145,6 +192,7 @@ python app.py
 | `JWT_EXPIRATION` | Tiempo de expiración del JWT (ej: 1h) |
 | `PORT` | Puerto del servidor (default: 3000) |
 | `NODE_ENV` | Entorno (development / production) |
+| `SEED_PASSWORD` | Opcional. Contraseña inicial para usuarios seed de desarrollo; si se omite, se genera una temporal y queda hasheada en BD |
 
 ### Dashboard (`dashboard/.env`)
 
@@ -210,8 +258,8 @@ GET    /mermas/stats                  → Estadísticas de mermas por período (
 
 | Usuario | Email | Contraseña | Rol |
 |---------|-------|-----------|-----|
-| Dueño | dueno@example.com | password123 | dueno |
-| Cajero | cajero@example.com | password123 | cajero |
+| Dueño | dueno@example.com | definida en BD | dueno |
+| Cajero | cajero@example.com | definida en BD | cajero |
 
 Tenant: "Almacén Don Pedro" (RUT 76.123.456-7) con 10 categorías y 42 productos chilenos reales (Coca-Cola, Fruna, Nestlé, Colún, Lays, etc.) con precios estimados de almacén en CLP.
 

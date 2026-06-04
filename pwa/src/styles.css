@@ -713,9 +713,6 @@ html, body {
     max-width: none;
   }
 }
-  background: #e8e8e8;
-  border-color: var(--color-primary);
-}
 
 .quick-amount-btn:active {
   background: var(--color-primary);
@@ -1091,3 +1088,69 @@ html, body {
 }
 
 /* ---- Responsive ---- */
+
+/* Mobile first - já viene configurado */
+
+@media (max-width: 420px) {
+  .app-header {
+    gap: 8px;
+    padding: 0 10px;
+  }
+
+  .header-left {
+    min-width: 0;
+  }
+
+  .header-title {
+    max-width: 112px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9rem;
+  }
+
+  .nav-btn {
+    padding: 4px 8px;
+  }
+
+  .btn-logout {
+    padding: 6px 8px;
+  }
+
+  .cart-item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .cart-item-subtotal {
+    min-width: auto;
+  }
+}
+
+/* Tablets */
+@media (min-width: 600px) {
+  .app-header { padding: 12px 20px; }
+  .header-title { font-size: 1.1rem; }
+  .screen-content { padding: 16px; }
+  .card { padding: 16px; }
+}
+
+/* Desktop */
+@media (min-width: 768px) {
+  .app-layout { max-width: 1200px; margin: 0 auto; }
+  .products-grid { grid-template-columns: repeat(3, 1fr); }
+  .cart-item { grid-template-columns: 2fr 1fr 1fr auto; }
+}
+
+/* Large screens */
+@media (min-width: 1024px) {
+  .app-layout { max-width: 1400px; margin: 0 auto; }
+  .products-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+/* Fix para landscape en móvil */
+@media (max-height: 500px) and (orientation: landscape) {
+  #app-header { padding: 8px 12px; }
+  .screen-content { padding: 8px; }
+  .product-card { min-height: 80px; }
+}

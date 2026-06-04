@@ -42,12 +42,16 @@ export class SalesController {
       dto,
     );
 
-    // Emit boleta asynchronously (outside the sale transaction)
-    const boletaResult = await this.siiService.emitBoleta(
-      user.tenant_id,
-      result.sale.id,
-    );
-    result.sale.boleta_status = boletaResult.boleta_status;
+    if (!result.idempotent_replay) {
+      const boletaResult = await this.siiService.emitBoleta(
+        user.tenant_id,
+        result.sale.id,
+      );
+      result.sale.boleta_status = boletaResult.boleta_status;
+      if (boletaResult.boleta) {
+        result.sale.boleta = boletaResult.boleta;
+      }
+    }
 
     // Generate receipt data
     const receipt = await this.receiptService.generateReceipt(

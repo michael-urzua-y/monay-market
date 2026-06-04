@@ -62,32 +62,32 @@
 }">
 
     <!-- Stats summary -->
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px;">
-        <div class="card">
-            <div class="card-body" style="text-align: center;">
-                <div style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 4px;">Esta Semana</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-error);">
+    <div class="mermas-stats" style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
+        <div class="card" style="flex: 1; min-width: 80px;">
+            <div class="card-body" style="text-align: center; padding: 12px 8px;">
+                <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 4px;">Esta Semana</div>
+                <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-error);">
                     ${{ "{:,}".format(weekly|int)|replace(',', '.') }}
                 </div>
             </div>
         </div>
-        <div class="card">
-            <div class="card-body" style="text-align: center;">
-                <div style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 4px;">Este Mes</div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: var(--color-error);">
+        <div class="card" style="flex: 1; min-width: 80px;">
+            <div class="card-body" style="text-align: center; padding: 12px 8px;">
+                <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 4px;">Este Mes</div>
+                <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-error);">
                     ${{ "{:,}".format(monthly|int)|replace(',', '.') }}
                 </div>
             </div>
         </div>
-        <div class="card">
-            <div class="card-body" style="text-align: center;">
-                <div style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 4px;">Total Registradas</div>
-                <div style="font-size: 1.5rem; font-weight: 700;">{{ total }}</div>
+        <div class="card" style="flex: 1; min-width: 80px;">
+            <div class="card-body" style="text-align: center; padding: 12px 8px;">
+                <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 4px;">Total</div>
+                <div style="font-size: 1.1rem; font-weight: 700;">{{ total }}</div>
             </div>
         </div>
     </div>
 
-    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px;">
+    <div class="mermas-grid">
         <!-- Form to register new merma -->
         <div class="card">
             <div class="card-header">
@@ -101,14 +101,19 @@
                 <form method="post">
                     <div class="form-group" style="position: relative;">
                         <label for="search-input">Producto</label>
-                        <input type="text" 
-                               id="search-input"
-                               x-model="searchQuery"
-                               @input.debounce.300ms="search()"
-                               @focus="searchQuery.length >= 2 && search()"
-                               placeholder="Buscar producto por nombre..."
-                               autocomplete="off"
-                               style="width: 100%;">
+                        <div style="display: flex; gap: 8px;">
+                            <input type="text"
+                                   id="search-input"
+                                   x-model="searchQuery"
+                                   @input.debounce.300ms="search()"
+                                   @focus="searchQuery.length >= 2 && search()"
+                                   placeholder="Buscar o escanear..."
+                                   autocomplete="off"
+                                   style="flex: 1;">
+                            <button type="button" onclick="openScanner()" style="padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-bg); cursor: pointer;">
+                                📷
+                            </button>
+                        </div>
                         <input type="hidden" name="product_id" :value="selectedProductId">
                         
                         <div x-show="products.length > 0"
@@ -218,15 +223,93 @@
                 {% else %}
                 <p class="empty-msg" style="padding: 40px; text-align: center; color: var(--color-text-muted);">No hay mermas registradas.</p>
                 {% endif %}
-            </div>
+</div>
+</div>
+
+<!-- Scanner Overlay -->
+<div id="scanner-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9999; flex-direction: column; align-items: center; justify-content: center;">
+    <div class="card" style="width: 90%; max-width: 400px; text-align: center; padding: 16px;">
+        <h3 style="margin-bottom: 12px;">Escanear producto</h3>
+        <div style="position: relative; width: 100%; max-height: 50vh; overflow: hidden; background: #000; border-radius: 8px;">
+            <video id="scanner-video" style="width: 100%; height: auto;" playsinline></video>
         </div>
+        <p id="scanner-status" style="margin: 12px 0; color: var(--color-text-muted); font-size: 0.85rem;">Iniciando cámara...</p>
+        <button type="button" class="btn btn-secondary" onclick="closeScanner()" style="width: 100%;">Cancelar</button>
     </div>
 </div>
 
 <script>
+let scannerStream = null;
+let scannerActive = false;
+
 function formatCLP(value) {
     if (value == null) return '$0';
     return '$' + value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function openScanner() {
+    const overlay = document.getElementById('scanner-overlay');
+    const video = document.getElementById('scanner-video');
+    const statusEl = document.getElementById('scanner-status');
+
+    overlay.style.display = 'flex';
+    statusEl.textContent = 'Iniciando cámara...';
+    scannerActive = true;
+
+    navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    }).then(function(stream) {
+        scannerStream = stream;
+        video.srcObject = stream;
+        video.play();
+        statusEl.textContent = 'Apunte la cámara al código';
+        startBarcodeDetection(video, statusEl);
+    }).catch(function(err) {
+        statusEl.textContent = 'Error: ' + err.message;
+    });
+}
+
+function startBarcodeDetection(video, statusEl) {
+    if ('BarcodeDetector' in window) {
+        const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'upc_a', 'upc_e'] });
+        const detectFrame = function() {
+            if (!scannerActive) return;
+            detector.detect(video).then(function(barcodes) {
+                if (barcodes.length > 0) {
+                    handleBarcodeDetected(barcodes[0].rawValue);
+                    return;
+                }
+                requestAnimationFrame(detectFrame);
+            }).catch(function() {
+                requestAnimationFrame(detectFrame);
+            });
+        };
+        detectFrame();
+    } else {
+        statusEl.textContent = 'No supported. Ingrese manual.';
+    }
+}
+
+function handleBarcodeDetected(code) {
+    closeScanner();
+    // Buscar el producto por código
+    document.getElementById('search-input').value = code;
+    // Trigger search
+    const input = document.getElementById('search-input');
+    input.dispatchEvent(new Event('input'));
+}
+
+function closeScanner() {
+    scannerActive = false;
+    const overlay = document.getElementById('scanner-overlay');
+    overlay.style.display = 'none';
+
+    if (scannerStream) {
+        scannerStream.getTracks().forEach(track => track.stop());
+        scannerStream = null;
+    }
+    const video = document.getElementById('scanner-video');
+    if (video) video.srcObject = null;
 }
 </script>
 {% endblock %}

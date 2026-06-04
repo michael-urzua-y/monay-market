@@ -564,6 +564,7 @@ import { Cart } from './cart.js';
     });
 
     var body = {
+      client_sale_id: createClientSaleId(),
       lines: lines,
       payment_method: selectedPaymentMethod,
     };
@@ -608,6 +609,13 @@ import { Cart } from './cart.js';
       }
       showToast(msg, 'error');
     });
+  }
+
+  function createClientSaleId() {
+    if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+      return window.crypto.randomUUID();
+    }
+    return String(Date.now()) + '-' + Math.random().toString(36).slice(2, 12);
   }
 
   function resetPaymentForm() {
@@ -749,11 +757,12 @@ import { Cart } from './cart.js';
     var html = '<div style="background-color: #f8fafc; padding: 20px; border-radius: 12px; min-height: 100%;">';
 
     // Tarjetas de Totales
-    var cardStyle = 'background: white; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; flex: 1; padding: 20px; text-align: center; min-width: 100px;';
+    var cardStyle = 'background: white; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; flex: 1; padding: 16px 12px; text-align: center; min-width: 90px; max-width: 150px;';
+    var amountStyle = 'font-size: clamp(1rem, 4vw, 1.5rem); font-weight: bold; color: #0f172a; word-break: break-all; line-height: 1.2;';
     html += '<div style="display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;">';
-    html += '<div style="' + cardStyle + '"><div style="color: #64748b; font-size: 0.9rem; margin-bottom: 8px;">Efectivo</div><div style="font-size: 1.5rem; font-weight: bold; color: #16a34a;">' + formatCLP(totalEfe) + '</div></div>';
-    html += '<div style="' + cardStyle + '"><div style="color: #64748b; font-size: 0.9rem; margin-bottom: 8px;">Tarjeta</div><div style="font-size: 1.5rem; font-weight: bold; color: #2563eb;">' + formatCLP(totalTar) + '</div></div>';
-    html += '<div style="' + cardStyle + '"><div style="color: #64748b; font-size: 0.9rem; margin-bottom: 8px;">Total</div><div style="font-size: 1.5rem; font-weight: bold; color: #0f172a;">' + formatCLP(granTotal) + '</div></div>';
+    html += '<div style="' + cardStyle + '"><div style="color: #64748b; font-size: 0.85rem; margin-bottom: 4px;">Efectivo</div><div style="font-size: clamp(1rem, 4vw, 1.5rem); font-weight: bold; color: #16a34a; word-break: break-all; line-height: 1.2;">' + formatCLP(totalEfe) + '</div></div>';
+    html += '<div style="' + cardStyle + '"><div style="color: #64748b; font-size: 0.85rem; margin-bottom: 4px;">Tarjeta</div><div style="font-size: clamp(1rem, 4vw, 1.5rem); font-weight: bold; color: #2563eb; word-break: break-all; line-height: 1.2;">' + formatCLP(totalTar) + '</div></div>';
+    html += '<div style="' + cardStyle + '"><div style="color: #64748b; font-size: 0.85rem; margin-bottom: 4px;">Total</div><div style="' + amountStyle + '">' + formatCLP(granTotal) + '</div></div>';
     html += '</div>';
 
     // Tablas
@@ -886,7 +895,7 @@ import { Cart } from './cart.js';
   var expectedArqueoCash = 0;
   var lastCountedCash = 0;
 
-  function initArqueo() {
+function initArqueo() {
     var btnArqueo = document.getElementById('btn-arqueo');
     if (btnArqueo) {
       btnArqueo.addEventListener('click', function() {
@@ -894,6 +903,33 @@ import { Cart } from './cart.js';
         loadArqueoData();
       });
     }
+
+    // Botones + y - para arqueo
+    document.querySelectorAll('.arqueo-btn-plus').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var val = parseInt(btn.dataset.val, 10);
+        var input = document.querySelector('.arqueo-input[data-val="' + val + '"]');
+        if (input) {
+          var current = parseInt(input.value, 10) || 0;
+          input.value = current + 1;
+          calculateArqueo();
+        }
+      });
+    });
+
+    document.querySelectorAll('.arqueo-btn-minus').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var val = parseInt(btn.dataset.val, 10);
+        var input = document.querySelector('.arqueo-input[data-val="' + val + '"]');
+        if (input) {
+          var current = parseInt(input.value, 10) || 0;
+          if (current > 0) {
+            input.value = current - 1;
+            calculateArqueo();
+          }
+        }
+      });
+    });
 
     document.querySelectorAll('.arqueo-input').forEach(function(input) {
       input.addEventListener('input', calculateArqueo);
@@ -986,6 +1022,27 @@ import { Cart } from './cart.js';
   // ----------------------------------------------------------
   // Auth — login / logout
   // ----------------------------------------------------------
+  function decodeTokenPayload(token) {
+    try {
+      var payload = token.split('.')[1];
+      var normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      var decoded = atob(normalized);
+      return JSON.parse(decoded);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function getTokenRole(token) {
+    var payload = decodeTokenPayload(token);
+    return payload && payload.role;
+  }
+
+  function isCashierSession() {
+    var token = api.getToken();
+    return token && getTokenRole(token) === 'cajero';
+  }
+
   function initAuth() {
     var form = document.getElementById('login-form');
     var errorEl = document.getElementById('login-error');
@@ -1003,6 +1060,12 @@ import { Cart } from './cart.js';
       }
 
       api.post('/auth/login', { email: email, password: password }).then(function (data) {
+        var role = data && data.user && data.user.role;
+        if (role !== 'cajero') {
+          api.clearToken();
+          showLoginError('El punto de venta requiere perfil cajero');
+          return;
+        }
         api.setToken(data.accessToken);
         router.navigate('sale');
       }).catch(function () {
@@ -1112,9 +1175,10 @@ import { Cart } from './cart.js';
     }
 
     // If we have a token, go to sale screen; otherwise login
-    if (api.getToken()) {
+    if (isCashierSession()) {
       router.navigate('sale');
     } else {
+      api.clearToken();
       router.navigate('login');
     }
   }

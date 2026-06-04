@@ -7,15 +7,13 @@
 <div x-data="{ showDeleteModal: false, deleteId: null, deleteName: '' }">
 
     <!-- Action bar -->
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <a href="{{ url_for('products_new') }}" class="btn btn-primary">+ Nuevo producto</a>
-            <a href="{{ url_for('products_import') }}" class="btn btn-secondary">📥 Importar Excel</a>
-        </div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+        <a href="{{ url_for('products_new') }}" class="btn btn-primary">+ Nuevo producto</a>
+        <a href="{{ url_for('products_import') }}" class="btn btn-secondary">📥 Importar Excel</a>
     </div>
 
     <!-- Search and filter with live HTMX search -->
-    <div class="card" style="margin-bottom: 20px;">
+    <div class="action-bar">
         <div class="card-body">
             <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
                 <div class="form-group" style="margin-bottom: 0; flex: 1; min-width: 200px;">

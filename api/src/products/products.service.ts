@@ -193,7 +193,37 @@ export class ProductsService {
       // Falla de red o timeout: continuar al fallback final
     }
 
-    // --- Fallback final: Si ninguno de los 3 encontró el producto ---
+    // --- 4. Intento con UPC Database (upcdatabase.org) ---
+    try {
+      const url = `https://api.upcdatabase.org/product/${code}`;
+      const response = await firstValueFrom(
+        this.httpService.get(url, { timeout: 4000 }),
+      );
+
+      if (response.data?.success && response.data?.product) {
+        const p = response.data.product;
+        const name: string | null = p.title || null;
+        return { barcode: code, name, category_suggestion: p.category || null };
+      }
+    } catch {
+      // Falla: continuar
+    }
+
+    // --- 5. Intento con JustBC (busca en múltiples bases) ---
+    try {
+      const url = `https://www.justbc.com/api/barcode/${code}`;
+      const response = await firstValueFrom(
+        this.httpService.get(url, { timeout: 4000 }),
+      );
+
+      if (response.data?.result === 1) {
+        return { barcode: code, name: response.data.product_name, category_suggestion: null };
+      }
+    } catch {
+      // Falla: continuar
+    }
+
+    // --- Fallback final: Si ninguno encontró el producto ---
       return { barcode: code, name: null, category_suggestion: null };
   }
 
@@ -284,7 +314,7 @@ export class ProductsService {
       }
 
       product.price = Math.round(price);
-      product.stock = Math.round(stock);
+      product.stock = this.roundQuantity(stock);
       await this.productRepository.save(product);
       updated++;
     }
@@ -320,5 +350,9 @@ export class ProductsService {
       .getCount();
 
     return count > 0;
+  }
+
+  private roundQuantity(value: number): number {
+    return Math.round(value * 1000) / 1000;
   }
 }

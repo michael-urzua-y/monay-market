@@ -23,6 +23,7 @@ describe('ProductsService', () => {
     price: 1500,
     stock: 50,
     critical_stock: 5,
+    is_weighed: false,
     active: true,
     created_at: new Date('2024-01-01'),
     updated_at: new Date('2024-01-01'),

@@ -24,6 +24,7 @@ export interface SaleResult {
   sale: Sale;
   critical_stock_alerts: CriticalStockAlert[];
   receipt?: import('./receipt.service').ReceiptData;
+  idempotent_replay?: boolean;
 }
 
 export interface CloseRegisterResult {
@@ -49,6 +50,18 @@ export class SalesService {
     userId: string,
     dto: CreateSaleDto,
   ): Promise<SaleResult> {
+    const existingSale = await this.findExistingClientSale(
+      tenantId,
+      dto.client_sale_id,
+    );
+    if (existingSale) {
+      return {
+        sale: existingSale,
+        critical_stock_alerts: [],
+        idempotent_replay: true,
+      };
+    }
+
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();
@@ -105,6 +118,7 @@ export class SalesService {
       paymentMethod: dto.payment_method,
       amountReceived,
       changeAmount,
+      clientSaleId: dto.client_sale_id ?? null,
     });
 
     const savedLines = await this.insertSaleLines(
@@ -227,11 +241,13 @@ export class SalesService {
       paymentMethod: PaymentMethod;
       amountReceived: number | null;
       changeAmount: number | null;
+      clientSaleId: string | null;
     },
   ): Promise<Sale> {
     const sale = manager.create(Sale, {
       tenant_id: data.tenantId,
       user_id: data.userId,
+      client_sale_id: data.clientSaleId,
       total: data.total,
       payment_method: data.paymentMethod,
       amount_received: data.amountReceived,
@@ -239,6 +255,18 @@ export class SalesService {
       boleta_status: BoletaStatus.NO_APLICA,
     });
     return manager.save(Sale, sale);
+  }
+
+  private async findExistingClientSale(
+    tenantId: string,
+    clientSaleId?: string,
+  ): Promise<Sale | null> {
+    if (!clientSaleId) return null;
+
+    return this.saleRepository.findOne({
+      where: { tenant_id: tenantId, client_sale_id: clientSaleId },
+      relations: ['lines', 'boleta'],
+    });
   }
 
   private async insertSaleLines(

@@ -62,8 +62,16 @@ describe('SalesService', () => {
     manager: mockManager,
   };
 
+  const mockArqueoRepository = {
+    create: jest.fn((data: Record<string, unknown>) => data),
+    save: jest.fn((data: Record<string, unknown>) =>
+      Promise.resolve({ id: 'arqueo-uuid', ...data }),
+    ),
+  };
+
   const mockDataSource = {
     createQueryRunner: jest.fn(() => mockQueryRunner),
+    getRepository: jest.fn(() => mockArqueoRepository),
   };
 
   // Mock for the Sale repository used by findAll, findOne, closeRegister
@@ -501,7 +509,7 @@ describe('SalesService', () => {
     it('should return summary with zero values when no sales today', async () => {
       repoQueryBuilder.getMany.mockResolvedValue([]);
 
-      const result = await service.closeRegister(tenantId);
+      const result = await service.closeRegister(tenantId, userId, 0);
 
       expect(result.total_ventas).toBe(0);
       expect(result.cantidad_ventas).toBe(0);
@@ -522,7 +530,7 @@ describe('SalesService', () => {
 
       repoQueryBuilder.getMany.mockResolvedValue(todaySales);
 
-      const result = await service.closeRegister(tenantId);
+      const result = await service.closeRegister(tenantId, userId, 4000);
 
       expect(result.total_ventas).toBe(6500);
       expect(result.cantidad_ventas).toBe(4);
@@ -540,7 +548,7 @@ describe('SalesService', () => {
 
       repoQueryBuilder.getMany.mockResolvedValue(todaySales);
 
-      const result = await service.closeRegister(tenantId);
+      const result = await service.closeRegister(tenantId, userId, 1500);
 
       expect(result.total_ventas).toBe(1500);
       expect(result.cantidad_ventas).toBe(1);
@@ -557,7 +565,7 @@ describe('SalesService', () => {
 
       repoQueryBuilder.getMany.mockResolvedValue(todaySales);
 
-      const result = await service.closeRegister(tenantId);
+      const result = await service.closeRegister(tenantId, userId, 0);
 
       expect(result.total_ventas).toBe(2500);
       expect(result.cantidad_ventas).toBe(1);
@@ -570,7 +578,7 @@ describe('SalesService', () => {
     it('should filter by tenant_id and current day', async () => {
       repoQueryBuilder.getMany.mockResolvedValue([]);
 
-      await service.closeRegister(tenantId);
+      await service.closeRegister(tenantId, userId, 0);
 
       expect(repoQueryBuilder.where).toHaveBeenCalledWith(
         'sale.tenant_id = :tenantId',

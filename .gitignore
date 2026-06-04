@@ -11,6 +11,14 @@ coverage/
 # Environment
 .env
 .env.local
+.env.docker
+.env.docker.local
+
+# Uploaded files and private certificates
+uploads/
+dashboard/uploads/
+*.pfx
+*.p12
 
 # OS
 .DS_Store

@@ -5,9 +5,13 @@ and tenant configuration via server-side rendered templates with HTMX.
 """
 
 from functools import wraps
+from pathlib import Path
+from uuid import uuid4
+
 import requests
 
 from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
+from werkzeug.utils import secure_filename
 
 from api_client import APIClient
 from config import Config
@@ -17,13 +21,17 @@ app.config.from_object(Config)
 
 api = APIClient(app.config["API_URL"])
 
+ALLOWED_CERTIFICATE_EXTENSIONS = {".pfx", ".p12"}
+
 
 def login_required(f):
     """Decorator that redirects to login if no JWT token in session."""
 
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if "jwt_token" not in session:
+        user = session.get("user") or {}
+        if "jwt_token" not in session or user.get("role") != "dueno":
+            session.clear()
             return redirect(url_for("login"))
         return f(*args, **kwargs)
 
@@ -36,6 +44,22 @@ def inject_user():
     return {"current_user": session.get("user")}
 
 
+def save_certificate_upload(cert_file, tenant_id):
+    """Persist an uploaded SII certificate with a safe generated filename."""
+    original_name = secure_filename(cert_file.filename or "")
+    suffix = Path(original_name).suffix.lower()
+    if suffix not in ALLOWED_CERTIFICATE_EXTENSIONS:
+        raise ValueError("Solo se permiten certificados .pfx o .p12")
+
+    upload_dir = Path(app.config["CERT_UPLOAD_DIR"])
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = f"{tenant_id}_{uuid4().hex}{suffix}"
+    filepath = upload_dir / filename
+    cert_file.save(filepath)
+    return str(filepath)
+
+
 # --- Auth routes ---
 
 
@@ -43,7 +67,9 @@ def inject_user():
 def login():
     """Handle login: render form (GET) or authenticate (POST)."""
     if "jwt_token" in session:
-        return redirect(url_for("dashboard"))
+        if (session.get("user") or {}).get("role") == "dueno":
+            return redirect(url_for("dashboard"))
+        session.clear()
 
     if request.method == "POST":
         email = request.form.get("email", "").strip()
@@ -52,13 +78,18 @@ def login():
         result = api.post("/auth/login", {"email": email, "password": password})
 
         if result.get("status_code") == 201 and result.get("accessToken"):
+            user = result.get("user", {})
+            if user.get("role") != "dueno":
+                session["login_error"] = "El panel requiere perfil dueño"
+                return redirect(url_for("login"))
             session["jwt_token"] = result["accessToken"]
-            session["user"] = result.get("user", {})
+            session["user"] = user
             return redirect(url_for("dashboard"))
 
-        return render_template("login.html", error="Credenciales inválidas")
+        session["login_error"] = "Credenciales inválidas"
+        return redirect(url_for("login"))
 
-    return render_template("login.html")
+    return render_template("login.html", error=session.pop("login_error", None))
 
 
 @app.route("/logout")
@@ -92,7 +123,7 @@ def products():
     search = request.args.get("search", "").strip()
     category_id = request.args.get("category_id", "").strip()
     page = int(request.args.get("page", 1))
-    per_page = 15
+    per_page = 10
 
     params = {}
     if search:
@@ -174,7 +205,7 @@ def htmx_products_search():
     search = request.args.get("search", "").strip()
     category_id = request.args.get("category_id", "").strip()
     page = int(request.args.get("page", 1))
-    per_page = 15
+    per_page = 10
 
     params = {}
     if search:
@@ -225,9 +256,8 @@ def products_new():
             error_msg = result.get("message", "Error al crear producto")
             if isinstance(error_msg, list):
                 error_msg = ", ".join(error_msg)
-            # Fetch categories for re-rendering the form
-            all_products = api.get("/products", params={})
-            categories = _extract_categories(all_products)
+            categories_data = api.get("/products/categories", params={})
+            categories = {c.get("id"): c.get("name") for c in (categories_data if isinstance(categories_data, list) else [])}
             return render_template(
                 "products_new.html",
                 error=error_msg,
@@ -238,8 +268,8 @@ def products_new():
         return redirect(url_for("products"))
 
     # GET: render empty form
-    all_products = api.get("/products", params={})
-    categories = _extract_categories(all_products)
+    categories_data = api.get("/products/categories", params={})
+    categories = {c.get("id"): c.get("name") for c in (categories_data if isinstance(categories_data, list) else [])}
     return render_template("products_new.html", categories=categories, form={})
 
 
@@ -268,8 +298,8 @@ def products_edit(product_id):
             error_msg = result.get("message", "Error al actualizar producto")
             if isinstance(error_msg, list):
                 error_msg = ", ".join(error_msg)
-            all_products = api.get("/products", params={})
-            categories = _extract_categories(all_products)
+            categories_data = api.get("/products/categories", params={})
+            categories = {c.get("id"): c.get("name") for c in (categories_data if isinstance(categories_data, list) else [])}
             return render_template(
                 "products_edit.html",
                 error=error_msg,
@@ -286,7 +316,11 @@ def products_edit(product_id):
         return redirect(url_for("products"))
 
     all_products = api.get("/products", params={})
-    categories = _extract_categories(all_products)
+    if isinstance(product, dict) and product.get("status_code", 200) >= 400:
+        return redirect(url_for("products"))
+
+    categories_data = api.get("/products/categories", params={})
+    categories = {c.get("id"): c.get("name") for c in (categories_data if isinstance(categories_data, list) else [])}
     return render_template(
         "products_edit.html",
         product=product,
@@ -315,8 +349,8 @@ def products_delete(product_id):
             params["category_id"] = category_id
         products_data = api.get("/products", params=params)
         product_list = products_data if isinstance(products_data, list) else []
-        all_products = api.get("/products", params={})
-        categories = _extract_categories(all_products)
+        categories_data = api.get("/products/categories", params={})
+        categories = {c.get("id"): c.get("name") for c in (categories_data if isinstance(categories_data, list) else [])}
         return render_template(
             "products.html",
             products=product_list,
@@ -409,7 +443,7 @@ def sales():
     date_to = request.args.get("date_to", "").strip()
     boleta_status = request.args.get("boleta_status", "").strip()
     page = int(request.args.get("page", 1))
-    per_page = 15
+    per_page = 10
 
     params = {}
     if date_from:
@@ -636,13 +670,32 @@ def settings_sii():
     if user.get("role") != "dueno":
         return redirect(url_for("dashboard"))
 
+    certificado_file = request.files.get("certificado")
+    certificado_path = None
+
+    if certificado_file and certificado_file.filename:
+        try:
+            tenant_id = session.get("user", {}).get("tenant_id", "tenant")
+            certificado_path = save_certificate_upload(certificado_file, tenant_id)
+        except ValueError as exc:
+            return redirect(url_for("settings", error=str(exc)))
+
     data = {
         "sii_enabled": request.form.get("sii_enabled") == "on",
         "sii_provider": request.form.get("sii_provider") or None,
-        "sii_api_key": request.form.get("sii_api_key", "").strip() or None,
-        "sii_rut_emisor": request.form.get("sii_rut_emisor", "").strip() or None,
+        "sii_razon_social": request.form.get("sii_razon_social", "").strip() or None,
+        "sii_giro": request.form.get("sii_giro", "").strip() or None,
         "sii_sandbox_mode": request.form.get("sii_sandbox_mode") == "on",
     }
+
+    if "sii_api_key" in request.form:
+        data["sii_api_key"] = request.form.get("sii_api_key", "").strip() or None
+    if "sii_rut_emisor" in request.form:
+        data["sii_rut_emisor"] = request.form.get("sii_rut_emisor", "").strip() or None
+
+    if certificado_path:
+        data["sii_certificado_path"] = certificado_path
+        data["sii_certificado_password"] = request.form.get("certificado_password", "").strip() or None
 
     result = api.patch("/tenant/config/sii", data=data)
 
@@ -887,29 +940,6 @@ def mermas():
     mermas_list = api.get("/mermas") or []
     page = int(request.args.get("page", 1))
     return render_template("mermas.html", products=product_list, mermas=mermas_list, stats=stats, page=page)
-
-
-# --- Helper functions ---
-
-def format_clp(value):
-    """Format number as CLP currency."""
-    try:
-        return f"${int(value):,}".replace(",", ".")
-    except (ValueError, TypeError):
-        return "$0"
-
-
-def _extract_categories(products_data):
-    """Extract unique categories from products response."""
-    categories = {}
-    if isinstance(products_data, list):
-        for p in products_data:
-            if p.get("category") and isinstance(p["category"], dict):
-                cat_id = p["category"].get("id")
-                cat_name = p["category"].get("name")
-                if cat_id and cat_name:
-                    categories[cat_id] = cat_name
-    return categories
 
 
 if __name__ == "__main__":

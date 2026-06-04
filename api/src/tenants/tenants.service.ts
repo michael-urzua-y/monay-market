@@ -15,7 +15,12 @@ export class TenantsService {
     private readonly subscriptionRepository: Repository<Subscription>,
   ) {}
 
-  async getConfig(tenantId: string): Promise<TenantConfig> {
+  async getConfig(tenantId: string): Promise<Partial<TenantConfig>> {
+    const config = await this.findConfigOrFail(tenantId);
+    return this.sanitizeConfig(config);
+  }
+
+  private async findConfigOrFail(tenantId: string): Promise<TenantConfig> {
     const config = await this.configRepository.findOne({
       where: { tenant_id: tenantId },
     });
@@ -30,25 +35,31 @@ export class TenantsService {
   async updateSiiConfig(
     tenantId: string,
     dto: UpdateSiiConfigDto,
-  ): Promise<TenantConfig> {
-    const config = await this.getConfig(tenantId);
+  ): Promise<Partial<TenantConfig>> {
+    const config = await this.findConfigOrFail(tenantId);
 
     if (dto.sii_enabled !== undefined) config.sii_enabled = dto.sii_enabled;
     if (dto.sii_provider !== undefined) config.sii_provider = dto.sii_provider;
-    if (dto.sii_api_key !== undefined) config.sii_api_key = dto.sii_api_key;
-    if (dto.sii_rut_emisor !== undefined) config.sii_rut_emisor = dto.sii_rut_emisor;
+    if (dto.sii_api_key !== undefined) config.sii_api_key = this.normalizeOptionalString(dto.sii_api_key);
+    if (dto.sii_rut_emisor !== undefined) config.sii_rut_emisor = this.normalizeOptionalString(dto.sii_rut_emisor);
+    if (dto.sii_razon_social !== undefined) config.sii_razon_social = this.normalizeOptionalString(dto.sii_razon_social);
+    if (dto.sii_giro !== undefined) config.sii_giro = this.normalizeOptionalString(dto.sii_giro);
+    if (dto.sii_certificado_path !== undefined) config.sii_certificado_path = this.normalizeOptionalString(dto.sii_certificado_path);
+    if (dto.sii_certificado_password !== undefined) config.sii_certificado_password = this.normalizeOptionalString(dto.sii_certificado_password);
     if (dto.sii_sandbox_mode !== undefined) config.sii_sandbox_mode = dto.sii_sandbox_mode;
 
-    return this.configRepository.save(config);
+    const savedConfig = await this.configRepository.save(config);
+    return this.sanitizeConfig(savedConfig);
   }
 
   async updatePrinterConfig(
     tenantId: string,
     dto: UpdatePrinterConfigDto,
-  ): Promise<TenantConfig> {
-    const config = await this.getConfig(tenantId);
+  ): Promise<Partial<TenantConfig>> {
+    const config = await this.findConfigOrFail(tenantId);
     config.printer_enabled = dto.printer_enabled;
-    return this.configRepository.save(config);
+    const savedConfig = await this.configRepository.save(config);
+    return this.sanitizeConfig(savedConfig);
   }
 
   async getSubscription(tenantId: string): Promise<Subscription> {
@@ -61,5 +72,20 @@ export class TenantsService {
     }
 
     return subscription;
+  }
+
+  private sanitizeConfig(config: TenantConfig): Partial<TenantConfig> {
+    return {
+      ...config,
+      sii_api_key: config.sii_api_key ? 'configured' : null,
+      sii_certificado_path: config.sii_certificado_path ? 'configured' : null,
+      sii_certificado_password: null,
+    };
+  }
+
+  private normalizeOptionalString(value: string | null | undefined): string | null {
+    if (value == null) return null;
+    const normalized = value.trim();
+    return normalized.length > 0 ? normalized : null;
   }
 }

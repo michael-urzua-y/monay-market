@@ -371,7 +371,7 @@ body {
 .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 20px;
+    gap: 16px;
 }
 
 .card {
@@ -463,6 +463,13 @@ body {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.9rem;
+    background: var(--color-white);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.data-table thead {
+    background: #f8fafc;
 }
 
 .data-table th {
@@ -572,4 +579,199 @@ body {
 .badge-warning {
     background: rgba(234, 179, 8, 0.15);
     color: #b45309;
+}
+
+/* === Modern UI Improvements === */
+
+/* Card hover effect */
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Smooth transitions for all interactive elements */
+button, a, input, select {
+    transition: all 0.15s ease;
+}
+
+/* Focus states for accessibility */
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--color-primary) !important;
+    box-shadow: 0 0 0 3px rgba(201, 149, 42, 0.15);
+}
+
+/* Modern table responsive wrapper */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.table-responsive table {
+    min-width: 600px;
+}
+
+@media (max-width: 640px) {
+    .data-table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* Skeleton loading */
+@keyframes skeleton-loading {
+    0% { background-position: -200px 0; }
+    100% { background-position: calc(200px + 100%) 0; }
+}
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 0px, #e0e0e0 40px, #f0f0f0 80px);
+    background-size: 200px 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: 4px;
+}
+
+/* Better spacing between elements */
+.form-group {
+    margin-bottom: 16px;
+}
+
+/* Empty state illustration */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+}
+.empty-state-icon {
+    font-size: 3rem;
+    opacity: 0.5;
+    margin-bottom: 12px;
+}
+
+/* Quick action buttons row */
+.quick-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.quick-action-btn {
+    flex: 1;
+    min-width: 80px;
+}
+
+/* Status indicator dot */
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 6px;
+}
+.status-dot.success { background: #16a34a; }
+.status-dot.error { background: #dc2626; }
+.status-dot.warning { background: #d97706; }
+.status-dot.pending { background: #64748b; }
+
+/* Modern metric card */
+.metric-card {
+    text-align: center;
+    padding: 16px;
+}
+.metric-card .metric-value {
+    font-size: 2rem;
+    background: linear-gradient(135deg, var(--color-text), var(--color-text-muted));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.metric-card .metric-trend {
+    font-size: 0.8rem;
+    margin-top: 4px;
+}
+.metric-card .metric-trend.up { color: #16a34a; }
+.metric-card .metric-trend.down { color: #dc2626; }
+
+/* Page header improvements */
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+.page-subtitle {
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    margin-top: 4px;
+}
+
+/* Action bar */
+.action-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    background: var(--color-white);
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--color-border);
+    margin-bottom: 16px;
+}
+
+.action-bar > * {
+    min-width: 0;
+}
+
+@media (max-width: 520px) {
+    .action-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .action-bar .btn,
+    .action-bar input,
+    .action-bar select {
+        width: 100%;
+    }
+}
+
+/* Responsive typography */
+@media (max-width: 480px) {
+    .page-title { font-size: 1.25rem; }
+    .metric-value { font-size: 1.5rem; }
+    .card-body { padding: 12px 16px; }
+}
+
+/* Mermas page - stats cards */
+.mermas-stats .card {
+    flex: 1;
+}
+
+/* Mermas grid: 2 columnas en desktop, 1 en mobile */
+.mermas-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 24px;
+}
+@media (max-width: 768px) {
+    .mermas-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Sidebar improvements */
+.nav-item:hover {
+    background: rgba(201, 149, 42, 0.1);
+}
+.nav-item.active {
+    background: rgba(201, 149, 42, 0.15);
+    color: var(--color-primary);
 }

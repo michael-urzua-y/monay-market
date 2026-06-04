@@ -8,6 +8,8 @@ import {
   ValidateNested,
   ArrayMinSize,
   IsNumber,
+  IsString,
+  MaxLength,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaymentMethod } from '../../entities/enums';
@@ -22,6 +24,11 @@ export class SaleLineDto {
 }
 
 export class CreateSaleDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  client_sale_id?: string;
+
   @IsArray()
   @ArrayMinSize(1)
   @ValidateNested({ each: true })

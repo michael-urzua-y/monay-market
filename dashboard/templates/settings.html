@@ -20,7 +20,7 @@
                 <h3 class="card-title">Módulo SII — Boleta Electrónica</h3>
             </div>
             <div class="card-body">
-                <form method="post" action="{{ url_for('settings_sii') }}">
+                <form method="post" action="{{ url_for('settings_sii') }}" enctype="multipart/form-data">
                     <div class="form-group">
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                             <input type="checkbox" name="sii_enabled" {% if config.get('sii_enabled') %}checked{% endif %}
@@ -67,6 +67,39 @@
                                value=""
                                placeholder="12.345.678-9">
                         {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sii_razon_social">Razón Social</label>
+                        <input type="text" id="sii_razon_social" name="sii_razon_social"
+                               value="{{ config.get('sii_razon_social', '') }}"
+                               placeholder="Nombre de la empresa">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sii_giro">Giro</label>
+                        <input type="text" id="sii_giro" name="sii_giro"
+                               value="{{ config.get('sii_giro', '') }}"
+                               placeholder="Ej: Venta al por menor de alimentos">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="certificado">Certificado Digital (.pfx)</label>
+                        {% if config.get('sii_certificado_path') %}
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="color: var(--color-success);">✅ Certificado cargado</span>
+                        </div>
+                        {% else %}
+                        <input type="file" id="certificado" name="certificado" accept=".pfx,.p12">
+                        <small style="color: var(--color-text-muted);">Archivo .pfx o .p12 descargado de firmaya.cl</small>
+                        {% endif %}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="certificado_password">Clave del certificado</label>
+                        <input type="password" id="certificado_password" name="certificado_password"
+                               value=""
+                               placeholder="Clave de 4 dígitos del certificado">
                     </div>
 
                     <div class="form-group">
