@@ -12,6 +12,7 @@ import { OpenFacturaProvider } from './providers/openfactura.provider';
 import { FacturacionClProvider } from './providers/facturacion-cl.provider';
 import { SimpleApiProvider } from './providers/simple-api.provider';
 import { BaseApiProvider } from './providers/base-api.provider';
+import { ApiGatewayProvider } from './providers/api-gateway.provider';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { BaseApiProvider } from './providers/base-api.provider';
     FacturacionClProvider,
     SimpleApiProvider,
     BaseApiProvider,
+    ApiGatewayProvider,
   ],
   exports: [SiiService],
 })

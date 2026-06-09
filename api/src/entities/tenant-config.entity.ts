@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { Tenant } from './tenant.entity';
 import { SiiProvider } from './enums';
+import { encryptedStringTransformer } from '../common/transformers/encrypted-string.transformer';
 
 @Entity('tenant_configs', { schema: 'market' })
 export class TenantConfig {
@@ -28,11 +29,32 @@ export class TenantConfig {
   })
   sii_provider: SiiProvider | null;
 
-  @Column({ name: 'sii_api_key', type: 'varchar', length: 512, nullable: true })
+  @Column({
+    name: 'sii_api_key',
+    type: 'varchar',
+    length: 512,
+    nullable: true,
+    transformer: encryptedStringTransformer,
+  })
   sii_api_key: string | null;
 
   @Column({ name: 'sii_rut_emisor', type: 'varchar', length: 20, nullable: true })
   sii_rut_emisor: string | null;
+
+  @Column({ name: 'sii_rut_autenticador', type: 'varchar', length: 20, nullable: true })
+  sii_rut_autenticador: string | null;
+
+  @Column({ name: 'sii_codigo_sucursal', type: 'integer', nullable: true })
+  sii_codigo_sucursal: number | null;
+
+  @Column({
+    name: 'sii_clave_tributaria',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    transformer: encryptedStringTransformer,
+  })
+  sii_clave_tributaria: string | null;
 
   @Column({ name: 'sii_razon_social', type: 'varchar', length: 200, nullable: true })
   sii_razon_social: string | null;
@@ -43,7 +65,13 @@ export class TenantConfig {
   @Column({ name: 'sii_certificado_path', type: 'varchar', length: 500, nullable: true })
   sii_certificado_path: string | null;
 
-  @Column({ name: 'sii_certificado_password', type: 'varchar', length: 100, nullable: true })
+  @Column({
+    name: 'sii_certificado_password',
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    transformer: encryptedStringTransformer,
+  })
   sii_certificado_password: string | null;
 
   @Column({ name: 'sii_sandbox_mode', type: 'boolean', default: true })

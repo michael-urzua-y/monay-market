@@ -9,6 +9,7 @@ import {
 import { JwtAuthGuard, TenantGuard, RolesGuard } from '../common/guards';
 import { Roles, CurrentUser } from '../common/decorators';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { UserRole } from '../entities/enums';
 import { CartService, ValidatedCartResult, StockError } from './cart.service';
 import { ValidateCartDto } from './dto/validate-cart.dto';
 
@@ -18,7 +19,7 @@ export class CartController {
   constructor(private readonly cartService: CartService) {}
 
   @Post('validate')
-  @Roles('dueno', 'cajero')
+  @Roles(UserRole.DUENO, UserRole.CAJERO)
   @HttpCode(HttpStatus.OK)
   async validate(
     @CurrentUser() user: JwtPayload,

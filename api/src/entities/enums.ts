@@ -32,4 +32,5 @@ export enum SiiProvider {
   FACTURACION_CL = 'facturacion_cl',
   SIMPLE_API = 'simple_api',
   BASE_API = 'base_api',
+  API_GATEWAY = 'api_gateway',
 }

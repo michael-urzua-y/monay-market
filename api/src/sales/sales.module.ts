@@ -4,6 +4,7 @@ import { Sale } from '../entities/sale.entity';
 import { SaleLine } from '../entities/sale-line.entity';
 import { Product } from '../entities/product.entity';
 import { Tenant } from '../entities/tenant.entity';
+import { TenantConfig } from '../entities/tenant-config.entity';
 import { Arqueo } from '../entities/arqueo.entity';
 import { SalesController } from './sales.controller';
 import { SalesService } from './sales.service';
@@ -12,7 +13,7 @@ import { SiiModule } from '../sii/sii.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Sale, SaleLine, Product, Tenant, Arqueo]),
+    TypeOrmModule.forFeature([Sale, SaleLine, Product, Tenant, TenantConfig, Arqueo]),
     SiiModule,
   ],
   controllers: [SalesController],

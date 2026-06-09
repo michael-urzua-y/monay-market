@@ -11,9 +11,11 @@ import { OpenFacturaProvider } from './providers/openfactura.provider';
 import { FacturacionClProvider } from './providers/facturacion-cl.provider';
 import { SimpleApiProvider } from './providers/simple-api.provider';
 import { BaseApiProvider } from './providers/base-api.provider';
+import { ApiGatewayProvider } from './providers/api-gateway.provider';
 import {
   SiiCredentialError,
   SiiEmitResult,
+  SiiPermanentError,
 } from './interfaces/sii-provider.interface';
 
 describe('SiiService', () => {
@@ -34,6 +36,8 @@ describe('SiiService', () => {
       sii_provider: SiiProvider.HAULMER,
       sii_api_key: 'test-api-key',
       sii_rut_emisor: '76.000.000-0',
+      sii_rut_autenticador: null,
+      sii_codigo_sucursal: null,
       sii_sandbox_mode: true,
       printer_enabled: false,
       updated_at: new Date(),
@@ -123,6 +127,10 @@ describe('SiiService', () => {
         {
           provide: BaseApiProvider,
           useValue: { providerName: SiiProvider.BASE_API, emitBoleta: jest.fn() },
+        },
+        {
+          provide: ApiGatewayProvider,
+          useValue: { providerName: SiiProvider.API_GATEWAY, emitBoleta: jest.fn() },
         },
       ],
     }).compile();
@@ -235,7 +243,27 @@ describe('SiiService', () => {
 
       expect(result.boleta_status).toBe(BoletaStatus.ERROR);
       expect(result.error).toContain('credenciales');
+      expect(result.error).toContain('API key inválida');
       // Credential errors should NOT be retried
+      expect(haulmerProvider.emitBoleta).toHaveBeenCalledTimes(1);
+      expect(saleRepo.update).toHaveBeenCalledWith(saleId, {
+        boleta_status: BoletaStatus.ERROR,
+      });
+    });
+  });
+
+  describe('emitBoleta — permanent provider error', () => {
+    it('should set error status without retrying permanent errors', async () => {
+      configRepo.findOne.mockResolvedValue(mockConfig());
+      saleRepo.findOne.mockResolvedValue(mockSale());
+      haulmerProvider.emitBoleta.mockRejectedValue(
+        new SiiPermanentError('No tiene folios asignados'),
+      );
+
+      const result = await service.emitBoleta(tenantId, saleId);
+
+      expect(result.boleta_status).toBe(BoletaStatus.ERROR);
+      expect(result.error).toContain('No tiene folios asignados');
       expect(haulmerProvider.emitBoleta).toHaveBeenCalledTimes(1);
       expect(saleRepo.update).toHaveBeenCalledWith(saleId, {
         boleta_status: BoletaStatus.ERROR,
@@ -383,6 +411,28 @@ describe('SiiService', () => {
       const data = service.buildSaleData(sale, config);
 
       expect(data.rut_emisor).toBe('12.345.678-9');
+    });
+
+    it('should include rut_autenticador from config', () => {
+      const sale = mockSale();
+      const config = mockConfig({
+        sii_rut_emisor: '78.260.737-5',
+        sii_rut_autenticador: '18.673.997-3',
+      });
+
+      const data = service.buildSaleData(sale, config);
+
+      expect(data.rut_emisor).toBe('78.260.737-5');
+      expect(data.rut_autenticador).toBe('18.673.997-3');
+    });
+
+    it('should include SII branch code from config', () => {
+      const sale = mockSale();
+      const config = mockConfig({ sii_codigo_sucursal: 2 });
+
+      const data = service.buildSaleData(sale, config);
+
+      expect(data.codigo_sucursal).toBe(2);
     });
 
     it('should map sale lines to items', () => {

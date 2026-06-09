@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { of, throwError } from 'rxjs';
 import { Workbook } from 'exceljs';
@@ -47,6 +48,10 @@ describe('ProductsService', () => {
     get: jest.fn(),
   };
 
+  const mockConfigService = {
+    get: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -55,11 +60,13 @@ describe('ProductsService', () => {
         { provide: getRepositoryToken(SaleLine), useValue: mockSaleLineRepo },
         { provide: getRepositoryToken(Category), useValue: { find: jest.fn() } },
         { provide: HttpService, useValue: mockHttpService },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
     service = module.get<ProductsService>(ProductsService);
     jest.clearAllMocks();
+    mockConfigService.get.mockReturnValue(undefined);
   });
 
   describe('create', () => {

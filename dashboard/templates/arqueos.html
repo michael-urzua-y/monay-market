@@ -9,12 +9,12 @@
         <h3 class="card-title" style="margin: 0;">Cierres de turno</h3>
         <form method="GET" action="{{ url_for('arqueos') }}" style="display: flex; gap: 10px; align-items: flex-end; margin: 0;">
             <div style="display: flex; flex-direction: column;">
-                <label for="date_from" style="font-size: 0.85rem; color: #64748b; margin-bottom: 4px;">Desde:</label>
-                <input type="date" id="date_from" name="date_from" value="{{ date_from }}" class="form-control" style="padding: 6px 10px; font-size: 0.9rem; border: 1px solid #cbd5e1; border-radius: 6px;">
+                <label for="date_from" style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 4px;">Desde:</label>
+                <input type="date" id="date_from" name="date_from" value="{{ date_from }}" class="form-control" style="padding: 6px 10px; font-size: 0.9rem; border: 1px solid var(--color-border); border-radius: 6px;">
             </div>
             <div style="display: flex; flex-direction: column;">
-                <label for="date_to" style="font-size: 0.85rem; color: #64748b; margin-bottom: 4px;">Hasta:</label>
-                <input type="date" id="date_to" name="date_to" value="{{ date_to }}" class="form-control" style="padding: 6px 10px; font-size: 0.9rem; border: 1px solid #cbd5e1; border-radius: 6px;">
+                <label for="date_to" style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 4px;">Hasta:</label>
+                <input type="date" id="date_to" name="date_to" value="{{ date_to }}" class="form-control" style="padding: 6px 10px; font-size: 0.9rem; border: 1px solid var(--color-border); border-radius: 6px;">
             </div>
             <button type="submit" class="btn btn-primary" style="padding: 6px 12px; height: 35px;">Filtrar</button>
             {% if date_from or date_to %}
@@ -50,7 +50,7 @@
                     {% elif diff < 0 %}
                     <td style="font-weight: bold; color: #dc2626;">
                     {% else %}
-                    <td style="font-weight: bold; color: #2563eb;">
+                    <td style="font-weight: bold; color: #8a6a12;">
                     {% endif %}
                         {{ diff | clp }}
                     </td>
@@ -60,7 +60,7 @@
                         {% elif diff < 0 %}
                             <span class="badge badge-error">Faltante</span>
                         {% else %}
-                            <span class="badge" style="background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe;">Sobrante</span>
+                            <span class="badge" style="background: var(--color-primary-soft); color: #8a6a12; border: 1px solid rgba(240, 185, 11, 0.32);">Sobrante</span>
                         {% endif %}
                     </td>
                 </tr>
@@ -69,8 +69,8 @@
         </table>
         
         {% if total_pages > 1 %}
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-top: 1px solid #e2e8f0; background-color: #f8fafc;">
-            <span style="color: #64748b; font-size: 0.9rem;">Mostrando página {{ page }} de {{ total_pages }} ({{ total }} registros)</span>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-top: 1px solid var(--color-border); background-color: var(--color-bg);">
+            <span style="color: var(--color-text-muted); font-size: 0.9rem;">Mostrando página {{ page }} de {{ total_pages }} ({{ total }} registros)</span>
             <div style="display: flex; gap: 8px;">
                 {% if page <= 1 %}
                 <a href="{{ url_for('arqueos', page=page-1, date_from=date_from, date_to=date_to) }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.9rem; pointer-events: none; opacity: 0.5;">Anterior</a>

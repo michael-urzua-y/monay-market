@@ -2,28 +2,27 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Monay Market POS - Sistema de punto de venta">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Monay POS">
-  <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
+  <link rel="apple-touch-icon" href="icons/monay-market-logo.png">
   <title>Monay Market POS</title>
   <link rel="stylesheet" href="src/styles.css">
   
   <!-- Conexión de la PWA -->
-  <link rel="manifest" href="/manifest.json">
-  <meta name="theme-color" content="#c9952a">
-  <link rel="icon" type="image/png" href="/icons/icon-192x192.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#f0b90b">
+  <link rel="icon" type="image/png" href="icons/monay-market-logo.png">
 </head>
 <body>
   <div id="app">
     <!-- Header -->
     <header id="app-header" class="app-header hidden">
       <div class="header-left">
-        <img src="/icons/logo-crown.png" alt="Monay" style="height: 28px; width: auto; margin-right: 8px; filter: drop-shadow(0 2px 4px rgba(201,149,42,0.3));">
-        <h1 class="header-title">MONAY MARKET</h1>
+        <img class="header-logo" src="icons/monay-market-logo-horizontal.png" alt="Monay Market">
       </div>
       <nav class="header-nav">
         <button class="nav-btn active" data-screen="sale" aria-label="Venta">
@@ -40,35 +39,6 @@
 
     <!-- Screens -->
     <main id="screen-container">
-      <!-- Login Screen -->
-      <section id="screen-login" class="screen active">
-        <div class="login-container" style="background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #111827 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px;">
-            <div style="width: 100%; max-width: 420px;">
-              <div class="login-card" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(201,149,42,0.2); border-radius: 20px; padding: 48px 40px 40px; box-shadow: 0 25px 50px rgba(0,0,0,0.5); text-align: center;">
-                <div style="margin: 0 auto 18px; width: min(240px, 72vw);">
-                  <img src="/icons/monay-market-logo.png" alt="Monay Market" style="width: 100%; height: auto; display: block; border-radius: 14px;">
-                </div>
-                <div class="login-subtitle" style="color: #94a3b8; text-align: center; margin-bottom: 28px; letter-spacing: 1px; font-size: 0.9rem;">Punto de Venta</div>
-
-                <div id="login-error" class="login-error hidden" style="background: rgba(220,38,38,0.1); color: #fca5a5; padding: 12px; border-radius: 10px; font-size: 0.9rem; margin-bottom: 20px; border: 1px solid rgba(220,38,38,0.3);"></div>
-
-                <form id="login-form">
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label for="login-email" style="color: #94a3b8; font-size: 0.85rem; letter-spacing: 0.5px;">Correo Electrónico</label>
-                        <input type="email" id="login-email" placeholder="cajero@example.com" required autocomplete="email" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(201,149,42,0.25); color: #f1f5f9; border-radius: 10px; padding: 14px 16px;">
-                    </div>
-                    <div class="form-group" style="margin-bottom: 20px;">
-                        <label for="login-password" style="color: #94a3b8; font-size: 0.85rem; letter-spacing: 0.5px;">Contraseña</label>
-                        <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(201,149,42,0.25); color: #f1f5f9; border-radius: 10px; padding: 14px 16px;">
-                    </div>
-                    <button type="submit" class="login-btn" style="background: linear-gradient(135deg, #c9952a, #d4a843); color: #0f0f1a; font-weight: 700; letter-spacing: 1px; border: none; padding: 15px; border-radius: 10px; font-size: 1rem; width: 100%; cursor: pointer;">Abrir Caja</button>
-                </form>
-              </div>
-              <div style="text-align: center; margin-top: 24px; color: #475569; font-size: 0.8rem;">© 2026 Monay Market — Todos los derechos reservados</div>
-            </div>
-        </div>
-      </section>
-
       <!-- Sale Screen -->
       <section id="screen-sale" class="screen hidden">
         <!-- Search & Scan Bar -->
@@ -96,8 +66,8 @@
         <!-- Calculadora de Peso (Modal) -->
         <div id="weigh-modal" class="hidden" style="position: fixed; inset: 0; z-index: 2000; align-items: center; justify-content: center; background: rgba(0,0,0,0.6); padding: 20px;">
           <div class="card" style="width: 100%; max-width: 380px; background: white; border-radius: 16px; padding: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
-            <h3 id="weigh-product-name" style="margin-top: 0; color: #0f172a; font-size: 1.25rem;">Producto a granel</h3>
-            <p style="color: #64748b; margin-bottom: 20px; font-size: 0.95rem;">Precio por Kg: <span id="weigh-product-price" style="font-weight: 700; color: #2563eb;">$0</span></p>
+            <h3 id="weigh-product-name" style="margin-top: 0; color: var(--color-text); font-size: 1.25rem;">Producto a granel</h3>
+            <p style="color: var(--color-text-secondary); margin-bottom: 20px; font-size: 0.95rem;">Precio por Kg: <span id="weigh-product-price" style="font-weight: 700; color: var(--color-primary);">$0</span></p>
             
             <div style="display: flex; flex-direction: column; gap: 16px;">
               <div class="form-group" style="margin: 0;">
@@ -105,7 +75,7 @@
                 <input type="number" id="weigh-weight-input" class="amount-input" placeholder="Ej: 0.540" min="0" step="0.001" inputmode="decimal" style="font-size: 1.2rem; text-align: center;">
               </div>
               
-              <div style="text-align: center; color: #94a3b8; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;">O ingresa el monto</div>
+              <div style="text-align: center; color: var(--color-text-secondary); font-weight: 700; font-size: 0.85rem; text-transform: uppercase;">O ingresa el monto</div>
               
               <div class="form-group" style="margin: 0;">
                 <label for="weigh-amount-input" style="font-size: 0.9rem; font-weight: 600;">Monto a cobrar ($)</label>
@@ -151,11 +121,11 @@
               </div>
             </div>
             <div class="quick-amount-btns">
-              <button type="button" class="quick-amount-btn" data-amount="1000" style="background:#356247;color:white;">$1.000</button>
-              <button type="button" class="quick-amount-btn" data-amount="2000" style="background:#6A377D;color:white;">$2.000</button>
-              <button type="button" class="quick-amount-btn" data-amount="5000" style="background:#B22222;color:white;">$5.000</button>
-              <button type="button" class="quick-amount-btn" data-amount="10000" style="background:#004F90;color:white;">$10.000</button>
-              <button type="button" class="quick-amount-btn" data-amount="20000" style="background:#E38127;color:white;">$20.000</button>
+              <button type="button" class="quick-amount-btn denomination-btn denomination-1000" data-amount="1000">$1.000</button>
+              <button type="button" class="quick-amount-btn denomination-btn denomination-2000" data-amount="2000">$2.000</button>
+              <button type="button" class="quick-amount-btn denomination-btn denomination-5000" data-amount="5000">$5.000</button>
+              <button type="button" class="quick-amount-btn denomination-btn denomination-10000" data-amount="10000">$10.000</button>
+              <button type="button" class="quick-amount-btn denomination-btn denomination-20000" data-amount="20000">$20.000</button>
             </div>
             <div id="change-display" class="change-display hidden">
               <span id="change-label">Vuelto:</span>
@@ -179,7 +149,7 @@
         </div>
         
         <div style="padding: 16px 20px 0 20px;">
-          <button id="btn-arqueo" class="btn btn-primary btn-block" style="display: flex; justify-content: center; align-items: center; gap: 8px; padding: 14px; font-size: 1.05rem; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2);">
+          <button id="btn-arqueo" class="btn btn-primary btn-block" style="display: flex; justify-content: center; align-items: center; gap: 8px; padding: 14px; font-size: 1.05rem; border-radius: 10px; box-shadow: 0 4px 10px rgba(240, 185, 11, 0.22);">
             <span style="font-size: 1.3rem;">💵</span> Realizar Cuadratura de Caja
           </button>
         </div>
@@ -191,73 +161,73 @@
 
       <!-- Arqueo Screen -->
       <section id="screen-arqueo" class="screen hidden">
-        <div class="arqueo-header" style="display: flex; align-items: center; padding: 16px; background: white; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 10;">
+        <div class="arqueo-header" style="display: flex; align-items: center; padding: 16px; background: var(--color-surface); border-bottom: 1px solid var(--color-border); position: sticky; top: 0; z-index: 10;">
           <button class="btn-icon" onclick="MonayPOS.router.navigate('history')" style="margin-right: 16px;">←</button>
-          <h3 style="margin: 0; font-size: 1.2rem; color: #0f172a;">Cuadratura de Caja</h3>
+          <h3 style="margin: 0; font-size: 1.2rem; color: var(--color-text);">Cuadratura de Caja</h3>
         </div>
         <div style="padding: 16px; max-width: 600px; margin: 0 auto; padding-bottom: 100px;">
-          <p style="color: #64748b; margin-bottom: 20px;">Ingrese la cantidad de billetes y monedas que hay físicamente en la caja.</p>
+          <p style="color: var(--color-text-secondary); margin-bottom: 20px;">Ingrese la cantidad de billetes y monedas que hay físicamente en la caja.</p>
           
           <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 12px; margin-bottom: 24px;">
-            <div class="card arqueo-card" style="padding: 8px; text-align: center; border: 2px solid #E38127; border-radius: 8px;">
-              <label style="color: #E38127; font-weight: 700; display: block; margin-bottom: 4px;">$20.000</label>
+            <div class="card arqueo-card denomination-20000" style="padding: 8px; text-align: center; border-width: 2px; border-style: solid; border-radius: 8px;">
+              <label style="font-weight: 700; display: block; margin-bottom: 4px;">$20.000</label>
               <div style="display: flex; align-items: center; gap: 4px;">
-                <button type="button" class="arqueo-btn-minus" data-val="20000" style="width:28px;height:28px;background:#E38127;color:white;border:none;border-radius:4px;font-weight:bold;">-</button>
+                <button type="button" class="arqueo-btn-minus denomination-control" data-val="20000">-</button>
                 <input type="number" class="amount-input arqueo-input" data-val="20000" min="0" placeholder="0" inputmode="numeric" style="width:50px;text-align:center;padding:4px;">
-                <button type="button" class="arqueo-btn-plus" data-val="20000" style="width:28px;height:28px;background:#E38127;color:white;border:none;border-radius:4px;font-weight:bold;">+</button>
+                <button type="button" class="arqueo-btn-plus denomination-control" data-val="20000">+</button>
               </div>
             </div>
-            <div class="card arqueo-card" style="padding: 8px; text-align: center; border: 2px solid #004F90; border-radius: 8px;">
-              <label style="color: #004F90; font-weight: 700; display: block; margin-bottom: 4px;">$10.000</label>
+            <div class="card arqueo-card denomination-10000" style="padding: 8px; text-align: center; border-width: 2px; border-style: solid; border-radius: 8px;">
+              <label style="font-weight: 700; display: block; margin-bottom: 4px;">$10.000</label>
               <div style="display: flex; align-items: center; gap: 4px;">
-                <button type="button" class="arqueo-btn-minus" data-val="10000" style="width:28px;height:28px;background:#004F90;color:white;border:none;border-radius:4px;font-weight:bold;">-</button>
+                <button type="button" class="arqueo-btn-minus denomination-control" data-val="10000">-</button>
                 <input type="number" class="amount-input arqueo-input" data-val="10000" min="0" placeholder="0" inputmode="numeric" style="width:50px;text-align:center;padding:4px;">
-                <button type="button" class="arqueo-btn-plus" data-val="10000" style="width:28px;height:28px;background:#004F90;color:white;border:none;border-radius:4px;font-weight:bold;">+</button>
+                <button type="button" class="arqueo-btn-plus denomination-control" data-val="10000">+</button>
               </div>
             </div>
-            <div class="card arqueo-card" style="padding: 8px; text-align: center; border: 2px solid #B22222; border-radius: 8px;">
-              <label style="color: #B22222; font-weight: 700; display: block; margin-bottom: 4px;">$5.000</label>
+            <div class="card arqueo-card denomination-5000" style="padding: 8px; text-align: center; border-width: 2px; border-style: solid; border-radius: 8px;">
+              <label style="font-weight: 700; display: block; margin-bottom: 4px;">$5.000</label>
               <div style="display: flex; align-items: center; gap: 4px;">
-                <button type="button" class="arqueo-btn-minus" data-val="5000" style="width:28px;height:28px;background:#B22222;color:white;border:none;border-radius:4px;font-weight:bold;">-</button>
+                <button type="button" class="arqueo-btn-minus denomination-control" data-val="5000">-</button>
                 <input type="number" class="amount-input arqueo-input" data-val="5000" min="0" placeholder="0" inputmode="numeric" style="width:50px;text-align:center;padding:4px;">
-                <button type="button" class="arqueo-btn-plus" data-val="5000" style="width:28px;height:28px;background:#B22222;color:white;border:none;border-radius:4px;font-weight:bold;">+</button>
+                <button type="button" class="arqueo-btn-plus denomination-control" data-val="5000">+</button>
               </div>
             </div>
-            <div class="card arqueo-card" style="padding: 8px; text-align: center; border: 2px solid #6A377D; border-radius: 8px;">
-              <label style="color: #6A377D; font-weight: 700; display: block; margin-bottom: 4px;">$2.000</label>
+            <div class="card arqueo-card denomination-2000" style="padding: 8px; text-align: center; border-width: 2px; border-style: solid; border-radius: 8px;">
+              <label style="font-weight: 700; display: block; margin-bottom: 4px;">$2.000</label>
               <div style="display: flex; align-items: center; gap: 4px;">
-                <button type="button" class="arqueo-btn-minus" data-val="2000" style="width:28px;height:28px;background:#6A377D;color:white;border:none;border-radius:4px;font-weight:bold;">-</button>
+                <button type="button" class="arqueo-btn-minus denomination-control" data-val="2000">-</button>
                 <input type="number" class="amount-input arqueo-input" data-val="2000" min="0" placeholder="0" inputmode="numeric" style="width:50px;text-align:center;padding:4px;">
-                <button type="button" class="arqueo-btn-plus" data-val="2000" style="width:28px;height:28px;background:#6A377D;color:white;border:none;border-radius:4px;font-weight:bold;">+</button>
+                <button type="button" class="arqueo-btn-plus denomination-control" data-val="2000">+</button>
               </div>
             </div>
-            <div class="card arqueo-card" style="padding: 8px; text-align: center; border: 2px solid #356247; border-radius: 8px;">
-              <label style="color: #356247; font-weight: 700; display: block; margin-bottom: 4px;">$1.000</label>
+            <div class="card arqueo-card denomination-1000" style="padding: 8px; text-align: center; border-width: 2px; border-style: solid; border-radius: 8px;">
+              <label style="font-weight: 700; display: block; margin-bottom: 4px;">$1.000</label>
               <div style="display: flex; align-items: center; gap: 4px;">
-                <button type="button" class="arqueo-btn-minus" data-val="1000" style="width:28px;height:28px;background:#356247;color:white;border:none;border-radius:4px;font-weight:bold;">-</button>
+                <button type="button" class="arqueo-btn-minus denomination-control" data-val="1000">-</button>
                 <input type="number" class="amount-input arqueo-input" data-val="1000" min="0" placeholder="0" inputmode="numeric" style="width:50px;text-align:center;padding:4px;">
-                <button type="button" class="arqueo-btn-plus" data-val="1000" style="width:28px;height:28px;background:#356247;color:white;border:none;border-radius:4px;font-weight:bold;">+</button>
+                <button type="button" class="arqueo-btn-plus denomination-control" data-val="1000">+</button>
               </div>
             </div>
-            <div class="card" style="padding: 10px; text-align: center; background: #f8fafc;"><label style="color: #475569; font-weight: 700; display: block; margin-bottom: 6px;">$500</label><input type="number" class="amount-input arqueo-input" data-val="500" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
-            <div class="card" style="padding: 10px; text-align: center; background: #f8fafc;"><label style="color: #475569; font-weight: 700; display: block; margin-bottom: 6px;">$100</label><input type="number" class="amount-input arqueo-input" data-val="100" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
-            <div class="card" style="padding: 10px; text-align: center; background: #f8fafc;"><label style="color: #475569; font-weight: 700; display: block; margin-bottom: 6px;">$50</label><input type="number" class="amount-input arqueo-input" data-val="50" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
-            <div class="card" style="padding: 10px; text-align: center; background: #f8fafc;"><label style="color: #475569; font-weight: 700; display: block; margin-bottom: 6px;">$10</label><input type="number" class="amount-input arqueo-input" data-val="10" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
+            <div class="card" style="padding: 10px; text-align: center; background: var(--color-bg);"><label style="color: var(--color-text-secondary); font-weight: 700; display: block; margin-bottom: 6px;">$500</label><input type="number" class="amount-input arqueo-input" data-val="500" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
+            <div class="card" style="padding: 10px; text-align: center; background: var(--color-bg);"><label style="color: var(--color-text-secondary); font-weight: 700; display: block; margin-bottom: 6px;">$100</label><input type="number" class="amount-input arqueo-input" data-val="100" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
+            <div class="card" style="padding: 10px; text-align: center; background: var(--color-bg);"><label style="color: var(--color-text-secondary); font-weight: 700; display: block; margin-bottom: 6px;">$50</label><input type="number" class="amount-input arqueo-input" data-val="50" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
+            <div class="card" style="padding: 10px; text-align: center; background: var(--color-bg);"><label style="color: var(--color-text-secondary); font-weight: 700; display: block; margin-bottom: 6px;">$10</label><input type="number" class="amount-input arqueo-input" data-val="10" min="0" placeholder="0" inputmode="numeric" style="width: 100%; text-align: center; padding: 8px;"></div>
           </div>
 
-          <div class="card" style="padding: 20px; background: #f8fafc; border: 2px solid #e2e8f0;">
+          <div class="card" style="padding: 20px; background: var(--color-bg); border: 2px solid var(--color-border);">
             <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 1.1rem;">
-              <span style="color: #64748b;">Efectivo Esperado (Sistema):</span>
+              <span style="color: var(--color-text-secondary);">Efectivo Esperado (Sistema):</span>
               <strong id="arqueo-expected">$0</strong>
             </div>
             <div style="display: flex; justify-content: space-between; margin-bottom: 12px; font-size: 1.1rem;">
-              <span style="color: #64748b;">Efectivo Contado (Físico):</span>
-              <strong id="arqueo-counted" style="color: #2563eb;">$0</strong>
+              <span style="color: var(--color-text-secondary);">Efectivo Contado (Físico):</span>
+              <strong id="arqueo-counted" style="color: #8a6a12;">$0</strong>
             </div>
-            <hr style="border: 0; border-top: 1px solid #cbd5e1; margin: 16px 0;">
+            <hr style="border: 0; border-top: 1px solid var(--color-border); margin: 16px 0;">
             <div style="display: flex; justify-content: space-between; font-size: 1.3rem; font-weight: 800;">
               <span>Diferencia:</span>
-              <span id="arqueo-diff" style="color: #0f172a;">$0</span>
+              <span id="arqueo-diff" style="color: var(--color-text);">$0</span>
             </div>
             <p id="arqueo-status-msg" style="margin-top: 12px; font-size: 0.95rem; font-weight: 600; text-align: center;"></p>
           </div>
@@ -272,13 +242,16 @@
           <div id="receipt-content" class="receipt-paper">
             <!-- Filled dynamically -->
           </div>
-          <button id="btn-close-receipt" class="btn btn-primary btn-block receipt-close-btn">Nueva venta</button>
+          <div class="receipt-actions">
+            <button id="btn-print-receipt" class="btn btn-secondary btn-block receipt-action-btn">Imprimir comprobante</button>
+            <button id="btn-close-receipt" class="btn btn-primary btn-block receipt-action-btn">Nueva venta</button>
+          </div>
         </div>
       </section>
     </main>
   </div>
 
-  <script>window.MONAY_API_URL = window.location.origin;</script>
+  <script src="/runtime-config.js"></script>
   <script type="module" src="src/app.js"></script>
 </body>
 </html>

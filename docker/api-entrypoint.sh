@@ -1,5 +1,7 @@
 #!/bin/sh
 set -e
 
-npm run migration:run
+if [ "${RUN_MIGRATIONS:-true}" = "true" ]; then
+  npm run migration:run
+fi
 exec npm run start:prod

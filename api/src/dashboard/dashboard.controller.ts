@@ -16,10 +16,11 @@ import {
   InventoryValue,
 } from './dashboard.service';
 import { Product } from '../entities/product.entity';
+import { UserRole } from '../entities/enums';
 
 @Controller('dashboard')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard, SubscriptionGuard, PlanGuard)
-@Roles('dueno')
+@Roles(UserRole.DUENO)
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 

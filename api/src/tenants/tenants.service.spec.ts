@@ -21,6 +21,9 @@ describe('TenantsService', () => {
     sii_provider: null,
     sii_api_key: null,
     sii_rut_emisor: null,
+    sii_rut_autenticador: null,
+    sii_codigo_sucursal: null,
+    sii_clave_tributaria: null,
     sii_razon_social: null,
     sii_giro: null,
     sii_certificado_path: null,
@@ -76,6 +79,7 @@ describe('TenantsService', () => {
         expect.objectContaining({
           ...mockConfig,
           sii_api_key: 'configured',
+          sii_clave_tributaria: null,
           sii_certificado_path: 'configured',
           sii_certificado_password: null,
         }),
@@ -99,6 +103,8 @@ describe('TenantsService', () => {
         sii_provider: SiiProvider.HAULMER,
         sii_api_key: 'test-key',
         sii_rut_emisor: '12345678-9',
+        sii_rut_autenticador: '18673997-3',
+        sii_codigo_sucursal: 2,
         sii_sandbox_mode: false,
       };
       configFindOne.mockResolvedValue({ ...mockConfig });
@@ -109,6 +115,8 @@ describe('TenantsService', () => {
         sii_provider: SiiProvider.HAULMER,
         sii_api_key: 'test-key',
         sii_rut_emisor: '12345678-9',
+        sii_rut_autenticador: '18673997-3',
+        sii_codigo_sucursal: 2,
         sii_sandbox_mode: false,
       });
 

@@ -9,3 +9,4 @@ export * from './sale.entity';
 export * from './sale-line.entity';
 export * from './boleta.entity';
 export * from './merma.entity';
+export * from './login-rate-limit.entity';

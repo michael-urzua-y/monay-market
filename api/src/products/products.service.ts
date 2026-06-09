@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
@@ -20,6 +21,11 @@ export interface ImportResult {
   errors: { row: number; message: string }[];
 }
 
+type BarcodeLookupMatch = {
+  name: string | null;
+  category_suggestion: string | null;
+};
+
 @Injectable()
 export class ProductsService {
   constructor(
@@ -30,6 +36,7 @@ export class ProductsService {
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
     private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
   ) {}
 
   async getCategories(tenantId: string): Promise<Category[]> {
@@ -124,107 +131,22 @@ export class ProductsService {
   async lookupBarcode(
     code: string,
   ): Promise<{ barcode: string; name: string | null; category_suggestion: string | null }> {
-    // --- 1. Intento con Open Food Facts (Abarrotes y Comida) ---
-    try {
-      const url = `https://world.openfoodfacts.org/api/v2/product/${code}.json`;
-      const response = await firstValueFrom(
-        this.httpService.get(url, { timeout: 4000 }),
-      );
+    const sources: Array<() => Promise<BarcodeLookupMatch | null>> = [
+      () => this.lookupOpenFoodFacts(code),
+      () => this.lookupUpcItemDb(code),
+      () => this.lookupOpenBeautyFacts(code),
+      () => this.lookupUpcDatabase(code),
+      () => this.lookupJustBc(code),
+    ];
 
-      if (response.data?.status === 1 && response.data?.product) {
-        const p = response.data.product;
-        const name: string | null = p.product_name || null;
-        let categorySuggestion: string | null = null;
-
-        if (p.categories_tags && p.categories_tags.length > 0) {
-          const lastTag: string = p.categories_tags[p.categories_tags.length - 1];
-          categorySuggestion = lastTag.replace(/^[a-z]{2}:/, '');
-        }
-
-        return { barcode: code, name, category_suggestion: categorySuggestion };
+    for (const source of sources) {
+      const match = await source();
+      if (match) {
+        return { barcode: code, ...match };
       }
-    } catch {
-      // Falla de red o timeout: ignorar y pasar al siguiente
     }
 
-    // --- 2. Intento con UPCItemDB (Productos generales, importados) ---
-    try {
-      const url = `https://api.upcitemdb.com/prod/trial/lookup?upc=${code}`;
-      const response = await firstValueFrom(
-        this.httpService.get(url, { timeout: 4000 }),
-      );
-
-      if (response.data?.items && response.data.items.length > 0) {
-        const item = response.data.items[0];
-        const name: string | null = item.title || null;
-        let categorySuggestion: string | null = null;
-
-        if (item.category) {
-          const parts = item.category.split('>');
-          categorySuggestion = parts[parts.length - 1].trim();
-        }
-
-        return { barcode: code, name, category_suggestion: categorySuggestion };
-      }
-    } catch {
-      // Falla de red o timeout: ignorar y pasar al siguiente
-    }
-
-    // --- 3. Intento con Open Beauty Facts (Cuidado personal, higiene, aseo) ---
-    try {
-      const url = `https://world.openbeautyfacts.org/api/v2/product/${code}.json`;
-      const response = await firstValueFrom(
-        this.httpService.get(url, { timeout: 4000 }),
-      );
-
-      if (response.data?.status === 1 && response.data?.product) {
-        const p = response.data.product;
-        const name: string | null = p.product_name || null;
-        let categorySuggestion: string | null = null;
-
-        if (p.categories_tags && p.categories_tags.length > 0) {
-          const lastTag: string = p.categories_tags[p.categories_tags.length - 1];
-          categorySuggestion = lastTag.replace(/^[a-z]{2}:/, '');
-        }
-
-        return { barcode: code, name, category_suggestion: categorySuggestion };
-      }
-    } catch {
-      // Falla de red o timeout: continuar al fallback final
-    }
-
-    // --- 4. Intento con UPC Database (upcdatabase.org) ---
-    try {
-      const url = `https://api.upcdatabase.org/product/${code}`;
-      const response = await firstValueFrom(
-        this.httpService.get(url, { timeout: 4000 }),
-      );
-
-      if (response.data?.success && response.data?.product) {
-        const p = response.data.product;
-        const name: string | null = p.title || null;
-        return { barcode: code, name, category_suggestion: p.category || null };
-      }
-    } catch {
-      // Falla: continuar
-    }
-
-    // --- 5. Intento con JustBC (busca en múltiples bases) ---
-    try {
-      const url = `https://www.justbc.com/api/barcode/${code}`;
-      const response = await firstValueFrom(
-        this.httpService.get(url, { timeout: 4000 }),
-      );
-
-      if (response.data?.result === 1) {
-        return { barcode: code, name: response.data.product_name, category_suggestion: null };
-      }
-    } catch {
-      // Falla: continuar
-    }
-
-    // --- Fallback final: Si ninguno encontró el producto ---
-      return { barcode: code, name: null, category_suggestion: null };
+    return { barcode: code, name: null, category_suggestion: null };
   }
 
   async generateTemplate(): Promise<Buffer> {
@@ -354,5 +276,135 @@ export class ProductsService {
 
   private roundQuantity(value: number): number {
     return Math.round(value * 1000) / 1000;
+  }
+
+  private async lookupOpenFoodFacts(code: string): Promise<BarcodeLookupMatch | null> {
+    const data = await this.requestBarcodeLookup(
+      this.getLookupUrl(
+        'BARCODE_LOOKUP_OPENFOODFACTS_URL',
+        'https://world.openfoodfacts.org/api/v2/product/{code}.json',
+        code,
+      ),
+    );
+
+    if (data?.status !== 1 || !data?.product) {
+      return null;
+    }
+
+    return {
+      name: data.product.product_name || null,
+      category_suggestion: this.extractCategoryTag(data.product.categories_tags),
+    };
+  }
+
+  private async lookupUpcItemDb(code: string): Promise<BarcodeLookupMatch | null> {
+    const data = await this.requestBarcodeLookup(
+      this.getLookupUrl(
+        'BARCODE_LOOKUP_UPCITEMDB_URL',
+        'https://api.upcitemdb.com/prod/trial/lookup?upc={code}',
+        code,
+      ),
+    );
+
+    if (!data?.items?.length) {
+      return null;
+    }
+
+    const item = data.items[0];
+    return {
+      name: item.title || null,
+      category_suggestion: this.extractDelimitedCategory(item.category),
+    };
+  }
+
+  private async lookupOpenBeautyFacts(code: string): Promise<BarcodeLookupMatch | null> {
+    const data = await this.requestBarcodeLookup(
+      this.getLookupUrl(
+        'BARCODE_LOOKUP_OPENBEAUTYFACTS_URL',
+        'https://world.openbeautyfacts.org/api/v2/product/{code}.json',
+        code,
+      ),
+    );
+
+    if (data?.status !== 1 || !data?.product) {
+      return null;
+    }
+
+    return {
+      name: data.product.product_name || null,
+      category_suggestion: this.extractCategoryTag(data.product.categories_tags),
+    };
+  }
+
+  private async lookupUpcDatabase(code: string): Promise<BarcodeLookupMatch | null> {
+    const data = await this.requestBarcodeLookup(
+      this.getLookupUrl(
+        'BARCODE_LOOKUP_UPCDATABASE_URL',
+        'https://api.upcdatabase.org/product/{code}',
+        code,
+      ),
+    );
+
+    if (!data?.success || !data?.product) {
+      return null;
+    }
+
+    return {
+      name: data.product.title || null,
+      category_suggestion: data.product.category || null,
+    };
+  }
+
+  private async lookupJustBc(code: string): Promise<BarcodeLookupMatch | null> {
+    const data = await this.requestBarcodeLookup(
+      this.getLookupUrl(
+        'BARCODE_LOOKUP_JUSTBC_URL',
+        'https://www.justbc.com/api/barcode/{code}',
+        code,
+      ),
+    );
+
+    if (data?.result !== 1) {
+      return null;
+    }
+
+    return {
+      name: data.product_name || null,
+      category_suggestion: null,
+    };
+  }
+
+  private async requestBarcodeLookup(url: string): Promise<any | null> {
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(url, { timeout: 4000 }),
+      );
+      return response.data;
+    } catch {
+      return null;
+    }
+  }
+
+  private getLookupUrl(key: string, fallback: string, code: string): string {
+    const template = this.configService.get<string>(key) || fallback;
+    return template.replace('{code}', encodeURIComponent(code));
+  }
+
+  private extractCategoryTag(tags?: string[]): string | null {
+    if (!tags?.length) {
+      return null;
+    }
+
+    const lastTag = tags[tags.length - 1];
+    return lastTag.replace(/^[a-z]{2}:/, '') || null;
+  }
+
+  private extractDelimitedCategory(category?: string): string | null {
+    if (!category) {
+      return null;
+    }
+
+    const parts = category.split('>');
+    return parts[parts.length - 1].trim() || null;
   }
 }

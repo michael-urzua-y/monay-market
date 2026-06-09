@@ -44,7 +44,7 @@ monay-market/
 - Pago efectivo (cálculo de vuelto) y tarjeta
 - Deducción de stock atómica (unidades y fracciones) con alertas de stock crítico
 - Cierre de caja: resumen diario desglosado y registro de cuadratura (arqueo)
-- Módulo SII opcional: emisión de boleta electrónica con reintentos (3 intentos, 15s timeout), soporte Haulmer/OpenFactura/Facturación.cl/SimpleAPI/BaseAPI, IVA 19%
+- Módulo SII opcional: emisión de boleta electrónica con reintentos (3 intentos, 15s timeout), soporte Haulmer/OpenFactura/Facturación.cl/SimpleAPI/BaseAPI/API Gateway eBoleta, IVA 19%
 - Reintento manual de boletas pendientes
 - Dashboard de métricas: ventas del día, acumulado mensual con variación %, gráfico diario con selector de mes, stock crítico, valorización inventario (plan Pro)
 - Comprobante visual estructurado con datos de tienda, productos, pago y boleta
@@ -64,7 +64,7 @@ monay-market/
 ### PWA Punto de Venta
 - Instalable en celular como app nativa (manifest.json + íconos PWA 192x192 y 512x512)
 - Service Worker: cache-first para assets, network-first para API, respuesta offline 503
-- Login con JWT almacenado en localStorage
+- Login con JWT efimero almacenado en sessionStorage
 - Búsqueda de productos por nombre o código de barras
 - Escáner de código de barras con cámara (BarcodeDetector API)
 - "Calculadora Mágica" para productos a granel (ingreso de peso exacto o monto a cobrar con cálculo automático)
@@ -132,7 +132,7 @@ python app.py
 
 ## Setup con Docker
 
-El stack Docker levanta PostgreSQL, API NestJS, PWA y Dashboard Flask.
+El stack Docker levanta PostgreSQL, API NestJS, PWA, Dashboard Flask y un proxy Nginx para usar un solo dominio/puerto.
 
 ```bash
 cp postgres/.env.example postgres/.env
@@ -147,9 +147,13 @@ URLs por defecto:
 
 | Servicio | URL |
 |----------|-----|
-| PWA + API | http://localhost:3000 |
-| Dashboard | http://localhost:5000 |
-| PostgreSQL | interno en Docker |
+| Acceso unificado | http://localhost:8080 |
+| POS dentro del acceso unificado | http://localhost:8080/pos/ |
+| API dentro del acceso unificado | http://localhost:8080/api/ |
+| API, Dashboard y PostgreSQL | internos en Docker |
+
+El login unificado vive en `/login`. Si el usuario autenticado tiene rol `dueno`, entra al dashboard; si tiene rol `cajero`, entra al POS. Al cerrar sesión desde el POS, el cajero vuelve al login central. Las credenciales y roles salen desde la base de datos, no desde Docker ni desde archivos del frontend.
+En Docker, solo el servicio `web` publica un puerto. El API (`3000`) y el dashboard Flask (`5000`) quedan internos en la red Docker para evitar entradas paralelas y logins duplicados. En VPS, publicar solo `web` detrás de HTTPS.
 
 Comandos útiles:
 
@@ -158,7 +162,7 @@ Comandos útiles:
 docker compose up -d --build
 
 # Ver logs
-docker compose logs -f api dashboard
+docker compose logs -f web api dashboard
 
 # Bajar servicios
 docker compose down
@@ -167,7 +171,21 @@ docker compose down
 docker compose down -v
 ```
 
-Para VPS, configurar `CORS_ORIGIN` y `WS_CORS_ORIGIN` con los dominios reales del dashboard/PWA, y mantener `postgres/.env`, `api/.env` y `dashboard/.env` fuera de git.
+Para VPS, publicar solo el servicio `web` detrás de HTTPS y configurar `CORS_ORIGIN`, `WS_CORS_ORIGIN`, `PWA_LOGIN_URL`, `POS_URL`, `SESSION_COOKIE_SECURE=true`, `POS_AUTH_COOKIE_SECURE=true` y `STRICT_ENV_VALIDATION=true` según el dominio real. Mantener `postgres/.env`, `api/.env` y `dashboard/.env` fuera de git.
+
+## Flujo productivo de boleta electrónica
+
+Monay Market emite boletas desde el backend al registrar la venta en el POS. Si la integración SII está activa, la venta queda con estado `emitida`, `pendiente` o `error` según la respuesta del proveedor.
+
+Para API Gateway eBoleta:
+
+1. Crear una conexión en API Gateway y habilitar el producto Portal eBoleta.
+2. Copiar el token de la conexión.
+3. En Monay Market, entrar como dueño a Configuración → Módulo SII.
+4. Seleccionar `API Gateway eBoleta`, cargar el token, RUT emisor, razón social, giro y clave tributaria SII.
+5. Desactivar `Modo sandbox` para emitir contra el proveedor real.
+
+La clave tributaria SII se guarda por tenant desde la pantalla de configuración y no se debe definir en `.env`. El POS muestra el folio/PDF oficial cuando la boleta queda emitida y permite imprimir el comprobante local desde el navegador.
 
 ## Variables de entorno
 
@@ -189,17 +207,35 @@ Para VPS, configurar `CORS_ORIGIN` y `WS_CORS_ORIGIN` con los dominios reales de
 | `DB_PASSWORD` | Contraseña de PostgreSQL |
 | `DB_DATABASE` | Nombre de la base de datos |
 | `JWT_SECRET` | Secret para firmar tokens JWT |
+| `APP_DATA_ENCRYPTION_KEY` | Clave para cifrar secretos sensibles persistidos (API keys, clave tributaria, contraseña del certificado) |
 | `JWT_EXPIRATION` | Tiempo de expiración del JWT (ej: 1h) |
 | `PORT` | Puerto del servidor (default: 3000) |
 | `NODE_ENV` | Entorno (development / production) |
-| `SEED_PASSWORD` | Opcional. Contraseña inicial para usuarios seed de desarrollo; si se omite, se genera una temporal y queda hasheada en BD |
+| `STRICT_ENV_VALIDATION` | Activa validación estricta de placeholders/secrets para VPS |
+| `RUN_MIGRATIONS` | Ejecuta migraciones al iniciar el contenedor (default: `true`) |
+| `CORS_ORIGIN` | Orígenes permitidos para HTTP API |
+| `WS_CORS_ORIGIN` | Orígenes permitidos para WebSocket |
+| `PWA_API_URL` | Override opcional expuesto a la PWA por `/runtime-config.js` |
+| `PWA_LOGIN_URL` | Override opcional para logout/login central de la PWA |
+| `LOGIN_RATE_LIMIT_*` | Ventana, intentos máximos y bloqueo del login |
+| `SII_APIGATEWAY_BASE_URL` | URL base de API Gateway V2 (default: `https://app.apigateway.cl/api/v2`) |
+| `SEED_DEMO_DATA` | Crea datos demo solo si está en `true`; mantener `false` en producción |
+| `SEED_PASSWORD` | Contraseña inicial para usuarios demo solo cuando `SEED_DEMO_DATA=true` |
 
 ### Dashboard (`dashboard/.env`)
 
 | Variable | Descripción |
 |----------|------------|
-| `API_URL` | URL del backend API (ej: http://localhost:3000) |
+| `API_URL` | URL interna del backend API dentro de Docker (ej: `http://api:3000`) |
+| `PUBLIC_APP_URL` | URL pública del acceso unificado (ej: `http://localhost:8080`) |
+| `LOGIN_URL` | URL opcional de retorno al login central cuando el cajero cierra sesión |
+| `POS_URL` | Ruta o URL del POS para usuarios cajeros (default: `/pos/`) |
+| `POS_AUTH_COOKIE_SECURE` | Usar `true` cuando el acceso esté servido por HTTPS |
 | `SECRET_KEY` | Secret para sesiones Flask |
+| `SESSION_COOKIE_SECURE` | Usar `true` cuando el dashboard esté servido por HTTPS |
+| `SESSION_COOKIE_SAMESITE` | Política SameSite de sesión Flask |
+| `SESSION_LIFETIME_SECONDS` | Duración de la sesión de dueño |
+| `MAX_CONTENT_LENGTH` | Tamaño máximo de uploads recibidos por Flask |
 
 ## Endpoints disponibles
 
@@ -302,7 +338,8 @@ cd api && npm run test:cov
 ```
 
 ### Despliegue
-1. **API**: Desplegar en servidor Node.js (PM2, Docker, etc.)
-2. **Dashboard**: Desplegar con Gunicorn + Nginx
-3. **PWA**: Servir archivos estáticos desde CDN o servidor web
-4. **Base de datos**: PostgreSQL con réplica para producción
+1. Publicar `web` como entrada única del dominio con HTTPS.
+2. Mantener `api`, `dashboard` y `postgres` solo en la red interna de Docker.
+3. Ejecutar migraciones como paso controlado de release si se escala a más de una réplica.
+4. Mantener `SEED_DEMO_DATA=false` en producción y crear usuarios reales desde un flujo controlado.
+5. Para escalar WebSockets a múltiples réplicas, agregar un adapter compartido como Redis.

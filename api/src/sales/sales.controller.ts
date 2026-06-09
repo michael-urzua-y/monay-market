@@ -18,7 +18,9 @@ import { SiiService } from '../sii/sii.service';
 import { ReceiptService, ReceiptData } from './receipt.service';
 import { CreateSaleDto } from './dto/create-sale.dto';
 import { FilterSalesDto } from './dto/filter-sales.dto';
+import { CloseRegisterDto } from './dto/close-register.dto';
 import { Sale } from '../entities/sale.entity';
+import { UserRole } from '../entities/enums';
 
 @Controller('sales')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
@@ -30,7 +32,7 @@ export class SalesController {
   ) {}
 
   @Post()
-  @Roles('dueno', 'cajero')
+  @Roles(UserRole.DUENO, UserRole.CAJERO)
   @HttpCode(HttpStatus.CREATED)
   async create(
     @CurrentUser() user: JwtPayload,
@@ -64,7 +66,7 @@ export class SalesController {
   }
 
   @Get()
-  @Roles('dueno', 'cajero')
+  @Roles(UserRole.DUENO, UserRole.CAJERO)
   async findAll(
     @CurrentUser() user: JwtPayload,
     @Query() filters: FilterSalesDto,
@@ -73,18 +75,18 @@ export class SalesController {
   }
 
   @Post('close-register')
-  @Roles('dueno', 'cajero')
+  @Roles(UserRole.DUENO, UserRole.CAJERO)
   @HttpCode(HttpStatus.OK)
   async closeRegister(
     @CurrentUser() user: JwtPayload,
-    @Body('counted_efectivo') counted_efectivo: number,
+    @Body() dto: CloseRegisterDto,
   ): Promise<CloseRegisterResult> {
     const userId = (user as any).id || user.user_id;
-    return this.salesService.closeRegister(user.tenant_id, userId, counted_efectivo || 0);
+    return this.salesService.closeRegister(user.tenant_id, userId, dto.counted_efectivo);
   }
 
   @Get('arqueos')
-  @Roles('dueno')
+  @Roles(UserRole.DUENO)
   async getArqueos(
     @CurrentUser() user: JwtPayload,
     @Query('date_from') dateFrom?: string,
@@ -94,7 +96,7 @@ export class SalesController {
   }
 
   @Get(':id/receipt')
-  @Roles('dueno', 'cajero')
+  @Roles(UserRole.DUENO, UserRole.CAJERO)
   async getReceipt(
     @CurrentUser() user: JwtPayload,
     @Param('id', ParseUUIDPipe) id: string,
@@ -104,7 +106,7 @@ export class SalesController {
   }
 
   @Get(':id')
-  @Roles('dueno', 'cajero')
+  @Roles(UserRole.DUENO, UserRole.CAJERO)
   async findOne(
     @CurrentUser() user: JwtPayload,
     @Param('id', ParseUUIDPipe) id: string,

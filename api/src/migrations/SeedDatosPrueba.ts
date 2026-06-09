@@ -1,6 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { randomBytes } from 'crypto';
 
 /**
  * Seed con datos de prueba para desarrollo local.
@@ -12,6 +11,11 @@ export class SeedDatosPrueba1700000000001 implements MigrationInterface {
   private readonly BCRYPT_ROUNDS = 10;
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    if (process.env.SEED_DEMO_DATA !== 'true') {
+      console.warn('SEED_DEMO_DATA no está activo. Se omiten datos demo.');
+      return;
+    }
+
     const passwordHash = await bcrypt.hash(this.getSeedPassword(), this.BCRYPT_ROUNDS);
 
     // Tenant
@@ -70,7 +74,7 @@ export class SeedDatosPrueba1700000000001 implements MigrationInterface {
     // Productos — precios estimados de almacén chileno en CLP
     const productos = [
       // Bebidas y Licores
-      { cat: 'Bebidas y Licores', name: 'Coca-Cola 1.5L', barcode: '7801610223123', price: 1490, stock: 48, cs: 10 },
+      { cat: 'Bebidas', name: 'Coca-Cola 1.5L', barcode: '7801610223123', price: 1490, stock: 48, cs: 10 },
       { cat: 'Bebidas', name: 'Coca-Cola Zero 1.5L', barcode: '7801610223130', price: 1490, stock: 30, cs: 8 },
       { cat: 'Bebidas', name: 'Fanta 1.5L', barcode: '7801610223147', price: 1390, stock: 24, cs: 8 },
       { cat: 'Bebidas', name: 'Sprite 1.5L', barcode: '7801610223154', price: 1390, stock: 20, cs: 8 },
@@ -161,10 +165,6 @@ export class SeedDatosPrueba1700000000001 implements MigrationInterface {
       return seedPassword;
     }
 
-    const generatedPassword = randomBytes(18).toString('base64url');
-    console.warn(
-      `SEED_PASSWORD no configurado. Se generó una clave temporal para usuarios seed: ${generatedPassword}`,
-    );
-    return generatedPassword;
+    throw new Error('SEED_PASSWORD debe configurarse cuando SEED_DEMO_DATA=true');
   }
 }

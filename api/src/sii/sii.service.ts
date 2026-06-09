@@ -11,12 +11,14 @@ import {
   SiiSaleItem,
   SiiEmitResult,
   SiiCredentialError,
+  SiiPermanentError,
 } from './interfaces/sii-provider.interface';
 import { HaulmerProvider } from './providers/haulmer.provider';
 import { OpenFacturaProvider } from './providers/openfactura.provider';
 import { FacturacionClProvider } from './providers/facturacion-cl.provider';
 import { SimpleApiProvider } from './providers/simple-api.provider';
 import { BaseApiProvider } from './providers/base-api.provider';
+import { ApiGatewayProvider } from './providers/api-gateway.provider';
 
 /** IVA rate in Chile: 19% */
 const IVA_RATE = 0.19;
@@ -53,6 +55,7 @@ export class SiiService {
     facturacionClProvider: FacturacionClProvider,
     simpleApiProvider: SimpleApiProvider,
     baseApiProvider: BaseApiProvider,
+    apiGatewayProvider: ApiGatewayProvider,
   ) {
     this.providers = new Map<SiiProvider, ISiiProvider>([
       [SiiProvider.HAULMER, haulmerProvider],
@@ -60,6 +63,7 @@ export class SiiService {
       [SiiProvider.FACTURACION_CL, facturacionClProvider],
       [SiiProvider.SIMPLE_API, simpleApiProvider],
       [SiiProvider.BASE_API, baseApiProvider],
+      [SiiProvider.API_GATEWAY, apiGatewayProvider],
     ]);
   }
 
@@ -125,7 +129,18 @@ export class SiiService {
         );
         return {
           boleta_status: BoletaStatus.ERROR,
-          error: 'Error de credenciales SII. Revise la configuración.',
+          error: `Error de credenciales SII. ${error.message}`,
+        };
+      }
+
+      if (error instanceof SiiPermanentError) {
+        await this.updateSaleStatus(saleId, BoletaStatus.ERROR);
+        this.logger.error(
+          `Error permanente SII para venta ${saleId}: ${error.message}`,
+        );
+        return {
+          boleta_status: BoletaStatus.ERROR,
+          error: error.message,
         };
       }
 
@@ -178,11 +193,15 @@ export class SiiService {
     return {
       sale_id: sale.id,
       rut_emisor: config.sii_rut_emisor || '',
+      rut_autenticador: config.sii_rut_autenticador || config.sii_rut_emisor || '',
+      codigo_sucursal: config.sii_codigo_sucursal,
       items,
       monto_neto: montoNeto,
       iva,
       monto_total: montoTotal,
       fecha: sale.created_at,
+      payment_method: sale.payment_method,
+      clave_tributaria: config.sii_clave_tributaria || null,
     };
   }
 
@@ -206,8 +225,8 @@ export class SiiService {
         );
         return result;
       } catch (error) {
-        if (error instanceof SiiCredentialError) {
-          throw error; // Don't retry credential errors
+        if (error instanceof SiiCredentialError || error instanceof SiiPermanentError) {
+          throw error; // Don't retry non-retriable provider errors
         }
         lastError = error as Error;
         this.logger.warn(

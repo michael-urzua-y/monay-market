@@ -122,8 +122,8 @@ function loadDailyChart() {
                         datasets: [{
                             label: 'Ventas (CLP)',
                             data: values,
-                            borderColor: '#2563eb',
-                            backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                            borderColor: '#f0b90b',
+                            backgroundColor: 'rgba(240, 185, 11, 0.14)',
                             fill: true,
                             tension: 0.3,
                             pointRadius: 3,
@@ -184,12 +184,12 @@ function loadPeakHoursChart() {
             });
             const labels = hours.map(function(h) { return String(h).padStart(2, '0') + ':00'; });
 
-            // Paleta multicolor vibrante y moderna
+            // Paleta alineada al tema Monay Market
             const colors = [
-                '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e',
-                '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
-                '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#ef4444',
-                '#f97316', '#f59e0b', '#84cc16', '#22c55e', '#0ea5e9', '#6366f1'
+                '#315f3a', '#3f733e', '#5c7f2f', '#7a8d25', '#a67912', '#f0b90b',
+                '#ffd257', '#d7a72a', '#9f7b19', '#6f6f2a', '#4f6d2a', '#315f3a',
+                '#3f733e', '#5c7f2f', '#7a8d25', '#a67912', '#f0b90b', '#ffd257',
+                '#d7a72a', '#9f7b19', '#6f6f2a', '#4f6d2a', '#315f3a', '#3f733e'
             ];
 
             if (peakHoursChart) {

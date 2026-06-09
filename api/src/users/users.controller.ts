@@ -11,13 +11,14 @@ import {
 import { JwtAuthGuard, TenantGuard, RolesGuard } from '../common/guards';
 import { Roles, CurrentUser } from '../common/decorators';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { UserRole } from '../entities/enums';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
-@Roles('dueno')
+@Roles(UserRole.DUENO)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 

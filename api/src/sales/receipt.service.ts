@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Tenant } from '../entities/tenant.entity';
+import { TenantConfig } from '../entities/tenant-config.entity';
 import { Sale } from '../entities/sale.entity';
 import { BoletaStatus, PaymentMethod } from '../entities/enums';
 
@@ -13,6 +14,7 @@ export interface ReceiptItem {
 }
 
 export interface ReceiptData {
+  sale_id: string;
   store_name: string;
   store_rut: string;
   date: string;
@@ -21,9 +23,11 @@ export interface ReceiptData {
   payment_method: string;
   amount_received: number | null;
   change_amount: number | null;
+  boleta_status: BoletaStatus;
   boleta_folio: string | null;
   boleta_timbre: string | null;
   boleta_pdf_url: string | null;
+  boleta_provider: string | null;
 }
 
 @Injectable()
@@ -31,17 +35,21 @@ export class ReceiptService {
   constructor(
     @InjectRepository(Tenant)
     private readonly tenantRepository: Repository<Tenant>,
+    @InjectRepository(TenantConfig)
+    private readonly tenantConfigRepository: Repository<TenantConfig>,
   ) {}
 
   async generateReceipt(
     tenantId: string,
     sale: Sale,
   ): Promise<ReceiptData> {
-    const tenant = await this.tenantRepository.findOne({
-      where: { id: tenantId },
-    });
+    const [tenant, config] = await Promise.all([
+      this.tenantRepository.findOne({ where: { id: tenantId } }),
+      this.tenantConfigRepository.findOne({ where: { tenant_id: tenantId } }),
+    ]);
 
-    const storeName = tenant?.name ?? 'Tienda';
+    const storeName = config?.sii_razon_social || tenant?.name || 'Tienda';
+    const storeRut = config?.sii_rut_emisor || tenant?.rut || '';
 
     const items: ReceiptItem[] = (sale.lines ?? []).map((line) => ({
       name: line.product_name,
@@ -62,10 +70,15 @@ export class ReceiptService {
       sale.boleta_status === BoletaStatus.EMITIDA && sale.boleta
         ? sale.boleta.pdf_url
         : null;
+    const boletaProvider =
+      sale.boleta_status === BoletaStatus.EMITIDA && sale.boleta
+        ? sale.boleta.provider
+        : null;
 
     return {
+      sale_id: sale.id,
       store_name: storeName,
-      store_rut: tenant?.rut || '',
+      store_rut: storeRut,
       date: sale.created_at.toISOString(),
       items,
       total: sale.total,
@@ -78,9 +91,11 @@ export class ReceiptService {
         sale.payment_method === PaymentMethod.EFECTIVO
           ? sale.change_amount
           : null,
+      boleta_status: sale.boleta_status,
       boleta_folio: boletaFolio,
       boleta_timbre: boletaTimbre,
       boleta_pdf_url: boletaPdfUrl,
+      boleta_provider: boletaProvider,
     };
   }
 }

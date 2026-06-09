@@ -1,11 +1,17 @@
-const CACHE_NAME = 'monay-pos-v4';
+const CACHE_NAME = 'monay-pos-v15';
+const scopePath = new URL(self.registration.scope).pathname;
+const basePath = scopePath.endsWith('/') ? scopePath : scopePath + '/';
+const appPath = (path) => basePath + path.replace(/^\//, '');
 const APP_SHELL = [
-  '/',
-  '/index.html',
-  '/src/app.js',
-  '/src/cart.js',
-  '/src/styles.css',
-  '/manifest.json'
+  basePath,
+  appPath('index.html'),
+  appPath('src/api.js'),
+  appPath('src/app.js'),
+  appPath('src/cart.js'),
+  appPath('src/offline.js'),
+  appPath('src/styles.css'),
+  appPath('manifest.json'),
+  '/runtime-config.js',
 ];
 
 // Install: cache app shell assets
@@ -37,7 +43,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
   // Lista de todas las rutas que pertenecen al Backend (API)
-  const apiRoutes = ['/api/', '/auth/', '/sales', '/products', '/users', '/tenant', '/cart'];
+  const apiRoutes = ['/api/', '/auth/', '/sales', '/products', '/users', '/tenant', '/cart', '/dashboard', '/mermas'];
   const isApiRequest = apiRoutes.some(route => url.pathname.startsWith(route));
 
   // Network-first for API requests

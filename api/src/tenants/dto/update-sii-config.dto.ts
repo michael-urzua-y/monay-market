@@ -1,10 +1,13 @@
 import {
   IsBoolean,
   IsEnum,
+  IsInt,
   IsOptional,
   IsString,
   MaxLength,
+  Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { SiiProvider } from '../../entities/enums';
 
 export class UpdateSiiConfigDto {
@@ -25,6 +28,22 @@ export class UpdateSiiConfigDto {
   @IsString()
   @MaxLength(20)
   sii_rut_emisor?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  sii_rut_autenticador?: string | null;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  sii_codigo_sucursal?: number | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  sii_clave_tributaria?: string | null;
 
   @IsOptional()
   @IsString()

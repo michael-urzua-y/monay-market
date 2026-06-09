@@ -4,21 +4,25 @@
 .vscode
 .kilo
 .kiro
+.agents
+.codex
+.playwright-mcp
 
 api/node_modules
 api/dist
 api/coverage
-api/.env
-api/.env.local
+**/.env
+**/.env.*
+!**/.env.example
 
-dashboard/.env
-dashboard/.env.local
 dashboard/__pycache__
 dashboard/.pytest_cache
 dashboard/.venv
 dashboard/uploads
 
-pwa/.DS_Store
+pwa/.vercel
+proxy-squid
+**/.DS_Store
 
 uploads
 *.pfx

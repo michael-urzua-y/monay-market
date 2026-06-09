@@ -1,16 +1,56 @@
+function getDefaultApiUrl() {
+  const isUnifiedPosPath = window.location.pathname.startsWith('/pos');
+  const isDirectApiPort = window.location.port === '3000';
+  return isUnifiedPosPath && !isDirectApiPort
+    ? window.location.origin + '/api'
+    : window.location.origin;
+}
+
+function getDefaultLoginUrl() {
+  return window.location.origin + '/login';
+}
+
+function getRuntimeConfigValue(name) {
+  const runtimeConfig = window.MONAY_RUNTIME_CONFIG || {};
+  return window[name] || runtimeConfig[name] || '';
+}
+
 export const CONFIG = {
-  API_URL: window.MONAY_API_URL || window.location.origin,
+  API_URL: getRuntimeConfigValue('MONAY_API_URL') || getDefaultApiUrl(),
+  LOGIN_URL: getRuntimeConfigValue('MONAY_LOGIN_URL') || getDefaultLoginUrl(),
 };
+
+function getAuthStorage() {
+  try {
+    return window.sessionStorage;
+  } catch (err) {
+    return null;
+  }
+}
 
 export const api = {
   getToken: function () {
-    return localStorage.getItem('monay_token');
+    var storage = getAuthStorage();
+    return storage ? storage.getItem('monay_token') : null;
   },
   setToken: function (token) {
-    localStorage.setItem('monay_token', token);
+    var storage = getAuthStorage();
+    if (storage) {
+      storage.setItem('monay_token', token);
+    }
+  },
+  setUser: function (user) {
+    var storage = getAuthStorage();
+    if (!storage) return;
+    if (user) {
+      storage.setItem('monay_user', JSON.stringify(user));
+    }
   },
   clearToken: function () {
-    localStorage.removeItem('monay_token');
+    var storage = getAuthStorage();
+    if (!storage) return;
+    storage.removeItem('monay_token');
+    storage.removeItem('monay_user');
   },
   request: function (method, path, body) {
     const headers = {

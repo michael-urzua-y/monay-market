@@ -4,13 +4,17 @@ Provides dashboard, product management, sales history, user management,
 and tenant configuration via server-side rendered templates with HTMX.
 """
 
+import json
+import os
 from functools import wraps
 from pathlib import Path
+from urllib.parse import quote, urljoin
 from uuid import uuid4
 
 import requests
 
 from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 
 from api_client import APIClient
@@ -18,10 +22,73 @@ from config import Config
 
 app = Flask(__name__)
 app.config.from_object(Config)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
 api = APIClient(app.config["API_URL"])
 
 ALLOWED_CERTIFICATE_EXTENSIONS = {".pfx", ".p12"}
+OWNER_ROLE = "dueno"
+POS_ROLES = {"cajero", "vendedor"}
+POS_AUTH_COOKIE_MAX_AGE = 60
+
+
+def is_owner(user):
+    return (user or {}).get("role") == OWNER_ROLE
+
+
+def is_pos_operator(user):
+    return (user or {}).get("role") in POS_ROLES
+
+
+def is_dashboard_dev_port():
+    return request.host in {"localhost:5000", "127.0.0.1:5000"}
+
+
+def get_pos_url():
+    pos_url = app.config["POS_URL"]
+    if pos_url.startswith(("http://", "https://")):
+        return pos_url
+    if is_dashboard_dev_port():
+        return urljoin(app.config["PUBLIC_APP_URL"].rstrip("/") + "/", pos_url.lstrip("/"))
+    return pos_url
+
+
+def get_login_url():
+    configured_url = app.config.get("LOGIN_URL")
+    if configured_url:
+        return configured_url
+    if is_dashboard_dev_port():
+        return urljoin(app.config["PUBLIC_APP_URL"].rstrip("/") + "/", "login")
+    return url_for("login")
+
+
+def redirect_for_authenticated_session():
+    token = session.get("jwt_token")
+    user = session.get("user") or {}
+    if is_owner(user):
+        return redirect(url_for("dashboard"))
+    if token and is_pos_operator(user):
+        session.clear()
+        response = redirect(get_pos_url())
+        return set_pos_auth_cookies(response, token, user)
+    return None
+
+
+def set_pos_auth_cookies(response, token, user):
+    cookie_options = {
+        "max_age": POS_AUTH_COOKIE_MAX_AGE,
+        "path": "/",
+        "secure": bool(app.config["POS_AUTH_COOKIE_SECURE"]),
+        "samesite": "Lax",
+    }
+    response.set_cookie("monay_pos_token", token, **cookie_options)
+    response.set_cookie(
+        "monay_pos_user",
+        quote(json.dumps(user, separators=(",", ":"))),
+        **cookie_options,
+    )
+    response.set_cookie("monay_login_url", quote(get_login_url()), **cookie_options)
+    return response
 
 
 def login_required(f):
@@ -30,7 +97,7 @@ def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         user = session.get("user") or {}
-        if "jwt_token" not in session or user.get("role") != "dueno":
+        if "jwt_token" not in session or not is_owner(user):
             session.clear()
             return redirect(url_for("login"))
         return f(*args, **kwargs)
@@ -57,6 +124,7 @@ def save_certificate_upload(cert_file, tenant_id):
     filename = f"{tenant_id}_{uuid4().hex}{suffix}"
     filepath = upload_dir / filename
     cert_file.save(filepath)
+    os.chmod(filepath, 0o600)
     return str(filepath)
 
 
@@ -67,8 +135,9 @@ def save_certificate_upload(cert_file, tenant_id):
 def login():
     """Handle login: render form (GET) or authenticate (POST)."""
     if "jwt_token" in session:
-        if (session.get("user") or {}).get("role") == "dueno":
-            return redirect(url_for("dashboard"))
+        role_redirect = redirect_for_authenticated_session()
+        if role_redirect:
+            return role_redirect
         session.clear()
 
     if request.method == "POST":
@@ -79,12 +148,24 @@ def login():
 
         if result.get("status_code") == 201 and result.get("accessToken"):
             user = result.get("user", {})
-            if user.get("role") != "dueno":
-                session["login_error"] = "El panel requiere perfil dueño"
+            if is_owner(user):
+                session.permanent = True
+                session["jwt_token"] = result["accessToken"]
+                session["user"] = user
+                return redirect(url_for("dashboard"))
+            if is_pos_operator(user):
+                session.clear()
+                response = redirect(get_pos_url())
+                return set_pos_auth_cookies(response, result["accessToken"], user)
+
+            session["login_error"] = "Perfil no autorizado para esta aplicación"
+            return redirect(url_for("login"))
+
+        if result.get("status_code") == 201:
+            user = result.get("user", {})
+            if is_pos_operator(user):
+                session["login_error"] = "No se recibió token de acceso para el punto de venta"
                 return redirect(url_for("login"))
-            session["jwt_token"] = result["accessToken"]
-            session["user"] = user
-            return redirect(url_for("dashboard"))
 
         session["login_error"] = "Credenciales inválidas"
         return redirect(url_for("login"))
@@ -97,6 +178,13 @@ def logout():
     """Clear session and redirect to login."""
     session.clear()
     return redirect(url_for("login"))
+
+
+@app.route("/pos")
+@app.route("/pos/")
+def pos_redirect():
+    """Redirect direct dashboard-port POS requests to the unified POS route."""
+    return redirect(get_pos_url())
 
 
 # --- Main routes ---
@@ -566,6 +654,17 @@ def sales_retry_boleta(sale_id):
             return redirect(url_for("sales_detail", sale_id=sale_id, error=error_msg))
         return redirect(url_for(target, error=error_msg))
 
+    boleta_status = result.get("boleta_status") if isinstance(result, dict) else None
+    if boleta_status != "emitida":
+        error_msg = "La boleta no fue emitida. Revisa la configuración SII."
+        if isinstance(result, dict):
+            error_msg = result.get("error") or result.get("message") or error_msg
+            if isinstance(error_msg, list):
+                error_msg = ", ".join(error_msg)
+        if target == "sales_detail":
+            return redirect(url_for("sales_detail", sale_id=sale_id, error=error_msg))
+        return redirect(url_for(target, error=error_msg))
+
     if target == "sales_detail":
         return redirect(url_for("sales_detail", sale_id=sale_id, success="Boleta procesada correctamente"))
     return redirect(url_for(target, success="Boleta procesada correctamente"))
@@ -646,6 +745,15 @@ def settings():
     if request.args.get("clear_sii_rut") == "1":
         api.patch("/tenant/config/sii", data={"sii_rut_emisor": ""})
         return redirect(url_for("settings"))
+    if request.args.get("clear_sii_auth_rut") == "1":
+        api.patch("/tenant/config/sii", data={"sii_rut_autenticador": ""})
+        return redirect(url_for("settings"))
+    if request.args.get("clear_sii_codigo_sucursal") == "1":
+        api.patch("/tenant/config/sii", data={"sii_codigo_sucursal": None})
+        return redirect(url_for("settings"))
+    if request.args.get("clear_sii_clave") == "1":
+        api.patch("/tenant/config/sii", data={"sii_clave_tributaria": ""})
+        return redirect(url_for("settings"))
 
     config_data = api.get("/tenant/config")
     subscription_data = api.get("/tenant/subscription")
@@ -692,6 +800,13 @@ def settings_sii():
         data["sii_api_key"] = request.form.get("sii_api_key", "").strip() or None
     if "sii_rut_emisor" in request.form:
         data["sii_rut_emisor"] = request.form.get("sii_rut_emisor", "").strip() or None
+    if "sii_rut_autenticador" in request.form:
+        data["sii_rut_autenticador"] = request.form.get("sii_rut_autenticador", "").strip() or None
+    if "sii_codigo_sucursal" in request.form:
+        codigo_sucursal = request.form.get("sii_codigo_sucursal", "").strip()
+        data["sii_codigo_sucursal"] = int(codigo_sucursal) if codigo_sucursal else None
+    if "sii_clave_tributaria" in request.form:
+        data["sii_clave_tributaria"] = request.form.get("sii_clave_tributaria", "").strip() or None
 
     if certificado_path:
         data["sii_certificado_path"] = certificado_path

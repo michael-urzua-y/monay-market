@@ -6,6 +6,6 @@
       <stop offset="100%" style="stop-color:#f0d060"/>
     </linearGradient>
   </defs>
-  <rect width="64" height="64" rx="14" fill="#111827"/>
+  <rect width="64" height="64" rx="14" fill="#020a0a"/>
   <text x="32" y="46" text-anchor="middle" font-family="Georgia,serif" font-size="36" font-weight="bold" fill="url(#g)">M</text>
 </svg>

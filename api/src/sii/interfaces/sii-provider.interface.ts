@@ -1,13 +1,17 @@
-import { SiiProvider } from '../../entities/enums';
+import { PaymentMethod, SiiProvider } from '../../entities/enums';
 
 export interface SiiSaleData {
   sale_id: string;
   rut_emisor: string;
+  rut_autenticador?: string | null;
+  codigo_sucursal?: number | null;
   items: SiiSaleItem[];
   monto_neto: number;
   iva: number;
   monto_total: number;
   fecha: Date;
+  payment_method?: PaymentMethod;
+  clave_tributaria?: string | null;
 }
 
 export interface SiiSaleItem {
@@ -36,5 +40,12 @@ export class SiiCredentialError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'SiiCredentialError';
+  }
+}
+
+export class SiiPermanentError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'SiiPermanentError';
   }
 }

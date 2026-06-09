@@ -79,7 +79,7 @@ import { Cart } from './cart.js';
   // ----------------------------------------------------------
   var router = {
     currentScreen: null,
-    screens: ['login', 'sale', 'history', 'receipt', 'arqueo'],
+    screens: ['sale', 'history', 'receipt', 'arqueo'],
     navigate: function (screenId) {
       this.screens.forEach(function (id) {
         var el = document.getElementById('screen-' + id);
@@ -95,11 +95,7 @@ import { Cart } from './cart.js';
       }
       var header = document.getElementById('app-header');
       if (header) {
-        if (screenId === 'login') {
-          header.classList.add('hidden');
-        } else {
-          header.classList.remove('hidden');
-        }
+        header.classList.remove('hidden');
       }
       document.querySelectorAll('.nav-btn').forEach(function (btn) {
         btn.classList.toggle('active', btn.dataset.screen === screenId);
@@ -141,7 +137,7 @@ import { Cart } from './cart.js';
       
       var qtyHtml = '';
       if (item.is_weighed) {
-        qtyHtml = '<span class="qty-value" style="margin: 0 10px; font-size: 0.9rem; color: #3b82f6; font-weight: 600;">' + Number(item.quantity).toFixed(3) + ' Kg</span>';
+        qtyHtml = '<span class="qty-value" style="margin: 0 10px; font-size: 0.9rem; color: var(--color-primary); font-weight: 600;">' + Number(item.quantity).toFixed(3) + ' Kg</span>';
       } else {
         qtyHtml = '<button class="qty-btn" data-action="dec" data-id="' + item.product_id + '">−</button>' +
                   '<span class="qty-value">' + item.quantity + '</span>' +
@@ -575,15 +571,7 @@ import { Cart } from './cart.js';
     }
 
     if (!navigator.onLine) {
-      OfflineDB.savePendingSale(body).then(function () {
-        Cart.clear();
-        resetPaymentForm();
-        showToast('Sin conexión: Venta encolada para sincronizar', 'warning');
-        if (btnPay) btnPay.disabled = false;
-      }).catch(function () {
-        showToast('Error al guardar venta offline', 'error');
-        if (btnPay) btnPay.disabled = false;
-      });
+      queueOfflineSale(body, btnPay);
       return;
     }
 
@@ -598,6 +586,10 @@ import { Cart } from './cart.js';
         showToast('Venta registrada', 'success');
       }
     }).catch(function (err) {
+      if (shouldQueueOfflineSale(err)) {
+        queueOfflineSale(body, btnPay);
+        return;
+      }
       if (btnPay) btnPay.disabled = false;
       var msg = 'Error al procesar la venta';
       if (err.data && err.data.error === 'INSUFFICIENT_STOCK') {
@@ -608,6 +600,26 @@ import { Cart } from './cart.js';
         msg = err.message;
       }
       showToast(msg, 'error');
+    });
+  }
+
+  function shouldQueueOfflineSale(err) {
+    return !navigator.onLine ||
+      err?.status === 503 ||
+      err?.data?.error === 'OFFLINE' ||
+      err?.message === 'Failed to fetch' ||
+      err?.message === 'NetworkError';
+  }
+
+  function queueOfflineSale(body, btnPay) {
+    OfflineDB.savePendingSale(body).then(function () {
+      Cart.clear();
+      resetPaymentForm();
+      showToast('Sin conexión: venta encolada para sincronizar', 'warning');
+      if (btnPay) btnPay.disabled = false;
+    }).catch(function () {
+      showToast('Error al guardar venta offline', 'error');
+      if (btnPay) btnPay.disabled = false;
     });
   }
 
@@ -637,12 +649,15 @@ import { Cart } from './cart.js';
   // Receipt Display
   // ----------------------------------------------------------
   function showReceipt(receipt) {
-    // receipt: { store_name, date, items, total, payment_method, amount_received, change_amount, boleta_folio }
+    // receipt: { store_name, date, items, total, payment_method, amount_received, change_amount, boleta_status, boleta_folio }
     var content = document.getElementById('receipt-content');
     if (!content) return;
 
     var html = '';
     html += '<div class="receipt-store-name">' + escapeHtml(receipt.store_name) + '</div>';
+    if (receipt.store_rut) {
+      html += '<div class="receipt-store-rut">RUT ' + escapeHtml(receipt.store_rut) + '</div>';
+    }
     html += '<div class="receipt-date">' + formatDate(receipt.date) + '</div>';
     html += '<hr class="receipt-divider">';
 
@@ -681,11 +696,16 @@ import { Cart } from './cart.js';
       if (receipt.boleta_timbre) {
         html += '<div class="receipt-timbre">';
         html += '<div class="receipt-timbre-label">Timbre Electrónico SII</div>';
-        html += '<div class="receipt-timbre-code">' + escapeHtml(receipt.boleta_timbre.replace(/</g, '&lt;').replace(/>/g, '&gt;')) + '</div>';
+        html += '<div class="receipt-timbre-code">' + escapeHtml(receipt.boleta_timbre) + '</div>';
         html += '</div>';
       }
       if (receipt.boleta_pdf_url) {
         html += '<div class="receipt-pdf-link"><a href="' + escapeHtml(receipt.boleta_pdf_url) + '" target="_blank">Ver PDF oficial</a></div>';
+      }
+    } else {
+      var boletaStatus = getReceiptBoletaStatus(receipt.boleta_status);
+      if (boletaStatus) {
+        html += '<div class="receipt-boleta-status ' + boletaStatus.type + '">' + boletaStatus.label + '</div>';
       }
     }
 
@@ -696,11 +716,31 @@ import { Cart } from './cart.js';
     router.navigate('receipt');
   }
 
+  function getReceiptBoletaStatus(status) {
+    switch (status) {
+      case 'pendiente':
+        return { type: 'pending', label: 'Boleta pendiente de emisión SII' };
+      case 'error':
+        return { type: 'error', label: 'Error en emisión de boleta SII' };
+      case 'no_aplica':
+        return { type: 'muted', label: 'Boleta electrónica no configurada' };
+      default:
+        return null;
+    }
+  }
+
   function initReceipt() {
     var btnClose = document.getElementById('btn-close-receipt');
     if (btnClose) {
       btnClose.addEventListener('click', function () {
         router.navigate('sale');
+      });
+    }
+
+    var btnPrint = document.getElementById('btn-print-receipt');
+    if (btnPrint) {
+      btnPrint.addEventListener('click', function () {
+        window.print();
       });
     }
   }
@@ -753,41 +793,34 @@ import { Cart } from './cart.js';
     var totalTar = historyState.tarjeta.reduce(function(sum, s) { return sum + s.total; }, 0);
     var granTotal = totalEfe + totalTar;
 
-    // Wrapper con fondo gris suave para que las tarjetas resalten
-    var html = '<div style="background-color: #f8fafc; padding: 20px; border-radius: 12px; min-height: 100%;">';
+    var html = '<div class="history-dashboard">';
 
-    // Tarjetas de Totales
-    var cardStyle = 'background: white; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; flex: 1; padding: 16px 12px; text-align: center; min-width: 90px; max-width: 150px;';
-    var amountStyle = 'font-size: clamp(1rem, 4vw, 1.5rem); font-weight: bold; color: #0f172a; word-break: break-all; line-height: 1.2;';
-    html += '<div style="display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;">';
-    html += '<div style="' + cardStyle + '"><div style="color: #64748b; font-size: 0.85rem; margin-bottom: 4px;">Efectivo</div><div style="font-size: clamp(1rem, 4vw, 1.5rem); font-weight: bold; color: #16a34a; word-break: break-all; line-height: 1.2;">' + formatCLP(totalEfe) + '</div></div>';
-    html += '<div style="' + cardStyle + '"><div style="color: #64748b; font-size: 0.85rem; margin-bottom: 4px;">Tarjeta</div><div style="font-size: clamp(1rem, 4vw, 1.5rem); font-weight: bold; color: #2563eb; word-break: break-all; line-height: 1.2;">' + formatCLP(totalTar) + '</div></div>';
-    html += '<div style="' + cardStyle + '"><div style="color: #64748b; font-size: 0.85rem; margin-bottom: 4px;">Total</div><div style="' + amountStyle + '">' + formatCLP(granTotal) + '</div></div>';
+    html += '<div class="history-summary-grid" aria-label="Resumen de ventas del día">';
+    html += '<article class="history-summary-card history-summary-card-cash"><span class="history-summary-label">Efectivo</span><strong class="history-summary-amount">' + formatCLP(totalEfe) + '</strong></article>';
+    html += '<article class="history-summary-card history-summary-card-card"><span class="history-summary-label">Tarjeta</span><strong class="history-summary-amount">' + formatCLP(totalTar) + '</strong></article>';
+    html += '<article class="history-summary-card history-summary-card-total"><span class="history-summary-label">Total</span><strong class="history-summary-amount">' + formatCLP(granTotal) + '</strong></article>';
     html += '</div>';
 
-    // Tablas
-    html += '<div style="display: flex; flex-wrap: wrap; gap: 20px;">';
+    html += '<div class="history-columns">';
     
-    // Columna Efectivo
-    html += '<div style="flex: 1 1 320px; min-width: 0;">';
-    html += '<h3 style="margin-bottom: 16px; font-size: 1.1rem; color: #334155; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Ventas en Efectivo</h3>';
+    html += '<section class="history-column">';
+    html += '<h3 class="history-section-title">Ventas en Efectivo</h3>';
     html += renderHistoryTable(historyState.efectivo, historyState.pageEfectivo, 'efectivo');
-    html += '</div>';
+    html += '</section>';
 
-    // Columna Tarjeta
-    html += '<div style="flex: 1 1 320px; min-width: 0;">';
-    html += '<h3 style="margin-bottom: 16px; font-size: 1.1rem; color: #334155; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px;">Ventas con Tarjeta</h3>';
+    html += '<section class="history-column">';
+    html += '<h3 class="history-section-title">Ventas con Tarjeta</h3>';
     html += renderHistoryTable(historyState.tarjeta, historyState.pageTarjeta, 'tarjeta');
-    html += '</div>';
+    html += '</section>';
 
-    html += '</div></div>'; // Fin del contenedor flex y del wrapper gris
+    html += '</div></div>';
 
     listEl.innerHTML = html;
   }
 
   function renderHistoryTable(salesArray, page, method) {
     if (salesArray.length === 0) {
-      var emptyStyle = 'background: white; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; padding: 24px; text-align: center; color: #64748b;';
+      var emptyStyle = 'background: var(--color-surface); border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(23,32,22,0.08); border: 1px solid var(--color-border); padding: 24px; text-align: center; color: var(--color-text-secondary);';
       return '<div style="' + emptyStyle + '">No hay ventas registradas.</div>';
     }
 
@@ -799,10 +832,10 @@ import { Cart } from './cart.js';
     var end = start + historyState.perPage;
     var paginatedSales = salesArray.slice(start, end);
 
-    var tableCardStyle = 'background: white; border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; overflow: hidden;';
+    var tableCardStyle = 'background: var(--color-surface); border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(23,32,22,0.08); border: 1px solid var(--color-border); overflow: hidden;';
     var html = '<div style="' + tableCardStyle + '"><div style="overflow-x: auto; padding: 0;">';
     html += '<table class="data-table" style="margin: 0; width: 100%; white-space: nowrap; border-collapse: collapse;">';
-    html += '<thead style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;"><tr><th style="text-align: left; padding: 12px 16px; color: #64748b; font-weight: 600;">Hora</th><th style="text-align: left; padding: 12px 16px; color: #64748b; font-weight: 600;">Total</th><th style="text-align: left; padding: 12px 16px; color: #64748b; font-weight: 600;">Estado Boleta</th><th style="text-align: left; padding: 12px 16px; color: #64748b; font-weight: 600;">Acción</th></tr></thead>';
+    html += '<thead style="background-color: var(--color-bg); border-bottom: 1px solid var(--color-border);"><tr><th style="text-align: left; padding: 12px 16px; color: var(--color-text-secondary); font-weight: 600;">Hora</th><th style="text-align: left; padding: 12px 16px; color: var(--color-text-secondary); font-weight: 600;">Total</th><th style="text-align: left; padding: 12px 16px; color: var(--color-text-secondary); font-weight: 600;">Estado Boleta</th><th style="text-align: left; padding: 12px 16px; color: var(--color-text-secondary); font-weight: 600;">Acción</th></tr></thead>';
     html += '<tbody>';
 
     for (var i = 0; i < paginatedSales.length; i++) {
@@ -813,7 +846,7 @@ import { Cart } from './cart.js';
       if (sale.boleta_status === 'pendiente') badgeType = 'warning';
       if (sale.boleta_status === 'error') badgeType = 'error';
 
-      html += '<tr style="border-bottom: 1px solid #e2e8f0;">';
+      html += '<tr style="border-bottom: 1px solid var(--color-border);">';
       html += '<td style="padding: 12px 16px;">' + formatTime(sale.created_at) + '</td>';
       html += '<td style="padding: 12px 16px;">' + formatCLP(sale.total) + '</td>';
       html += '<td style="padding: 12px 16px;"><span class="badge badge-' + badgeType + '">' + boletaLabel + '</span></td>';
@@ -981,9 +1014,9 @@ function initArqueo() {
       statusEl.textContent = '¡Caja cuadrada perfectamente! ✅';
       statusEl.style.color = '#16a34a';
     } else if (diff > 0) {
-      diffEl.style.color = '#2563eb';
+      diffEl.style.color = '#8a6a12';
       statusEl.textContent = 'Sobra dinero en caja 🧐';
-      statusEl.style.color = '#2563eb';
+      statusEl.style.color = '#8a6a12';
     } else {
       diffEl.style.color = '#dc2626';
       statusEl.textContent = 'Falta dinero en caja ⚠️';
@@ -1038,45 +1071,93 @@ function initArqueo() {
     return payload && payload.role;
   }
 
-  function isCashierSession() {
-    var token = api.getToken();
-    return token && getTokenRole(token) === 'cajero';
+  function isPosRole(role) {
+    return role === 'cajero' || role === 'vendedor';
   }
 
-  function initAuth() {
-    var form = document.getElementById('login-form');
-    var errorEl = document.getElementById('login-error');
+  function isCashierSession() {
+    var token = api.getToken();
+    return token && isPosRole(getTokenRole(token));
+  }
 
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      errorEl.classList.add('hidden');
-
-      var email = document.getElementById('login-email').value.trim();
-      var password = document.getElementById('login-password').value;
-
-      if (!email || !password) {
-        showLoginError('Ingrese correo y contraseña');
-        return;
+  function readCookie(name) {
+    var prefix = name + '=';
+    var parts = document.cookie ? document.cookie.split('; ') : [];
+    for (var i = 0; i < parts.length; i++) {
+      if (parts[i].indexOf(prefix) === 0) {
+        return decodeURIComponent(parts[i].slice(prefix.length));
       }
-
-      api.post('/auth/login', { email: email, password: password }).then(function (data) {
-        var role = data && data.user && data.user.role;
-        if (role !== 'cajero') {
-          api.clearToken();
-          showLoginError('El punto de venta requiere perfil cajero');
-          return;
-        }
-        api.setToken(data.accessToken);
-        router.navigate('sale');
-      }).catch(function () {
-        showLoginError('Credenciales inválidas');
-      });
-    });
-
-    function showLoginError(msg) {
-      errorEl.textContent = msg;
-      errorEl.classList.remove('hidden');
     }
+    return '';
+  }
+
+  function clearCookie(name) {
+    document.cookie = name + '=; Max-Age=0; path=/; SameSite=Lax';
+    document.cookie = name + '=; Max-Age=0; path=/; SameSite=Lax; Secure';
+  }
+
+  function normalizeLoginUrl(value) {
+    if (!value) return '';
+    try {
+      var url = new URL(value, window.location.origin);
+      var isLocalhost = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+      if (isLocalhost && (url.port === '3000' || url.port === '5000')) {
+        return '';
+      }
+      if (url.origin === window.location.origin) {
+        return url.pathname + url.search + url.hash;
+      }
+      return url.href;
+    } catch (err) {
+      return '';
+    }
+  }
+
+  function getCentralLoginUrl() {
+    var storedUrl = normalizeLoginUrl(sessionStorage.getItem('monay_login_url'));
+    if (storedUrl) return storedUrl;
+
+    sessionStorage.removeItem('monay_login_url');
+    return normalizeLoginUrl(CONFIG.LOGIN_URL) || '/login';
+  }
+
+  function redirectToCentralLogin() {
+    window.location.assign(getCentralLoginUrl());
+  }
+
+  function importRedirectSession() {
+    var token = readCookie('monay_pos_token');
+    if (!token) return;
+
+    var role = getTokenRole(token);
+    if (!isPosRole(role)) {
+      clearCookie('monay_pos_token');
+      clearCookie('monay_pos_user');
+      return;
+    }
+
+    api.setToken(token);
+
+    var rawUser = readCookie('monay_pos_user');
+    if (rawUser) {
+      try {
+        api.setUser(JSON.parse(rawUser));
+      } catch (err) {
+        api.setUser({ role: role });
+      }
+    }
+
+    var loginUrl = readCookie('monay_login_url');
+    var normalizedLoginUrl = normalizeLoginUrl(loginUrl);
+    if (normalizedLoginUrl) {
+      sessionStorage.setItem('monay_login_url', normalizedLoginUrl);
+    } else {
+      sessionStorage.removeItem('monay_login_url');
+    }
+
+    clearCookie('monay_pos_token');
+    clearCookie('monay_pos_user');
+    clearCookie('monay_login_url');
   }
 
   function initLogout() {
@@ -1085,7 +1166,7 @@ function initArqueo() {
       btn.addEventListener('click', function () {
         api.clearToken();
         Cart.clear();
-        router.navigate('login');
+        redirectToCentralLogin();
       });
     }
   }
@@ -1109,8 +1190,9 @@ function initArqueo() {
   // ----------------------------------------------------------
   function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
+      var scope = window.location.pathname.startsWith('/pos') ? '/pos/' : '/';
       navigator.serviceWorker
-        .register('/service-worker.js')
+        .register(scope + 'service-worker.js', { scope: scope })
         .catch(function (err) {
           console.warn('SW registration failed:', err);
         });
@@ -1125,16 +1207,24 @@ function initArqueo() {
       const pending = await OfflineDB.getPendingSales();
       if (pending && pending.length > 0) {
         showToast('Sincronizando ' + pending.length + ' ventas offline...', 'success');
+        let synced = 0;
+        let failed = 0;
         for (let i = 0; i < pending.length; i++) {
           const sale = pending[i];
           try {
             await api.post('/sales', sale.payload);
             await OfflineDB.deletePendingSale(sale.id);
+            synced += 1;
           } catch (err) {
+            failed += 1;
             console.error('Error sincronizando venta:', err);
           }
         }
-        showToast('Ventas offline sincronizadas', 'success');
+        if (failed > 0) {
+          showToast('Sincronizadas: ' + synced + '. Pendientes: ' + failed, 'warning');
+        } else {
+          showToast('Ventas offline sincronizadas', 'success');
+        }
         if (router.currentScreen === 'history') {
           loadHistory();
         }
@@ -1151,8 +1241,8 @@ function initArqueo() {
   // ----------------------------------------------------------
   function init() {
     registerServiceWorker();
+    importRedirectSession();
     Cart.init(updateCartUI, showToast);
-    initAuth();
     initLogout();
     initNav();
     initSearch();
@@ -1166,7 +1256,7 @@ function initArqueo() {
 
     // Global auth expiration listener
     window.addEventListener('monay-auth-expired', function () {
-      router.navigate('login');
+      redirectToCentralLogin();
     });
 
     // Sync if online
@@ -1179,7 +1269,7 @@ function initArqueo() {
       router.navigate('sale');
     } else {
       api.clearToken();
-      router.navigate('login');
+      redirectToCentralLogin();
     }
   }
 

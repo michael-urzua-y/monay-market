@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ReceiptService } from './receipt.service';
 import { Tenant } from '../entities/tenant.entity';
+import { TenantConfig } from '../entities/tenant-config.entity';
 import { Sale } from '../entities/sale.entity';
 import { PaymentMethod, BoletaStatus } from '../entities/enums';
 
@@ -13,14 +14,19 @@ describe('ReceiptService', () => {
   const mockTenantRepository = {
     findOne: jest.fn(),
   };
+  const mockTenantConfigRepository = {
+    findOne: jest.fn(),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockTenantConfigRepository.findOne.mockResolvedValue(null);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReceiptService,
         { provide: getRepositoryToken(Tenant), useValue: mockTenantRepository },
+        { provide: getRepositoryToken(TenantConfig), useValue: mockTenantConfigRepository },
       ],
     }).compile();
 
@@ -68,8 +74,27 @@ describe('ReceiptService', () => {
     const sale = makeSale();
     const receipt = await service.generateReceipt(tenantId, sale);
 
+    expect(receipt.sale_id).toBe('sale-uuid');
     expect(receipt.store_name).toBe('Almacén Don Pedro');
     expect(mockTenantRepository.findOne).toHaveBeenCalledWith({ where: { id: tenantId } });
+  });
+
+  it('should prefer SII issuer data when configured', async () => {
+    mockTenantRepository.findOne.mockResolvedValue({
+      id: tenantId,
+      name: 'Almacén Don Pedro',
+      rut: '76.123.456-7',
+    });
+    mockTenantConfigRepository.findOne.mockResolvedValue({
+      tenant_id: tenantId,
+      sii_razon_social: 'MINIMARKET JUAN PABLO FAUNDEZ ESPINOSA E.I.R.L.',
+      sii_rut_emisor: '78.260.737-5',
+    });
+
+    const receipt = await service.generateReceipt(tenantId, makeSale());
+
+    expect(receipt.store_name).toBe('MINIMARKET JUAN PABLO FAUNDEZ ESPINOSA E.I.R.L.');
+    expect(receipt.store_rut).toBe('78.260.737-5');
   });
 
   it('should fallback to "Tienda" when tenant not found', async () => {
@@ -175,7 +200,9 @@ describe('ReceiptService', () => {
     });
     const receipt = await service.generateReceipt(tenantId, sale);
 
+    expect(receipt.boleta_status).toBe(BoletaStatus.EMITIDA);
     expect(receipt.boleta_folio).toBe('F-12345');
+    expect(receipt.boleta_provider).toBe('haulmer');
   });
 
   it('should set boleta_folio to null when boleta_status is not emitida', async () => {
@@ -184,7 +211,9 @@ describe('ReceiptService', () => {
     const sale = makeSale({ boleta_status: BoletaStatus.PENDIENTE });
     const receipt = await service.generateReceipt(tenantId, sale);
 
+    expect(receipt.boleta_status).toBe(BoletaStatus.PENDIENTE);
     expect(receipt.boleta_folio).toBeNull();
+    expect(receipt.boleta_provider).toBeNull();
   });
 
   it('should set boleta_folio to null when boleta_status is no_aplica', async () => {

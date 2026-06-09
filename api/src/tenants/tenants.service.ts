@@ -42,6 +42,9 @@ export class TenantsService {
     if (dto.sii_provider !== undefined) config.sii_provider = dto.sii_provider;
     if (dto.sii_api_key !== undefined) config.sii_api_key = this.normalizeOptionalString(dto.sii_api_key);
     if (dto.sii_rut_emisor !== undefined) config.sii_rut_emisor = this.normalizeOptionalString(dto.sii_rut_emisor);
+    if (dto.sii_rut_autenticador !== undefined) config.sii_rut_autenticador = this.normalizeOptionalString(dto.sii_rut_autenticador);
+    if (dto.sii_codigo_sucursal !== undefined) config.sii_codigo_sucursal = dto.sii_codigo_sucursal;
+    if (dto.sii_clave_tributaria !== undefined) config.sii_clave_tributaria = this.normalizeOptionalString(dto.sii_clave_tributaria);
     if (dto.sii_razon_social !== undefined) config.sii_razon_social = this.normalizeOptionalString(dto.sii_razon_social);
     if (dto.sii_giro !== undefined) config.sii_giro = this.normalizeOptionalString(dto.sii_giro);
     if (dto.sii_certificado_path !== undefined) config.sii_certificado_path = this.normalizeOptionalString(dto.sii_certificado_path);
@@ -78,6 +81,7 @@ export class TenantsService {
     return {
       ...config,
       sii_api_key: config.sii_api_key ? 'configured' : null,
+      sii_clave_tributaria: config.sii_clave_tributaria ? 'configured' : null,
       sii_certificado_path: config.sii_certificado_path ? 'configured' : null,
       sii_certificado_password: null,
     };

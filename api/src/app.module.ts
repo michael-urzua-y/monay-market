@@ -11,6 +11,8 @@ import { SiiModule } from './sii/sii.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { WebSocketModule } from './websocket/websocket.module';
 import { MermasModule } from './mermas/mermas.module';
+import { RuntimeConfigController } from './runtime-config.controller';
+import { HealthController } from './health.controller';
 
 @Module({
   imports: [
@@ -44,5 +46,6 @@ import { MermasModule } from './mermas/mermas.module';
     WebSocketModule,
     MermasModule,
   ],
+  controllers: [RuntimeConfigController, HealthController],
 })
 export class AppModule {}

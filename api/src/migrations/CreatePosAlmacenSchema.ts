@@ -14,7 +14,7 @@ export class CreatePosAlmacenSchema1700000000000 implements MigrationInterface {
     await queryRunner.query(`CREATE TYPE "market"."user_role_enum" AS ENUM ('dueno', 'cajero')`);
     await queryRunner.query(`CREATE TYPE "market"."payment_method_enum" AS ENUM ('efectivo', 'tarjeta')`);
     await queryRunner.query(`CREATE TYPE "market"."boleta_status_enum" AS ENUM ('no_aplica', 'emitida', 'pendiente', 'error')`);
-    await queryRunner.query(`CREATE TYPE "market"."sii_provider_enum" AS ENUM ('haulmer', 'openfactura', 'facturacion_cl', 'simple_api', 'base_api')`);
+    await queryRunner.query(`CREATE TYPE "market"."sii_provider_enum" AS ENUM ('haulmer', 'openfactura', 'facturacion_cl', 'simple_api', 'base_api', 'api_gateway')`);
 
     // Create tables
     await queryRunner.query(`
@@ -32,9 +32,12 @@ export class CreatePosAlmacenSchema1700000000000 implements MigrationInterface {
         "tenant_id" uuid NOT NULL,
         "sii_enabled" boolean NOT NULL DEFAULT false,
         "sii_provider" "market"."sii_provider_enum",
-        "sii_api_key" varchar(512),
-        "sii_rut_emisor" varchar(20),
-        "sii_sandbox_mode" boolean NOT NULL DEFAULT true,
+	        "sii_api_key" varchar(512),
+	        "sii_rut_emisor" varchar(20),
+	        "sii_rut_autenticador" varchar(20),
+	        "sii_codigo_sucursal" integer,
+	        "sii_clave_tributaria" varchar(100),
+	        "sii_sandbox_mode" boolean NOT NULL DEFAULT true,
         "printer_enabled" boolean NOT NULL DEFAULT false,
         "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
         CONSTRAINT "PK_tenant_configs" PRIMARY KEY ("id"),

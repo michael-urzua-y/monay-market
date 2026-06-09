@@ -19,6 +19,7 @@ import { Response } from 'express';
 import { JwtAuthGuard, TenantGuard, RolesGuard } from '../common/guards';
 import { Roles, CurrentUser } from '../common/decorators';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { UserRole } from '../entities/enums';
 import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -30,13 +31,13 @@ export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Get('categories')
-  @Roles('dueno', 'cajero')
+  @Roles(UserRole.DUENO, UserRole.CAJERO)
   getCategories(@CurrentUser() user: JwtPayload) {
     return this.productsService.getCategories(user.tenant_id);
   }
 
   @Post()
-  @Roles('dueno')
+  @Roles(UserRole.DUENO)
   create(
     @CurrentUser() user: JwtPayload,
     @Body() dto: CreateProductDto,
@@ -45,8 +46,15 @@ export class ProductsController {
   }
 
   @Post('import-excel')
-  @Roles('dueno')
-  @UseInterceptors(FileInterceptor('file'))
+  @Roles(UserRole.DUENO)
+  @UseInterceptors(FileInterceptor('file', {
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, callback) => {
+      const isXlsx = file.originalname.toLowerCase().endsWith('.xlsx') &&
+        file.mimetype === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      callback(isXlsx ? null : new BadRequestException('Solo se permiten archivos .xlsx'), isXlsx);
+    },
+  }))
   async importExcel(
     @CurrentUser() user: JwtPayload,
     @UploadedFile() file: Express.Multer.File,
@@ -58,7 +66,7 @@ export class ProductsController {
   }
 
   @Get('import-template')
-  @Roles('dueno')
+  @Roles(UserRole.DUENO)
   async downloadTemplate(@Res() res: Response) {
     const buffer = await this.productsService.generateTemplate();
     res.set({
@@ -69,7 +77,7 @@ export class ProductsController {
   }
 
   @Get()
-  @Roles('dueno', 'cajero')
+  @Roles(UserRole.DUENO, UserRole.CAJERO)
   findAll(
     @CurrentUser() user: JwtPayload,
     @Query() filters: FilterProductsDto,
@@ -78,13 +86,13 @@ export class ProductsController {
   }
 
   @Get('lookup-barcode/:code')
-  @Roles('dueno', 'cajero')
+  @Roles(UserRole.DUENO, UserRole.CAJERO)
   lookupBarcode(@Param('code') code: string) {
     return this.productsService.lookupBarcode(code);
   }
 
   @Get(':id')
-  @Roles('dueno', 'cajero')
+  @Roles(UserRole.DUENO, UserRole.CAJERO)
   findOne(
     @CurrentUser() user: JwtPayload,
     @Param('id', ParseUUIDPipe) id: string,
@@ -93,7 +101,7 @@ export class ProductsController {
   }
 
   @Patch(':id')
-  @Roles('dueno')
+  @Roles(UserRole.DUENO)
   update(
     @CurrentUser() user: JwtPayload,
     @Param('id', ParseUUIDPipe) id: string,
@@ -103,7 +111,7 @@ export class ProductsController {
   }
 
   @Delete(':id')
-  @Roles('dueno')
+  @Roles(UserRole.DUENO)
   remove(
     @CurrentUser() user: JwtPayload,
     @Param('id', ParseUUIDPipe) id: string,
