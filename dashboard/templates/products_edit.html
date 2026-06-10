@@ -17,46 +17,11 @@
         </div>
         <div class="card-body">
             <form method="post" action="{{ url_for('products_edit', product_id=product_id) }}">
-                <div class="form-group">
-                    <label for="barcode">Código de barras</label>
-                    <input type="text" id="barcode" name="barcode" value="{{ product.get('barcode', '') or '' }}" placeholder="Ej: 7801234567890">
-                </div>
-
-                <div class="form-group">
-                    <label for="name">Nombre *</label>
-                    <input type="text" id="name" name="name" value="{{ product.get('name', '') }}" required placeholder="Nombre del producto">
-                </div>
-
-                <div class="form-group">
-                    <label for="price">Precio (CLP) *</label>
-                    <input type="number" id="price" name="price" value="{{ product.get('price', '') }}" required min="1" placeholder="Ej: 1490">
-                </div>
-
-                <div class="form-group">
-                    <label for="stock">Stock *</label>
-                    <input type="number" id="stock" name="stock" value="{{ product.get('stock', 0) }}" required min="0" step="any" placeholder="0.000">
-                </div>
-
-                <div class="form-group">
-                    <label for="critical_stock">Stock crítico</label>
-                    <input type="number" id="critical_stock" name="critical_stock" value="{{ product.get('critical_stock', 0) }}" min="0" step="any" placeholder="0.000">
-                </div>
-
-                <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 16px; margin-bottom: 16px;">
-                    <input type="checkbox" id="is_weighed" name="is_weighed" {% if product.get('is_weighed') %}checked{% endif %} style="width: 20px; height: 20px; accent-color: var(--color-primary);">
-                    <label for="is_weighed" style="margin: 0; font-weight: 600; cursor: pointer;">Se vende por peso / a granel</label>
-                </div>
-
-                <div class="form-group">
-                    <label for="category_id">Categoría</label>
-                    <select id="category_id" name="category_id">
-                        <option value="">Sin categoría</option>
-                        {% for cat_id, cat_name in categories.items() %}
-                        {% set current_cat = product.get('category_id') or (product.get('category', {}).get('id', '') if product.get('category') else '') %}
-                        <option value="{{ cat_id }}" {% if current_cat == cat_id %}selected{% endif %}>{{ cat_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+                {% set form_values = product %}
+                {% set current_category_id = product.get('category_id') or (product.get('category', {}).get('id', '') if product.get('category') else '') %}
+                {% set stock_label = 'Stock' %}
+                {% set show_barcode_tools = false %}
+                {% include "partials/product_form_fields.html" %}
 
                 <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
                     <a href="{{ url_for('products') }}" class="btn btn-secondary">Cancelar</a>

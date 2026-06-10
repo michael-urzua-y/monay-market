@@ -49,61 +49,18 @@
 
     <div class="card">
         <div class="card-body" style="overflow-x: auto;">
-            {% if sales %}
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Total</th>
-                        <th>Método de pago</th>
-                        <th>Estado boleta</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in sales %}
-                    <tr>
-                        <td>{{ s.created_at[:16]|replace('T', ' ') if s.created_at else '—' }}</td>
-                        <td>{{ s.total|clp }}</td>
-                        <td>{{ s.payment_method|capitalize if s.payment_method else '—' }}</td>
-                        <td>
-                            {% if s.boleta_status == 'emitida' %}
-                            <span class="badge badge-success">Emitida</span>
-                            {% elif s.boleta_status == 'pendiente' %}
-                            <span class="badge badge-warning">Pendiente</span>
-                            {% elif s.boleta_status == 'error' %}
-                            <span class="badge badge-error">Error</span>
-                            {% else %}
-                            <span class="badge badge-neutral">No aplica</span>
-                            {% endif %}
-                        </td>
-                        <td style="white-space: nowrap;">
-                            {% if s.boleta_status in ['pendiente', 'error'] %}
-                            <form action="{{ url_for('sales_retry_boleta', sale_id=s.id) }}" method="post" style="display: inline;">
-                                <button type="submit" class="btn btn-sm btn-primary">🔄 Reintentar</button>
-                            </form>
-                            {% endif %}
-                            <a href="{{ url_for('sales_detail', sale_id=s.id) }}" class="btn btn-sm btn-secondary">Ver detalle</a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            {% set pending_only = false %}
+            {% set status_heading = 'Estado boleta' %}
+            {% set empty_message = 'No se encontraron ventas.' %}
+            {% include "partials/sales_table.html" %}
 
             <!-- Paginador -->
-            {% if total_pages and total_pages > 1 %}
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--color-border);">
-                <span style="color: var(--color-text-muted); font-size: 0.9rem;">Página {{ page }} de {{ total_pages }}</span>
-                <div style="display: flex; gap: 8px;">
-                    <a href="{{ url_for('sales', page=page-1, date_from=date_from, date_to=date_to, boleta_status=boleta_status) }}" class="btn btn-sm btn-secondary" {% if page <= 1 %}style="pointer-events: none; opacity: 0.5;"{% endif %}>Anterior</a>
-                    <a href="{{ url_for('sales', page=page+1, date_from=date_from, date_to=date_to, boleta_status=boleta_status) }}" class="btn btn-sm btn-secondary" {% if page >= total_pages %}style="pointer-events: none; opacity: 0.5;"{% endif %}>Siguiente</a>
-                </div>
-            </div>
-            {% endif %}
-            
-            {% else %}
-            <p class="empty-msg">No se encontraron ventas.</p>
-            {% endif %}
+            {% set pagination_label = 'Página ' ~ page ~ ' de ' ~ total_pages %}
+            {% set previous_url = url_for('sales', page=page-1, date_from=date_from, date_to=date_to, boleta_status=boleta_status) %}
+            {% set next_url = url_for('sales', page=page+1, date_from=date_from, date_to=date_to, boleta_status=boleta_status) %}
+            {% set disable_previous = page <= 1 %}
+            {% set disable_next = page >= total_pages %}
+            {% include "partials/pagination_footer.html" %}
         </div>
     </div>
 </div>

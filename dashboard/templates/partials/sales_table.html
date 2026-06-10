@@ -1,0 +1,45 @@
+{% if sales %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>Fecha</th>
+            <th>Total</th>
+            <th>Método de pago</th>
+            <th>{{ status_heading|default('Estado boleta') }}</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for s in sales %}
+        <tr>
+            <td>{{ s.created_at[:16]|replace('T', ' ') if s.created_at else '—' }}</td>
+            <td>{{ s.total|clp }}</td>
+            <td>{{ s.payment_method|capitalize if s.payment_method else '—' }}</td>
+            <td>
+                {% if pending_only %}
+                <span class="badge badge-warning">Pendiente</span>
+                {% elif s.boleta_status == 'emitida' %}
+                <span class="badge badge-success">Emitida</span>
+                {% elif s.boleta_status == 'pendiente' %}
+                <span class="badge badge-warning">Pendiente</span>
+                {% elif s.boleta_status == 'error' %}
+                <span class="badge badge-error">Error</span>
+                {% else %}
+                <span class="badge badge-neutral">No aplica</span>
+                {% endif %}
+            </td>
+            <td style="white-space: nowrap;">
+                {% if pending_only or s.boleta_status in ['pendiente', 'error'] %}
+                <form action="{{ url_for('sales_retry_boleta', sale_id=s.id) }}" method="post" style="display: inline;">
+                    <button type="submit" class="btn btn-sm btn-primary">🔄 Reintentar</button>
+                </form>
+                {% endif %}
+                <a href="{{ url_for('sales_detail', sale_id=s.id) }}" class="btn btn-sm btn-secondary">Ver detalle</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="empty-msg">{{ empty_message }}</p>
+{% endif %}

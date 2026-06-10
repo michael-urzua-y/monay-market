@@ -17,58 +17,11 @@
         </div>
         <div class="card-body">
             <form method="post" action="{{ url_for('products_new') }}">
-                <div class="form-group">
-                    <label for="barcode">Código de barras</label>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="text" id="barcode" name="barcode" value="{{ form.get('barcode', '') or '' }}" placeholder="Ej: 7801234567890" style="flex: 1;">
-                        <button type="button" class="btn btn-secondary" onclick="openScanner()" title="Escanear con cámara" style="padding: 0 12px; font-size: 1.2rem;">📷</button>
-                        <button type="button" class="btn btn-secondary"
-                                hx-get=""
-                                hx-target="#barcode-result"
-                                hx-swap="innerHTML"
-                                id="lookup-btn"
-                                onclick="this.setAttribute('hx-get', '/htmx/products/lookup-barcode/' + document.getElementById('barcode').value); htmx.process(this); htmx.trigger(this, 'click');"
-                                style="white-space: nowrap;">
-                            🔍 Buscar
-                        </button>
-                    </div>
-                    <div id="barcode-result" style="margin-top: 4px;"></div>
-                </div>
-
-                <div class="form-group">
-                    <label for="name">Nombre *</label>
-                    <input type="text" id="name" name="name" value="{{ form.get('name', '') }}" required placeholder="Nombre del producto">
-                </div>
-
-                <div class="form-group">
-                    <label for="price">Precio (CLP) *</label>
-                    <input type="number" id="price" name="price" value="{{ form.get('price', '') }}" required min="1" placeholder="Ej: 1490">
-                </div>
-
-                <div class="form-group">
-                    <label for="stock">Stock inicial *</label>
-                    <input type="number" id="stock" name="stock" value="{{ form.get('stock', 0) }}" required min="0" step="any" placeholder="0.000">
-                </div>
-
-                <div class="form-group">
-                    <label for="critical_stock">Stock crítico</label>
-                    <input type="number" id="critical_stock" name="critical_stock" value="{{ form.get('critical_stock', 0) }}" min="0" step="any" placeholder="0.000">
-                </div>
-
-                <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 16px; margin-bottom: 16px;">
-                    <input type="checkbox" id="is_weighed" name="is_weighed" {% if form.get('is_weighed') %}checked{% endif %} style="width: 20px; height: 20px; accent-color: var(--color-primary);">
-                    <label for="is_weighed" style="margin: 0; font-weight: 600; cursor: pointer;">Se vende por peso / a granel</label>
-                </div>
-
-                <div class="form-group">
-                    <label for="category_id">Categoría</label>
-                    <select id="category_id" name="category_id">
-                        <option value="">Sin categoría</option>
-                        {% for cat_id, cat_name in categories.items() %}
-                        <option value="{{ cat_id }}" {% if form.get('category_id') == cat_id %}selected{% endif %}>{{ cat_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+                {% set form_values = form %}
+                {% set current_category_id = form.get('category_id') %}
+                {% set stock_label = 'Stock inicial' %}
+                {% set show_barcode_tools = true %}
+                {% include "partials/product_form_fields.html" %}
 
                 <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;">
                     <a href="{{ url_for('products') }}" class="btn btn-secondary">Cancelar</a>
@@ -78,91 +31,21 @@
         </div>
     </div>
 
-    <!-- Modal del Escáner de Código de Barras -->
-    <div id="scanner-overlay" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; flex-direction: column; align-items: center; justify-content: center;">
-        <div class="card" style="width: 90%; max-width: 500px; text-align: center; padding: 20px;">
-            <h3 style="margin-bottom: 16px; margin-top: 0;">Escanear producto</h3>
-            <div style="position: relative; width: 100%; max-height: 60vh; overflow: hidden; background: #000; border-radius: 8px;">
-                <video id="scanner-video" style="width: 100%; height: auto;" playsinline></video>
-            </div>
-            <p id="scanner-status" style="margin: 16px 0; color: var(--color-text-muted); font-size: 0.9rem;">Iniciando cámara...</p>
-            <button type="button" class="btn btn-secondary" onclick="closeScanner()" style="width: 100%;">Cancelar</button>
-        </div>
-    </div>
+    {% include "partials/barcode_scanner_modal.html" %}
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    let scannerStream = null;
-    let scannerActive = false;
-
-    function openScanner() {
-        const overlay = document.getElementById('scanner-overlay');
-        const video = document.getElementById('scanner-video');
-        const statusEl = document.getElementById('scanner-status');
-        
-        overlay.style.display = 'flex';
-        statusEl.textContent = 'Iniciando cámara...';
-        scannerActive = true;
-
-        navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-        }).then(function (stream) {
-            scannerStream = stream;
-            video.srcObject = stream;
-            video.play();
-            statusEl.textContent = 'Apunte la cámara al código de barras';
-            startBarcodeDetection(video, statusEl);
-        }).catch(function (err) {
-            statusEl.textContent = 'No se pudo acceder a la cámara. Revise los permisos.';
-        });
-    }
-
-    function startBarcodeDetection(video, statusEl) {
-        if ('BarcodeDetector' in window) {
-            const detector = new BarcodeDetector({ formats: ['ean_13', 'ean_8', 'code_128', 'upc_a', 'upc_e'] });
-            const detectFrame = function () {
-                if (!scannerActive) return;
-                detector.detect(video).then(function (barcodes) {
-                    if (barcodes.length > 0) {
-                        handleBarcodeDetected(barcodes[0].rawValue);
-                        return;
-                    }
-                    requestAnimationFrame(detectFrame);
-                }).catch(function () {
-                    requestAnimationFrame(detectFrame);
-                });
-            };
-            detectFrame();
-        } else {
-            statusEl.textContent = 'Su navegador no soporta lectura automática. Ingrese el código manualmente.';
-        }
-    }
-
-    function handleBarcodeDetected(code) {
-        closeScanner();
+    window.onBarcodeScanned = function(code) {
         const barcodeInput = document.getElementById('barcode');
         barcodeInput.value = code;
-        
-        // Disparar la búsqueda automáticamente
+
         const lookupBtn = document.getElementById('lookup-btn');
         if (lookupBtn) {
             lookupBtn.click();
         }
-    }
-
-    function closeScanner() {
-        scannerActive = false;
-        const overlay = document.getElementById('scanner-overlay');
-        overlay.style.display = 'none';
-        
-        if (scannerStream) {
-            scannerStream.getTracks().forEach(track => track.stop());
-            scannerStream = null;
-        }
-        const video = document.getElementById('scanner-video');
-        if (video) video.srcObject = null;
-    }
+    };
 </script>
+{% include "partials/barcode_scanner_script.html" %}
 {% endblock %}
