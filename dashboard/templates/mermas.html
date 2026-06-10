@@ -3,6 +3,33 @@
 {% block title %}Mermas{% endblock %}
 {% block page_title %}Control de Mermas{% endblock %}
 
+{% block head %}
+<style>
+    .mermas-search-status {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        padding: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        color: var(--color-text-muted);
+        font-size: 0.9rem;
+    }
+
+    .mermas-search-spinner {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 2px solid rgba(240, 185, 11, 0.25);
+        border-top-color: var(--color-primary);
+        animation: global-loading-spin 0.8s linear infinite;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 {% set products_list = [] if not (products is iterable and products is not string and products is not mapping) else products %}
 {% set mermas_list = [] if not (mermas is iterable and mermas is not string and mermas is not mapping) else mermas %}
@@ -23,18 +50,33 @@
     selectedProductPrice: 0,
     products: [],
     loading: false,
-    currentMonth: '{{ range(2024, 2027)|last }}-04',
+    searchRequestId: 0,
+    loadingToken: null,
     async search() {
         if (this.searchQuery.length < 2) {
+            this.searchRequestId += 1;
             this.products = [];
+            this.loading = false;
+            if (this.loadingToken && window.MonayLoading) {
+                window.MonayLoading.end(this.loadingToken);
+                this.loadingToken = null;
+            }
             return;
         }
+        const requestId = ++this.searchRequestId;
         this.loading = true;
+        if (window.MonayLoading) {
+            if (this.loadingToken) {
+                window.MonayLoading.end(this.loadingToken);
+            }
+            this.loadingToken = window.MonayLoading.begin('Buscando producto para merma...', { revealOverlay: false });
+        }
         try {
             const resp = await fetch('/htmx/products/search?search=' + encodeURIComponent(this.searchQuery), {
                 headers: { 'HX-Request': 'true' }
             });
             const html = await resp.text();
+            if (requestId !== this.searchRequestId) return;
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
             const rows = doc.querySelectorAll('tbody tr');
@@ -49,9 +91,16 @@
                 }
             });
         } catch (e) {
+            if (requestId !== this.searchRequestId) return;
             this.products = [];
         }
-        this.loading = false;
+        if (requestId === this.searchRequestId) {
+            this.loading = false;
+            if (this.loadingToken && window.MonayLoading) {
+                window.MonayLoading.end(this.loadingToken);
+                this.loadingToken = null;
+            }
+        }
     },
     selectProduct(product) {
         this.selectedProductId = product.id;
@@ -128,8 +177,9 @@
                                 </div>
                             </template>
                         </div>
-                        <div x-show="loading" style="position: absolute; top: 100%; left: 0; right: 0; padding: 10px; text-align: center; color: var(--color-text-muted);">
-                            Buscando...
+                        <div x-show="loading" class="mermas-search-status">
+                            <span class="mermas-search-spinner" aria-hidden="true"></span>
+                            <span>Buscando...</span>
                         </div>
                     </div>
 

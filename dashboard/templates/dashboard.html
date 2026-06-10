@@ -3,6 +3,59 @@
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
 
+{% block head %}
+<style>
+    .dashboard-card-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .dashboard-chart-control {
+        padding: 6px;
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        background: white;
+        font-family: inherit;
+    }
+
+    .dashboard-chart-wrap {
+        position: relative;
+        min-height: 260px;
+    }
+
+    .dashboard-chart-loader {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: rgba(255, 255, 255, 0.9);
+        color: var(--color-text-muted);
+        font-size: 0.9rem;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.15s ease;
+    }
+
+    .dashboard-chart-loader.is-visible {
+        opacity: 1;
+    }
+
+    .dashboard-chart-spinner {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 2px solid rgba(240, 185, 11, 0.25);
+        border-top-color: var(--color-primary);
+        animation: monay-spin 0.8s linear infinite;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="dashboard-grid">
     <!-- Ventas del día -->
@@ -31,12 +84,18 @@
 
     <!-- Gráfico de ventas diarias -->
     <div class="card card-wide">
-        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div class="card-header dashboard-card-toolbar">
             <h3 class="card-title">Ventas diarias del mes</h3>
-            <input type="month" id="monthSelector" style="padding: 6px; border: 1px solid var(--color-border); border-radius: 4px; background: white; font-family: inherit;" onchange="loadDailyChart()">
+            <input type="month" id="monthSelector" class="dashboard-chart-control" onchange="loadDailyChart(true)">
         </div>
         <div class="card-body">
-            <canvas id="dailyChart" height="260"></canvas>
+            <div class="dashboard-chart-wrap">
+                <canvas id="dailyChart" height="260"></canvas>
+                <div id="dailyChartLoader" class="dashboard-chart-loader" aria-live="polite">
+                    <span class="dashboard-chart-spinner" aria-hidden="true"></span>
+                    <span>Cargando gráfico diario...</span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -68,15 +127,21 @@
 
     <!-- Horas Punta -->
     <div class="card card-wide">
-        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div class="card-header dashboard-card-toolbar">
             <h3 class="card-title">Horas Punta de Ventas</h3>
-            <select id="peakHoursPeriod" style="padding: 6px; border: 1px solid var(--color-border); border-radius: 4px; background: white; font-family: inherit;" onchange="loadPeakHoursChart()">
+            <select id="peakHoursPeriod" class="dashboard-chart-control" onchange="loadPeakHoursChart(true)">
                 <option value="month">Últimos 30 días</option>
                 <option value="week">Esta semana</option>
             </select>
         </div>
         <div class="card-body">
-            <canvas id="peakHoursChart" height="260"></canvas>
+            <div class="dashboard-chart-wrap">
+                <canvas id="peakHoursChart" height="260"></canvas>
+                <div id="peakHoursChartLoader" class="dashboard-chart-loader" aria-live="polite">
+                    <span class="dashboard-chart-spinner" aria-hidden="true"></span>
+                    <span>Cargando horas punta...</span>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -86,18 +151,46 @@
 <script>
 let dailyChart = null;
 let peakHoursChart = null;
+const dashboardLoadingTokens = {
+    daily: null,
+    peak: null
+};
 
 function formatCLP(value) {
     return '$' + Number(value).toLocaleString('es-CL');
 }
 
-function loadDailyChart() {
+function setChartLoading(loaderId, visible) {
+    var loader = document.getElementById(loaderId);
+    if (!loader) return;
+    loader.classList.toggle('is-visible', visible);
+}
+
+function beginDashboardLoading(label, tokenKey, revealOverlay) {
+    if (!window.MonayLoading) return null;
+    if (dashboardLoadingTokens[tokenKey]) {
+        window.MonayLoading.end(dashboardLoadingTokens[tokenKey]);
+    }
+    dashboardLoadingTokens[tokenKey] = window.MonayLoading.begin(label, { revealOverlay: revealOverlay === true });
+    return dashboardLoadingTokens[tokenKey];
+}
+
+function endDashboardLoading(tokenKey) {
+    if (!window.MonayLoading || !dashboardLoadingTokens[tokenKey]) return;
+    window.MonayLoading.end(dashboardLoadingTokens[tokenKey]);
+    dashboardLoadingTokens[tokenKey] = null;
+}
+
+function loadDailyChart(fromUserAction) {
     var select = document.getElementById('monthSelector');
     var month = select ? select.value : '';
     var url = '/htmx/dashboard/daily-chart';
     if (month) {
         url += '?month=' + encodeURIComponent(month);
     }
+
+    setChartLoading('dailyChartLoader', true);
+    beginDashboardLoading(fromUserAction ? 'Actualizando gráfico diario...' : 'Cargando gráfico diario...', 'daily', fromUserAction === true);
 
     fetch(url)
         .then(function(r) { return r.json(); })
@@ -163,12 +256,19 @@ function loadDailyChart() {
             if (el && el.parentNode) {
                 el.parentNode.innerHTML = '<p class="error-msg">Error al cargar datos</p>';
             }
+        })
+        .finally(function() {
+            setChartLoading('dailyChartLoader', false);
+            endDashboardLoading('daily');
         });
 }
 
-function loadPeakHoursChart() {
+function loadPeakHoursChart(fromUserAction) {
     var select = document.getElementById('peakHoursPeriod');
     var period = select ? select.value : 'month';
+
+    setChartLoading('peakHoursChartLoader', true);
+    beginDashboardLoading(fromUserAction ? 'Actualizando horas punta...' : 'Cargando horas punta...', 'peak', fromUserAction === true);
 
     fetch('/htmx/dashboard/peak-hours?period=' + encodeURIComponent(period))
         .then(function(r) { return r.json(); })
@@ -218,6 +318,16 @@ function loadPeakHoursChart() {
                     }
                 });
             }
+        })
+        .catch(function() {
+            var el = document.getElementById('peakHoursChart');
+            if (el && el.parentNode) {
+                el.parentNode.innerHTML = '<p class="error-msg">Error al cargar horas punta</p>';
+            }
+        })
+        .finally(function() {
+            setChartLoading('peakHoursChartLoader', false);
+            endDashboardLoading('peak');
         });
 }
 
@@ -230,10 +340,13 @@ function initMonthSelector() {
     var currentMonth = now.getMonth() + 1; // 1-12
     
     var currentMonthStr = currentYear + '-' + String(currentMonth).padStart(2, '0');
+    var lowerBound = new Date(currentYear, currentMonth - 1, 1);
+    lowerBound.setMonth(lowerBound.getMonth() - 24);
+    var lowerBoundStr = lowerBound.getFullYear() + '-' + String(lowerBound.getMonth() + 1).padStart(2, '0');
 
-    select.min = '2026-03'; // Límite inferior: Marzo 2026
-    select.max = currentMonthStr; // Límite superior: Mes actual
-    select.value = currentMonthStr; // Valor por defecto
+    select.min = lowerBoundStr;
+    select.max = currentMonthStr;
+    select.value = currentMonthStr;
 }
 
 document.addEventListener('DOMContentLoaded', function() {

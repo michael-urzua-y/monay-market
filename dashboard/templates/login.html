@@ -101,7 +101,7 @@
                     <div class="login-error" role="alert">{{ error }}</div>
                     {% endif %}
 
-                    <form method="POST" action="{{ url_for('login') }}" class="login-form">
+                    <form method="POST" action="{{ url_for('login') }}" class="login-form" data-loading-text="Validando acceso...">
                         <div class="form-group">
                             <label for="email">Correo electrónico</label>
                             <div class="input-wrap">
@@ -168,16 +168,132 @@
             &copy; 2026 <span>Monay Market</span>. Todos los derechos reservados.
         </footer>
     </main>
+
+    <div class="global-loading-overlay" data-global-loading-overlay aria-hidden="true">
+        <div class="global-loading-panel" role="status" aria-live="polite">
+            <span class="global-loading-spinner" aria-hidden="true"></span>
+            <span class="global-loading-text">Procesando...</span>
+        </div>
+    </div>
+
     <script>
         (() => {
             const toggle = document.querySelector('.password-toggle');
             const password = document.querySelector('#password');
-            if (!toggle || !password) return;
+            const overlay = document.querySelector('[data-global-loading-overlay]');
+            const overlayText = overlay ? overlay.querySelector('.global-loading-text') : null;
+            const defaultMessage = 'Procesando...';
+            const titleFrames = ['Cargando', 'Cargando.', 'Cargando..', 'Cargando...'];
+            let titleTimer = null;
+            let frameIndex = 0;
+            let idleTitle = document.title;
 
-            toggle.addEventListener('click', () => {
-                const visible = password.type === 'text';
-                password.type = visible ? 'password' : 'text';
-                toggle.setAttribute('aria-label', visible ? 'Mostrar contraseña' : 'Ocultar contraseña');
+            function startTitleAnimation() {
+                if (titleTimer) {
+                    return;
+                }
+
+                document.title = `${titleFrames[frameIndex]} ${idleTitle}`;
+                titleTimer = window.setInterval(() => {
+                    frameIndex = (frameIndex + 1) % titleFrames.length;
+                    document.title = `${titleFrames[frameIndex]} ${idleTitle}`;
+                }, 420);
+            }
+
+            function setBusyState(message, controls) {
+                if (!overlay || !overlayText) {
+                    return;
+                }
+
+                idleTitle = document.title;
+                overlayText.textContent = message || defaultMessage;
+                document.body.classList.add('is-busy');
+                document.body.setAttribute('aria-busy', 'true');
+                overlay.classList.add('is-visible');
+                overlay.setAttribute('aria-hidden', 'false');
+                startTitleAnimation();
+
+                (controls || []).forEach((control) => {
+                    if (!control) {
+                        return;
+                    }
+
+                    control.classList.add('is-processing');
+                    if (control.matches('button, input')) {
+                        control.disabled = true;
+                    } else {
+                        control.setAttribute('aria-disabled', 'true');
+                    }
+                });
+            }
+
+            if (toggle && password) {
+                toggle.addEventListener('click', () => {
+                    const visible = password.type === 'text';
+                    password.type = visible ? 'password' : 'text';
+                    toggle.setAttribute('aria-label', visible ? 'Mostrar contraseña' : 'Ocultar contraseña');
+                });
+            }
+
+            document.addEventListener('submit', (event) => {
+                const form = event.target;
+                if (!(form instanceof HTMLFormElement)) {
+                    return;
+                }
+
+                const controls = Array.from(form.querySelectorAll('button[type="submit"], button:not([type]), input[type="submit"]'));
+                if (event.submitter) {
+                    controls.push(event.submitter);
+                }
+
+                const uniqueControls = Array.from(new Set(controls));
+                setBusyState(form.dataset.loadingText || 'Procesando...', uniqueControls);
+            }, true);
+
+            document.addEventListener('click', (event) => {
+                const link = event.target.closest('a[href]');
+                if (!link || event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+                    return;
+                }
+
+                if (link.target && link.target !== '_self') {
+                    return;
+                }
+
+                const href = link.getAttribute('href');
+                if (!href || href.startsWith('#') || link.hasAttribute('download')) {
+                    return;
+                }
+
+                const nextUrl = new URL(link.href, window.location.href);
+                const isSamePage = nextUrl.origin === window.location.origin &&
+                    nextUrl.pathname === window.location.pathname &&
+                    nextUrl.search === window.location.search &&
+                    nextUrl.hash === window.location.hash;
+
+                if (nextUrl.origin !== window.location.origin || isSamePage) {
+                    return;
+                }
+
+                setBusyState(link.dataset.loadingText || 'Cargando...', [link]);
+            });
+
+            window.addEventListener('pageshow', () => {
+                if (titleTimer) {
+                    window.clearInterval(titleTimer);
+                    titleTimer = null;
+                }
+                frameIndex = 0;
+                document.title = idleTitle;
+                document.body.classList.remove('is-busy');
+                document.body.setAttribute('aria-busy', 'false');
+                if (overlay) {
+                    overlay.classList.remove('is-visible');
+                    overlay.setAttribute('aria-hidden', 'true');
+                }
+                if (overlayText) {
+                    overlayText.textContent = defaultMessage;
+                }
             });
         })();
     </script>

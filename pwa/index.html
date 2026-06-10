@@ -17,7 +17,7 @@
   <meta name="theme-color" content="#f0b90b">
   <link rel="icon" type="image/png" href="icons/monay-market-logo.png">
 </head>
-<body>
+<body class="app-booting">
   <div id="app">
     <!-- Header -->
     <header id="app-header" class="app-header hidden">
@@ -249,6 +249,16 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <div id="global-loading-overlay" class="global-loading-overlay is-visible" data-mode="blocking" aria-hidden="false">
+    <div class="global-loading-panel" role="status" aria-live="polite" aria-atomic="true">
+      <span class="global-loading-spinner" aria-hidden="true"></span>
+      <div class="global-loading-copy">
+        <strong id="global-loading-title" class="global-loading-title">Iniciando POS</strong>
+        <span id="global-loading-message" class="global-loading-message">Preparando la sesion del cajero.</span>
+      </div>
+    </div>
   </div>
 
   <script src="/runtime-config.js"></script>

@@ -48,12 +48,19 @@
         border-radius: 8px;
         padding: 14px;
         background: rgba(255, 254, 249, 0.8);
+        display: grid;
+        gap: 8px;
     }
 
     .settings-status-card strong {
         display: block;
         color: var(--color-text);
-        margin-bottom: 8px;
+    }
+
+    .settings-status-card p {
+        margin: 0;
+        color: var(--color-text-muted);
+        font-size: 0.85rem;
     }
 
     .settings-panel {
@@ -129,6 +136,8 @@
 
     .settings-content {
         padding: 24px 28px;
+        display: grid;
+        gap: 20px;
     }
 
     .settings-section-header {
@@ -164,6 +173,81 @@
         margin-bottom: 18px;
     }
 
+    .settings-overview-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        margin-bottom: 18px;
+    }
+
+    .settings-overview-card {
+        border: 1px solid var(--color-border);
+        border-radius: 10px;
+        background: #fffefb;
+        padding: 16px;
+        display: grid;
+        gap: 10px;
+        align-content: start;
+    }
+
+    .settings-overview-card span:first-child {
+        color: var(--color-text-muted);
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .settings-overview-card strong {
+        color: var(--color-text);
+        font-size: 1rem;
+    }
+
+    .settings-overview-card p {
+        margin: 0;
+        color: var(--color-text-muted);
+        font-size: 0.86rem;
+    }
+
+    .settings-block-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+    }
+
+    .settings-block-card {
+        border: 1px solid var(--color-border);
+        border-radius: 10px;
+        background: var(--color-white);
+        padding: 18px;
+        display: grid;
+        gap: 16px;
+        align-content: start;
+    }
+
+    .settings-block-card.full {
+        grid-column: 1 / -1;
+    }
+
+    .settings-block-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 14px;
+    }
+
+    .settings-block-header h4 {
+        margin: 0 0 4px;
+        color: var(--color-text);
+        font-size: 1rem;
+    }
+
+    .settings-block-header p {
+        margin: 0;
+        color: var(--color-text-muted);
+        font-size: 0.88rem;
+    }
+
     .settings-form-grid {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -187,10 +271,27 @@
         gap: 8px;
     }
 
+    .settings-critical-field {
+        border: 1px solid rgba(240, 185, 11, 0.28);
+        border-radius: 10px;
+        background: #fffdf6;
+        padding: 14px;
+    }
+
+    .settings-standard-field {
+        border: 1px solid var(--color-border);
+        border-radius: 10px;
+        background: #fffefb;
+        padding: 14px;
+        display: grid;
+        gap: 8px;
+    }
+
     .settings-locked-row {
         display: flex;
         gap: 10px;
         align-items: center;
+        flex-wrap: wrap;
     }
 
     .settings-locked-input {
@@ -205,6 +306,7 @@
         min-height: 42px;
         display: flex;
         align-items: center;
+        word-break: break-word;
     }
 
     .settings-clear-link {
@@ -213,6 +315,9 @@
         font-size: 0.8rem;
         font-weight: 600;
         white-space: nowrap;
+        padding: 10px 12px;
+        border-radius: 999px;
+        background: rgba(196, 30, 58, 0.08);
     }
 
     .settings-actions {
@@ -287,6 +392,11 @@
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
+        .settings-overview-grid,
+        .settings-block-grid {
+            grid-template-columns: 1fr;
+        }
+
         .settings-panel {
             grid-template-columns: 1fr;
         }
@@ -307,12 +417,15 @@
         .settings-status-grid,
         .settings-nav,
         .settings-form-grid,
-        .settings-card-list {
+        .settings-card-list,
+        .settings-overview-grid,
+        .settings-block-grid {
             grid-template-columns: 1fr;
         }
 
         .settings-section-header,
-        .settings-alert {
+        .settings-alert,
+        .settings-block-header {
             flex-direction: column;
             align-items: stretch;
         }
@@ -324,6 +437,10 @@
         .settings-actions .btn {
             width: 100%;
         }
+
+        .settings-actions .settings-subaction {
+            width: 100%;
+        }
     }
 </style>
 {% endblock %}
@@ -333,6 +450,10 @@
 {% set business_ready = config.get('sii_razon_social') and config.get('sii_giro') and config.get('sii_rut_emisor') %}
 {% set printer_ready = config.get('printer_enabled') %}
 {% set sub_status = subscription.get('status', '') if subscription else '' %}
+{% set sii_credentials_ready = config.get('sii_api_key') and config.get('sii_clave_tributaria') %}
+{% set sii_identity_ready = config.get('sii_rut_emisor') and config.get('sii_rut_autenticador') and config.get('sii_codigo_sucursal') is not none %}
+{% set sii_certificate_ready = config.get('sii_certificado_path') %}
+{% set subscription_ready = subscription and subscription.get('plan') %}
 
 <div class="settings-shell" x-data="{ section: 'sii' }">
     {% if error %}
@@ -357,6 +478,7 @@
                 {% else %}
                 <span class="badge badge-neutral">Inactivo</span>
                 {% endif %}
+                <p>Proveedor, credenciales y datos fiscales listos para emitir.</p>
             </div>
             <div class="settings-status-card">
                 <strong>Impresión</strong>
@@ -365,6 +487,7 @@
                 {% else %}
                 <span class="badge badge-neutral">Inactiva</span>
                 {% endif %}
+                <p>Controla el flujo de comprobantes desde el POS.</p>
             </div>
             <div class="settings-status-card">
                 <strong>Suscripción</strong>
@@ -375,6 +498,7 @@
                 {% else %}
                 <span class="badge badge-neutral">Sin datos</span>
                 {% endif %}
+                <p>Visibilidad rápida del plan y su vigencia actual.</p>
             </div>
         </div>
     </section>
@@ -425,6 +549,45 @@
                     {% endif %}
                 </div>
 
+                <div class="settings-overview-grid">
+                    <article class="settings-overview-card">
+                        <span>Bloque</span>
+                        <strong>Operación del módulo</strong>
+                        <p>Activa la integración, el proveedor y el modo de pruebas.</p>
+                        {% if config.get('sii_enabled') and config.get('sii_provider') %}
+                        <span class="badge badge-success">Configurado</span>
+                        {% elif config.get('sii_enabled') %}
+                        <span class="badge badge-warning">Incompleto</span>
+                        {% else %}
+                        <span class="badge badge-neutral">Inactivo</span>
+                        {% endif %}
+                    </article>
+                    <article class="settings-overview-card">
+                        <span>Bloque</span>
+                        <strong>Credenciales e identidad</strong>
+                        <p>Protege token, clave tributaria y RUTs críticos del emisor.</p>
+                        {% if sii_credentials_ready and sii_identity_ready %}
+                        <span class="badge badge-success">Configurado</span>
+                        {% elif sii_credentials_ready or sii_identity_ready %}
+                        <span class="badge badge-warning">Incompleto</span>
+                        {% else %}
+                        <span class="badge badge-neutral">Pendiente</span>
+                        {% endif %}
+                    </article>
+                    <article class="settings-overview-card">
+                        <span>Bloque</span>
+                        <strong>Empresa y certificado</strong>
+                        <p>Datos comerciales editables y firma digital para emisión real.</p>
+                        {% if business_ready and sii_certificate_ready %}
+                        <span class="badge badge-success">Configurado</span>
+                        {% elif business_ready or sii_certificate_ready %}
+                        <span class="badge badge-warning">Incompleto</span>
+                        {% else %}
+                        <span class="badge badge-neutral">Pendiente</span>
+                        {% endif %}
+                    </article>
+                </div>
+
                 {% if sii_ready %}
                 <div class="settings-alert">
                     <div>
@@ -436,130 +599,223 @@
                 {% endif %}
 
                 <form method="post" action="{{ url_for('settings_sii') }}" enctype="multipart/form-data" x-data="{ editBusiness: {{ 'false' if business_ready else 'true' }} }">
-                    <div class="settings-form-grid">
-                        <label class="settings-check full">
-                            <input type="checkbox" name="sii_enabled" {% if config.get('sii_enabled') %}checked{% endif %}>
-                            <span>Activar integración SII</span>
-                        </label>
-
-                        <div class="form-group full">
-                            <label for="sii_provider">Proveedor de facturación</label>
-                            <select id="sii_provider" name="sii_provider">
-                                <option value="">Seleccionar proveedor</option>
-                                <option value="haulmer" {% if config.get('sii_provider') == 'haulmer' %}selected{% endif %}>Haulmer</option>
-                                <option value="openfactura" {% if config.get('sii_provider') == 'openfactura' %}selected{% endif %}>OpenFactura</option>
-                                <option value="facturacion_cl" {% if config.get('sii_provider') == 'facturacion_cl' %}selected{% endif %}>Facturación.cl</option>
-                                <option value="simple_api" {% if config.get('sii_provider') == 'simple_api' %}selected{% endif %}>SimpleAPI</option>
-                                <option value="base_api" {% if config.get('sii_provider') == 'base_api' %}selected{% endif %}>BaseAPI</option>
-                                <option value="api_gateway" {% if config.get('sii_provider') == 'api_gateway' %}selected{% endif %}>API Gateway eBoleta</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group settings-locked-field">
-                            <label for="sii_api_key">Token / API Key del proveedor</label>
-                            {% if config.get('sii_api_key') %}
-                            <div class="settings-locked-row">
-                                <div class="settings-locked-input">Configurada</div>
-                                <a class="settings-clear-link" href="{{ url_for('settings') }}?clear_sii_key=1">Limpiar</a>
+                    <div class="settings-block-grid">
+                        <section class="settings-block-card full">
+                            <div class="settings-block-header">
+                                <div>
+                                    <h4>Operación del módulo</h4>
+                                    <p>Enciende la integración y define el proveedor activo para la emisión.</p>
+                                </div>
+                                {% if config.get('sii_enabled') and config.get('sii_provider') %}
+                                <span class="badge badge-success">Configurado</span>
+                                {% elif config.get('sii_enabled') %}
+                                <span class="badge badge-warning">Incompleto</span>
+                                {% else %}
+                                <span class="badge badge-neutral">Inactivo</span>
+                                {% endif %}
                             </div>
-                            <span class="badge badge-success">Bloqueado</span>
-                            {% else %}
-                            <input type="text" id="sii_api_key" name="sii_api_key" value="" placeholder="Clave de API del proveedor">
-                            {% endif %}
-                        </div>
+                            <div class="settings-form-grid">
+                                <label class="settings-check full">
+                                    <input type="checkbox" name="sii_enabled" {% if config.get('sii_enabled') %}checked{% endif %}>
+                                    <span>Activar integración SII</span>
+                                </label>
 
-                        <div class="form-group settings-locked-field">
-                            <label for="sii_clave_tributaria">Clave tributaria SII</label>
-                            {% if config.get('sii_clave_tributaria') %}
-                            <div class="settings-locked-row">
-                                <div class="settings-locked-input">Configurada</div>
-                                <a class="settings-clear-link" href="{{ url_for('settings') }}?clear_sii_clave=1">Limpiar</a>
+                                <div class="form-group settings-standard-field full">
+                                    <label for="sii_provider">Proveedor de facturación</label>
+                                    <select id="sii_provider" name="sii_provider">
+                                        <option value="">Seleccionar proveedor</option>
+                                        <option value="haulmer" {% if config.get('sii_provider') == 'haulmer' %}selected{% endif %}>Haulmer</option>
+                                        <option value="openfactura" {% if config.get('sii_provider') == 'openfactura' %}selected{% endif %}>OpenFactura</option>
+                                        <option value="facturacion_cl" {% if config.get('sii_provider') == 'facturacion_cl' %}selected{% endif %}>Facturación.cl</option>
+                                        <option value="simple_api" {% if config.get('sii_provider') == 'simple_api' %}selected{% endif %}>SimpleAPI</option>
+                                        <option value="base_api" {% if config.get('sii_provider') == 'base_api' %}selected{% endif %}>BaseAPI</option>
+                                        <option value="api_gateway" {% if config.get('sii_provider') == 'api_gateway' %}selected{% endif %}>API Gateway eBoleta</option>
+                                    </select>
+                                </div>
+
+                                <label class="settings-check full">
+                                    <input type="checkbox" name="sii_sandbox_mode" {% if config.get('sii_sandbox_mode') %}checked{% endif %}>
+                                    <span>Modo sandbox o pruebas</span>
+                                </label>
                             </div>
-                            <span class="badge badge-success">Bloqueado</span>
-                            {% else %}
-                            <input type="password" id="sii_clave_tributaria" name="sii_clave_tributaria" value="" placeholder="Requerida para API Gateway eBoleta">
-                            <small class="settings-muted">No se muestra nuevamente después de guardar.</small>
-                            {% endif %}
-                        </div>
+                        </section>
 
-                        <div class="form-group settings-locked-field">
-                            <label for="sii_rut_emisor">RUT emisor / contribuyente</label>
-                            {% if config.get('sii_rut_emisor') %}
-                            <div class="settings-locked-row">
-                                <div class="settings-locked-input">{{ config.get('sii_rut_emisor') }}</div>
-                                <a class="settings-clear-link" href="{{ url_for('settings') }}?clear_sii_rut=1">Limpiar</a>
+                        <section class="settings-block-card">
+                            <div class="settings-block-header">
+                                <div>
+                                    <h4>Credenciales protegidas</h4>
+                                    <p>El token y la clave tributaria quedan visibles solo al momento de cargar.</p>
+                                </div>
+                                {% if sii_credentials_ready %}
+                                <span class="badge badge-success">Configurado</span>
+                                {% elif config.get('sii_api_key') or config.get('sii_clave_tributaria') %}
+                                <span class="badge badge-warning">Incompleto</span>
+                                {% else %}
+                                <span class="badge badge-neutral">Pendiente</span>
+                                {% endif %}
                             </div>
-                            <span class="badge badge-success">Configurado</span>
-                            {% else %}
-                            <input type="text" id="sii_rut_emisor" name="sii_rut_emisor" value="" placeholder="78.260.737-5">
-                            <small class="settings-muted">RUT del negocio que emite la boleta.</small>
-                            {% endif %}
-                        </div>
+                            <div class="settings-form-grid">
+                                <div class="form-group settings-locked-field settings-critical-field full">
+                                    <label for="sii_api_key">Token / API Key del proveedor</label>
+                                    {% if config.get('sii_api_key') %}
+                                    <div class="settings-locked-row">
+                                        <div class="settings-locked-input">Configurada</div>
+                                        <a class="settings-clear-link" href="{{ url_for('settings') }}?clear_sii_key=1">Limpiar</a>
+                                    </div>
+                                    <span class="badge badge-success">Bloqueado</span>
+                                    <small class="settings-muted">Se protege para evitar reemplazos accidentales.</small>
+                                    {% else %}
+                                    <input type="text" id="sii_api_key" name="sii_api_key" value="" placeholder="Clave de API del proveedor">
+                                    {% endif %}
+                                </div>
 
-                        <div class="form-group settings-locked-field">
-                            <label for="sii_rut_autenticador">RUT autenticador SII</label>
-                            {% if config.get('sii_rut_autenticador') %}
-                            <div class="settings-locked-row">
-                                <div class="settings-locked-input">{{ config.get('sii_rut_autenticador') }}</div>
-                                <a class="settings-clear-link" href="{{ url_for('settings') }}?clear_sii_auth_rut=1">Limpiar</a>
+                                <div class="form-group settings-locked-field settings-critical-field full">
+                                    <label for="sii_clave_tributaria">Clave tributaria SII</label>
+                                    {% if config.get('sii_clave_tributaria') %}
+                                    <div class="settings-locked-row">
+                                        <div class="settings-locked-input">Configurada</div>
+                                        <a class="settings-clear-link" href="{{ url_for('settings') }}?clear_sii_clave=1">Limpiar</a>
+                                    </div>
+                                    <span class="badge badge-success">Bloqueado</span>
+                                    <small class="settings-muted">No se muestra nuevamente después de guardar.</small>
+                                    {% else %}
+                                    <input type="password" id="sii_clave_tributaria" name="sii_clave_tributaria" value="" placeholder="Requerida para API Gateway eBoleta">
+                                    <small class="settings-muted">No se muestra nuevamente después de guardar.</small>
+                                    {% endif %}
+                                </div>
                             </div>
-                            <span class="badge badge-success">Configurado</span>
-                            {% else %}
-                            <input type="text" id="sii_rut_autenticador" name="sii_rut_autenticador" value="" placeholder="18.673.997-3">
-                            <small class="settings-muted">RUT del usuario autorizado que inicia sesión en SII/e-Boleta.</small>
-                            {% endif %}
-                        </div>
+                        </section>
 
-                        <div class="form-group settings-locked-field">
-                            <label for="sii_codigo_sucursal">Código de sucursal SII</label>
-                            {% if config.get('sii_codigo_sucursal') is not none %}
-                            <div class="settings-locked-row">
-                                <div class="settings-locked-input">{{ config.get('sii_codigo_sucursal') }}</div>
-                                <a class="settings-clear-link" href="{{ url_for('settings') }}?clear_sii_codigo_sucursal=1">Limpiar</a>
+                        <section class="settings-block-card">
+                            <div class="settings-block-header">
+                                <div>
+                                    <h4>Identidad tributaria</h4>
+                                    <p>RUTs y sucursal operativa del emisor con bloqueo explícito al quedar cargados.</p>
+                                </div>
+                                {% if sii_identity_ready %}
+                                <span class="badge badge-success">Configurado</span>
+                                {% elif config.get('sii_rut_emisor') or config.get('sii_rut_autenticador') or config.get('sii_codigo_sucursal') is not none %}
+                                <span class="badge badge-warning">Incompleto</span>
+                                {% else %}
+                                <span class="badge badge-neutral">Pendiente</span>
+                                {% endif %}
                             </div>
-                            <span class="badge badge-success">Configurado</span>
-                            {% else %}
-                            <input type="number" id="sii_codigo_sucursal" name="sii_codigo_sucursal" value="" min="0" step="1" placeholder="92085921">
-                            <small class="settings-muted">Código de la sucursal activa en e-Boleta/SII.</small>
-                            {% endif %}
-                        </div>
+                            <div class="settings-form-grid">
+                                <div class="form-group settings-locked-field settings-critical-field full">
+                                    <label for="sii_rut_emisor">RUT emisor / contribuyente</label>
+                                    {% if config.get('sii_rut_emisor') %}
+                                    <div class="settings-locked-row">
+                                        <div class="settings-locked-input">{{ config.get('sii_rut_emisor') }}</div>
+                                        <a class="settings-clear-link" href="{{ url_for('settings') }}?clear_sii_rut=1">Limpiar</a>
+                                    </div>
+                                    <span class="badge badge-success">Configurado</span>
+                                    <small class="settings-muted">RUT del negocio que emite la boleta.</small>
+                                    {% else %}
+                                    <input type="text" id="sii_rut_emisor" name="sii_rut_emisor" value="" placeholder="78.260.737-5">
+                                    <small class="settings-muted">RUT del negocio que emite la boleta.</small>
+                                    {% endif %}
+                                </div>
 
-                        <div class="form-group">
-                            <label for="sii_razon_social">Razón social</label>
-                            <input type="text" id="sii_razon_social" name="sii_razon_social" value="{{ config.get('sii_razon_social', '') }}" placeholder="Nombre de la empresa" :disabled="!editBusiness">
-                            {% if config.get('sii_razon_social') %}
-                            <span class="badge badge-success">Configurado</span>
-                            {% endif %}
-                        </div>
+                                <div class="form-group settings-locked-field settings-critical-field full">
+                                    <label for="sii_rut_autenticador">RUT autenticador SII</label>
+                                    {% if config.get('sii_rut_autenticador') %}
+                                    <div class="settings-locked-row">
+                                        <div class="settings-locked-input">{{ config.get('sii_rut_autenticador') }}</div>
+                                        <a class="settings-clear-link" href="{{ url_for('settings') }}?clear_sii_auth_rut=1">Limpiar</a>
+                                    </div>
+                                    <span class="badge badge-success">Configurado</span>
+                                    <small class="settings-muted">Usuario autorizado que inicia sesión en SII/e-Boleta.</small>
+                                    {% else %}
+                                    <input type="text" id="sii_rut_autenticador" name="sii_rut_autenticador" value="" placeholder="18.673.997-3">
+                                    <small class="settings-muted">Usuario autorizado que inicia sesión en SII/e-Boleta.</small>
+                                    {% endif %}
+                                </div>
 
-                        <div class="form-group full">
-                            <label for="sii_giro">Giro</label>
-                            <input type="text" id="sii_giro" name="sii_giro" value="{{ config.get('sii_giro', '') }}" placeholder="Ej: Venta al por menor de alimentos" :disabled="!editBusiness">
-                            {% if config.get('sii_giro') %}
-                            <span class="badge badge-success">Configurado</span>
-                            {% endif %}
-                        </div>
+                                <div class="form-group settings-locked-field settings-critical-field full">
+                                    <label for="sii_codigo_sucursal">Código de sucursal SII</label>
+                                    {% if config.get('sii_codigo_sucursal') is not none %}
+                                    <div class="settings-locked-row">
+                                        <div class="settings-locked-input">{{ config.get('sii_codigo_sucursal') }}</div>
+                                        <a class="settings-clear-link" href="{{ url_for('settings') }}?clear_sii_codigo_sucursal=1">Limpiar</a>
+                                    </div>
+                                    <span class="badge badge-success">Configurado</span>
+                                    <small class="settings-muted">Sucursal activa en e-Boleta/SII.</small>
+                                    {% else %}
+                                    <input type="number" id="sii_codigo_sucursal" name="sii_codigo_sucursal" value="" min="0" step="1" placeholder="92085921">
+                                    <small class="settings-muted">Sucursal activa en e-Boleta/SII.</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </section>
 
-                        <div class="form-group settings-locked-field">
-                            <label for="certificado">Certificado Digital (.pfx)</label>
-                            {% if config.get('sii_certificado_path') %}
-                            <div class="settings-locked-input">Certificado cargado</div>
-                            <span class="badge badge-success">Bloqueado</span>
-                            {% else %}
-                            <input type="file" id="certificado" name="certificado" accept=".pfx,.p12">
-                            <small class="settings-muted">Archivo .pfx o .p12 descargado desde el proveedor de firma.</small>
-                            {% endif %}
-                        </div>
+                        <section class="settings-block-card">
+                            <div class="settings-block-header">
+                                <div>
+                                    <h4>Datos comerciales</h4>
+                                    <p>La razón social y el giro se mantienen protegidos hasta que decidas editarlos.</p>
+                                </div>
+                                {% if business_ready %}
+                                <span class="badge badge-success">Configurado</span>
+                                {% elif config.get('sii_razon_social') or config.get('sii_giro') %}
+                                <span class="badge badge-warning">Incompleto</span>
+                                {% else %}
+                                <span class="badge badge-neutral">Pendiente</span>
+                                {% endif %}
+                            </div>
+                            <div class="settings-form-grid">
+                                <div class="form-group settings-standard-field">
+                                    <label for="sii_razon_social">Razón social</label>
+                                    <input type="text" id="sii_razon_social" name="sii_razon_social" value="{{ config.get('sii_razon_social', '') }}" placeholder="Nombre de la empresa" :disabled="!editBusiness">
+                                    {% if config.get('sii_razon_social') %}
+                                    <span class="badge badge-success" x-show="editBusiness" x-cloak>Configurado</span>
+                                    <span class="badge badge-success" x-show="!editBusiness" x-cloak>Bloqueado</span>
+                                    <small class="settings-muted" x-show="!editBusiness" x-cloak>Usa "Actualizar datos tributarios" para editar este bloque.</small>
+                                    {% endif %}
+                                </div>
 
-                        <div class="form-group">
-                            <label for="certificado_password">Clave del certificado</label>
-                            <input type="password" id="certificado_password" name="certificado_password" value="" placeholder="Solo si cargas o actualizas certificado" autocomplete="new-password">
-                        </div>
+                                <div class="form-group settings-standard-field">
+                                    <label for="sii_giro">Giro</label>
+                                    <input type="text" id="sii_giro" name="sii_giro" value="{{ config.get('sii_giro', '') }}" placeholder="Ej: Venta al por menor de alimentos" :disabled="!editBusiness">
+                                    {% if config.get('sii_giro') %}
+                                    <span class="badge badge-success" x-show="editBusiness" x-cloak>Configurado</span>
+                                    <span class="badge badge-success" x-show="!editBusiness" x-cloak>Bloqueado</span>
+                                    <small class="settings-muted" x-show="!editBusiness" x-cloak>Usa "Actualizar datos tributarios" para editar este bloque.</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </section>
 
-                        <label class="settings-check full">
-                            <input type="checkbox" name="sii_sandbox_mode" {% if config.get('sii_sandbox_mode') %}checked{% endif %}>
-                            <span>Modo sandbox o pruebas</span>
-                        </label>
+                        <section class="settings-block-card">
+                            <div class="settings-block-header">
+                                <div>
+                                    <h4>Firma digital</h4>
+                                    <p>Certificado de emisión y clave asociada para altas o reemplazos controlados.</p>
+                                </div>
+                                {% if sii_certificate_ready %}
+                                <span class="badge badge-success">Configurado</span>
+                                {% else %}
+                                <span class="badge badge-warning">Pendiente</span>
+                                {% endif %}
+                            </div>
+                            <div class="settings-form-grid">
+                                <div class="form-group settings-locked-field settings-critical-field full">
+                                    <label for="certificado">Certificado Digital (.pfx)</label>
+                                    {% if config.get('sii_certificado_path') %}
+                                    <div class="settings-locked-input">Certificado cargado</div>
+                                    <span class="badge badge-success">Bloqueado</span>
+                                    <small class="settings-muted">Carga controlada para no reemplazar la firma sin intención.</small>
+                                    {% else %}
+                                    <input type="file" id="certificado" name="certificado" accept=".pfx,.p12">
+                                    <small class="settings-muted">Archivo .pfx o .p12 descargado desde el proveedor de firma.</small>
+                                    {% endif %}
+                                </div>
+
+                                <div class="form-group settings-standard-field full">
+                                    <label for="certificado_password">Clave del certificado</label>
+                                    <input type="password" id="certificado_password" name="certificado_password" value="" placeholder="Solo si cargas o actualizas certificado" autocomplete="new-password">
+                                </div>
+                            </div>
+                        </section>
                     </div>
 
                     <div class="settings-actions">
@@ -587,11 +843,37 @@
                     {% endif %}
                 </div>
 
+                <div class="settings-overview-grid">
+                    <article class="settings-overview-card">
+                        <span>Bloque</span>
+                        <strong>Flujo de impresión</strong>
+                        <p>Determina si el POS ofrece impresión de comprobantes al cerrar ventas.</p>
+                        {% if printer_ready %}
+                        <span class="badge badge-success">Configurado</span>
+                        {% else %}
+                        <span class="badge badge-neutral">Inactivo</span>
+                        {% endif %}
+                    </article>
+                </div>
+
                 <form method="post" action="{{ url_for('settings_printer') }}">
-                    <label class="settings-check">
-                        <input type="checkbox" name="printer_enabled" {% if config.get('printer_enabled') %}checked{% endif %}>
-                        <span>Activar impresión térmica</span>
-                    </label>
+                    <section class="settings-block-card full">
+                        <div class="settings-block-header">
+                            <div>
+                                <h4>Impresión térmica</h4>
+                                <p>Activa o desactiva el paso de impresión sin alterar otros parámetros del punto de venta.</p>
+                            </div>
+                            {% if printer_ready %}
+                            <span class="badge badge-success">Configurado</span>
+                            {% else %}
+                            <span class="badge badge-neutral">Inactivo</span>
+                            {% endif %}
+                        </div>
+                        <label class="settings-check">
+                            <input type="checkbox" name="printer_enabled" {% if config.get('printer_enabled') %}checked{% endif %}>
+                            <span>Activar impresión térmica</span>
+                        </label>
+                    </section>
                     <div class="settings-actions">
                         <button type="submit" class="btn btn-primary">Guardar configuración de impresora</button>
                     </div>
@@ -616,25 +898,75 @@
                     {% endif %}
                 </div>
 
-                {% if subscription and subscription.get('plan') %}
-                <div class="settings-card-list">
-                    <div class="settings-info-card">
-                        <span>Plan</span>
-                        <strong>{{ subscription.get('plan', '—')|capitalize }}</strong>
-                    </div>
-                    <div class="settings-info-card">
-                        <span>Estado</span>
-                        <strong>{{ sub_status|capitalize if sub_status else '—' }}</strong>
-                    </div>
-                    <div class="settings-info-card">
-                        <span>Fecha inicio</span>
-                        <strong>{{ subscription.get('start_date', '—')[:10] if subscription.get('start_date') else '—' }}</strong>
-                    </div>
-                    <div class="settings-info-card">
-                        <span>Fecha vencimiento</span>
-                        <strong>{{ subscription.get('end_date', '—')[:10] if subscription.get('end_date') else '—' }}</strong>
-                    </div>
+                <div class="settings-overview-grid">
+                    <article class="settings-overview-card">
+                        <span>Bloque</span>
+                        <strong>Plan contratado</strong>
+                        <p>Nombre comercial del plan actualmente asociado al negocio.</p>
+                        {% if subscription_ready %}
+                        <span class="badge badge-success">Configurado</span>
+                        {% else %}
+                        <span class="badge badge-warning">Sin datos</span>
+                        {% endif %}
+                    </article>
+                    <article class="settings-overview-card">
+                        <span>Bloque</span>
+                        <strong>Estado de servicio</strong>
+                        <p>Resume si la suscripción está activa o requiere regularización.</p>
+                        {% if sub_status == 'activa' %}
+                        <span class="badge badge-success">Configurado</span>
+                        {% elif sub_status %}
+                        <span class="badge badge-warning">Incompleto</span>
+                        {% else %}
+                        <span class="badge badge-neutral">Sin datos</span>
+                        {% endif %}
+                    </article>
+                    <article class="settings-overview-card">
+                        <span>Bloque</span>
+                        <strong>Vigencia</strong>
+                        <p>Fechas de inicio y vencimiento visibles para revisión operativa rápida.</p>
+                        {% if subscription and subscription.get('end_date') %}
+                        <span class="badge badge-success">Configurado</span>
+                        {% else %}
+                        <span class="badge badge-warning">Incompleto</span>
+                        {% endif %}
+                    </article>
                 </div>
+
+                {% if subscription_ready %}
+                <section class="settings-block-card full">
+                    <div class="settings-block-header">
+                        <div>
+                            <h4>Resumen del servicio</h4>
+                            <p>Vista operativa del plan, estado y fechas asociadas a la cuenta.</p>
+                        </div>
+                        {% if sub_status == 'activa' %}
+                        <span class="badge badge-success">Activa</span>
+                        {% elif sub_status %}
+                        <span class="badge badge-warning">{{ sub_status|capitalize }}</span>
+                        {% else %}
+                        <span class="badge badge-neutral">Sin datos</span>
+                        {% endif %}
+                    </div>
+                    <div class="settings-card-list">
+                        <div class="settings-info-card">
+                            <span>Plan</span>
+                            <strong>{{ subscription.get('plan', '—')|capitalize }}</strong>
+                        </div>
+                        <div class="settings-info-card">
+                            <span>Estado</span>
+                            <strong>{{ sub_status|capitalize if sub_status else '—' }}</strong>
+                        </div>
+                        <div class="settings-info-card">
+                            <span>Fecha inicio</span>
+                            <strong>{{ subscription.get('start_date', '—')[:10] if subscription.get('start_date') else '—' }}</strong>
+                        </div>
+                        <div class="settings-info-card">
+                            <span>Fecha vencimiento</span>
+                            <strong>{{ subscription.get('end_date', '—')[:10] if subscription.get('end_date') else '—' }}</strong>
+                        </div>
+                    </div>
+                </section>
                 {% else %}
                 <p class="empty-msg">No se pudo obtener información de la suscripción.</p>
                 {% endif %}

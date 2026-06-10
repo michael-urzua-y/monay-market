@@ -167,6 +167,13 @@
         </main>
     </div>
 
+    <div class="global-loading-overlay" data-global-loading-overlay aria-hidden="true">
+        <div class="global-loading-panel" role="status" aria-live="polite">
+            <span class="global-loading-spinner" aria-hidden="true"></span>
+            <span class="global-loading-text">Procesando...</span>
+        </div>
+    </div>
+
     <!-- Lógica global para validación de fechas (Bloquear futuro y cruces de fechas) -->
     <script>
     document.addEventListener('DOMContentLoaded', function() {
@@ -199,6 +206,314 @@
             });
         }
     });
+    </script>
+
+    <script>
+    (() => {
+        const htmxSelector = '[hx-get], [hx-post], [hx-put], [hx-patch], [hx-delete], [data-hx-get], [data-hx-post], [data-hx-put], [data-hx-patch], [data-hx-delete]';
+        const overlay = document.querySelector('[data-global-loading-overlay]');
+        const overlayText = overlay ? overlay.querySelector('.global-loading-text') : null;
+        const defaultMessage = 'Procesando...';
+        const titleFrames = ['Cargando', 'Cargando.', 'Cargando..', 'Cargando...'];
+        const pendingOperations = new Map();
+        const htmxOperations = new Map();
+        let overlayTimer = null;
+        let titleTimer = null;
+        let idleTitle = document.title;
+        let frameIndex = 0;
+
+        if (!overlay || !overlayText) {
+            return;
+        }
+
+        function isSamePageUrl(url) {
+            return url.origin === window.location.origin &&
+                url.pathname === window.location.pathname &&
+                url.search === window.location.search &&
+                url.hash === window.location.hash;
+        }
+
+        function isModifiedEvent(event) {
+            return event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey;
+        }
+
+        function isTextualControl(element) {
+            return Boolean(element && element.matches('input:not([type="submit"]):not([type="button"]):not([type="checkbox"]):not([type="radio"]), select, textarea'));
+        }
+
+        function allowsLoadingOnTextualControl(element) {
+            return Boolean(element && (element.hasAttribute('data-loading-enabled') || element.closest('[data-loading-enabled]')));
+        }
+
+        function isHtmxManaged(element) {
+            return Boolean(element && (element.matches(htmxSelector) || element.closest(htmxSelector)));
+        }
+
+        function shouldIgnore(element) {
+            return Boolean(element && element.closest('[data-no-loading]'));
+        }
+
+        function startTitleAnimation() {
+            if (titleTimer) {
+                return;
+            }
+
+            document.title = `${titleFrames[frameIndex]} ${idleTitle}`;
+            titleTimer = window.setInterval(() => {
+                frameIndex = (frameIndex + 1) % titleFrames.length;
+                document.title = `${titleFrames[frameIndex]} ${idleTitle}`;
+            }, 420);
+        }
+
+        function stopTitleAnimation() {
+            if (titleTimer) {
+                window.clearInterval(titleTimer);
+                titleTimer = null;
+            }
+            frameIndex = 0;
+            document.title = idleTitle;
+        }
+
+        function syncBusyUi() {
+            const hasPendingOperations = pendingOperations.size > 0;
+            document.body.classList.toggle('is-busy', hasPendingOperations);
+            document.body.setAttribute('aria-busy', hasPendingOperations ? 'true' : 'false');
+
+            if (!hasPendingOperations) {
+                if (overlayTimer) {
+                    window.clearTimeout(overlayTimer);
+                    overlayTimer = null;
+                }
+                overlay.classList.remove('is-visible');
+                overlay.setAttribute('aria-hidden', 'true');
+                overlayText.textContent = defaultMessage;
+                stopTitleAnimation();
+                return;
+            }
+
+            const currentEntries = Array.from(pendingOperations.values());
+            const currentMessage = currentEntries.map((entry) => entry.message).find(Boolean) || defaultMessage;
+            const shouldRevealOverlay = currentEntries.some((entry) => entry.revealOverlay !== false);
+            overlayText.textContent = currentMessage;
+            startTitleAnimation();
+
+            if (!shouldRevealOverlay) {
+                if (overlayTimer) {
+                    window.clearTimeout(overlayTimer);
+                    overlayTimer = null;
+                }
+                overlay.classList.remove('is-visible');
+                overlay.setAttribute('aria-hidden', 'true');
+                return;
+            }
+
+            if (shouldRevealOverlay && !overlayTimer && !overlay.classList.contains('is-visible')) {
+                overlayTimer = window.setTimeout(() => {
+                    overlay.classList.add('is-visible');
+                    overlay.setAttribute('aria-hidden', 'false');
+                    overlayTimer = null;
+                }, 140);
+            }
+        }
+
+        function restoreControl(control) {
+            if (!control) {
+                return;
+            }
+
+            if (control.dataset.loadingWasDisabled === 'false') {
+                control.disabled = false;
+            }
+            delete control.dataset.loadingWasDisabled;
+            control.classList.remove('is-processing');
+            control.removeAttribute('aria-disabled');
+        }
+
+        function markControl(control) {
+            if (!control) {
+                return null;
+            }
+
+            control.dataset.loadingWasDisabled = control.disabled ? 'true' : 'false';
+            control.classList.add('is-processing');
+
+            if (control.matches('button, input, select, textarea')) {
+                control.disabled = true;
+            } else {
+                control.setAttribute('aria-disabled', 'true');
+            }
+
+            return control;
+        }
+
+        function collectFormControls(form, submitter) {
+            const controls = new Set();
+
+            if (submitter) {
+                controls.add(submitter);
+            }
+
+            form.querySelectorAll('button[type="submit"], button:not([type]), input[type="submit"]').forEach((control) => {
+                controls.add(control);
+            });
+
+            return Array.from(controls)
+                .filter(Boolean)
+                .filter((control) => !control.hasAttribute('data-keep-enabled'));
+        }
+
+        function beginOperation(message, controls, options) {
+            options = options || {};
+            const token = Symbol('loading-operation');
+            const trackedControls = (controls || [])
+                .filter((control) => !control.hasAttribute('data-keep-enabled'))
+                .map(markControl)
+                .filter(Boolean);
+
+            if (pendingOperations.size === 0) {
+                idleTitle = document.title;
+            }
+
+            pendingOperations.set(token, {
+                message: message || defaultMessage,
+                controls: trackedControls,
+                revealOverlay: options.revealOverlay !== false
+            });
+
+            syncBusyUi();
+            return token;
+        }
+
+        function endOperation(token) {
+            const operation = pendingOperations.get(token);
+
+            if (!operation) {
+                return;
+            }
+
+            operation.controls.forEach(restoreControl);
+            pendingOperations.delete(token);
+            syncBusyUi();
+        }
+
+        function startNavigationState(element, message) {
+            const controls = element ? [element] : [];
+            beginOperation(message, controls);
+        }
+
+        window.MonayLoading = {
+            begin(message, options) {
+                const controls = options && Array.isArray(options.controls) ? options.controls : [];
+                return beginOperation(message, controls, options);
+            },
+            end(token) {
+                endOperation(token);
+            }
+        };
+
+        function shouldHandleLink(link, event) {
+            if (!link || shouldIgnore(link) || isModifiedEvent(event) || isHtmxManaged(link)) {
+                return false;
+            }
+
+            if (link.target && link.target !== '_self') {
+                return false;
+            }
+
+            if (link.hasAttribute('download')) {
+                return false;
+            }
+
+            const rawHref = link.getAttribute('href');
+            if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('javascript:')) {
+                return false;
+            }
+
+            const url = new URL(link.href, window.location.href);
+            if (url.origin !== window.location.origin || isSamePageUrl(url)) {
+                return false;
+            }
+
+            return true;
+        }
+
+        document.addEventListener('click', (event) => {
+            const link = event.target.closest('a[href]');
+            if (!shouldHandleLink(link, event)) {
+                return;
+            }
+
+            startNavigationState(link, link.dataset.loadingText || 'Cargando...');
+        }, true);
+
+        document.addEventListener('submit', (event) => {
+            const form = event.target;
+            if (!(form instanceof HTMLFormElement) || shouldIgnore(form) || isHtmxManaged(form) || isHtmxManaged(event.submitter)) {
+                return;
+            }
+
+            const controls = collectFormControls(form, event.submitter);
+            beginOperation(form.dataset.loadingText || 'Procesando...', controls);
+        }, true);
+
+        if (window.htmx) {
+            document.body.addEventListener('htmx:beforeRequest', (event) => {
+                const source = event.detail && event.detail.elt;
+                const requestConfig = event.detail && event.detail.requestConfig;
+                const triggeringEvent = requestConfig && requestConfig.triggeringEvent;
+
+                if (!source || shouldIgnore(source)) {
+                    return;
+                }
+
+                if (isTextualControl(source) && !allowsLoadingOnTextualControl(source)) {
+                    return;
+                }
+
+                if (!triggeringEvent && !source.matches('button, a, form, input[type="submit"], input[type="button"]')) {
+                    return;
+                }
+
+                const form = source.closest('form');
+                const controls = source.hasAttribute('data-keep-enabled')
+                    ? []
+                    : form && source.matches('form')
+                    ? collectFormControls(form)
+                    : (form && source.matches('button, input[type="submit"], input[type="button"]')
+                        ? collectFormControls(form, source)
+                        : [source]);
+                const token = beginOperation(source.dataset.loadingText || 'Actualizando...', controls, {
+                    revealOverlay: source.dataset.loadingOverlay !== 'false'
+                });
+                htmxOperations.set(event.detail.xhr, token);
+            });
+
+            const finishHtmxOperation = (event) => {
+                const token = htmxOperations.get(event.detail && event.detail.xhr);
+                if (!token) {
+                    return;
+                }
+
+                htmxOperations.delete(event.detail.xhr);
+                endOperation(token);
+            };
+
+            ['htmx:afterRequest', 'htmx:responseError', 'htmx:sendError', 'htmx:timeout'].forEach((eventName) => {
+                document.body.addEventListener(eventName, finishHtmxOperation);
+            });
+        }
+
+        window.addEventListener('pageshow', () => {
+            Array.from(pendingOperations.keys()).forEach((token) => endOperation(token));
+            htmxOperations.clear();
+            overlay.classList.remove('is-visible');
+            overlay.setAttribute('aria-hidden', 'true');
+            overlayText.textContent = defaultMessage;
+            document.body.classList.remove('is-busy');
+            document.body.setAttribute('aria-busy', 'false');
+            stopTitleAnimation();
+        });
+    })();
     </script>
 
     {% block scripts %}{% endblock %}

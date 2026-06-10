@@ -50,6 +50,186 @@ import { Cart } from './cart.js';
   }
 
   // ----------------------------------------------------------
+  // Global loading state
+  // ----------------------------------------------------------
+  var loadingState = {
+    nextId: 0,
+    pending: new Map(),
+    overlayTimer: null,
+    overlayVisible: false,
+    baseTitle: document.title,
+  };
+
+  function startActivity(label, options) {
+    options = options || {};
+    var id = 'activity-' + (++loadingState.nextId);
+    loadingState.pending.set(id, {
+      id: id,
+      label: label || 'Procesando...',
+      message: options.message || '',
+      blocking: !!options.blocking,
+      source: options.source || 'manual',
+    });
+    syncLoadingUI();
+    return id;
+  }
+
+  function finishActivity(id) {
+    if (!id) return;
+    if (loadingState.pending.delete(id)) {
+      syncLoadingUI();
+    }
+  }
+
+  function getTopActivity() {
+    var entries = Array.from(loadingState.pending.values());
+    if (entries.length === 0) return null;
+    for (var i = entries.length - 1; i >= 0; i--) {
+      if (entries[i].blocking) return entries[i];
+    }
+    return entries[entries.length - 1];
+  }
+
+  function setButtonLoading(button, isLoading, options) {
+    options = options || {};
+    if (!button) return;
+
+    if (isLoading) {
+      if (button.dataset.loading === 'true') return;
+      button.dataset.loading = 'true';
+      button.dataset.prevDisabled = button.disabled ? 'true' : 'false';
+      button.dataset.originalHtml = button.innerHTML;
+      button.classList.add('is-loading');
+      if (options.label) {
+        button.textContent = options.label;
+      }
+      if (!button.style.minWidth) {
+        button.style.minWidth = button.offsetWidth + 'px';
+      }
+      button.disabled = true;
+      button.setAttribute('aria-busy', 'true');
+      return;
+    }
+
+    if (button.dataset.originalHtml != null) {
+      button.innerHTML = button.dataset.originalHtml;
+    }
+    button.classList.remove('is-loading');
+    button.dataset.loading = 'false';
+    button.disabled = button.dataset.prevDisabled === 'true';
+    button.removeAttribute('aria-busy');
+    button.style.minWidth = '';
+  }
+
+  function isButtonLoading(button) {
+    return !!button && button.dataset.loading === 'true';
+  }
+
+  function setSearchLoading(isLoading, message) {
+    var input = document.getElementById('product-search');
+    var resultsEl = document.getElementById('search-results');
+    if (!input || !resultsEl) return;
+
+    input.classList.toggle('is-loading', isLoading);
+    resultsEl.classList.toggle('is-loading', isLoading);
+    if (isLoading) {
+      resultsEl.innerHTML =
+        '<div class="search-loading">' +
+        '<span class="inline-spinner" aria-hidden="true"></span>' +
+        '<span>' + escapeHtml(message || 'Buscando productos...') + '</span>' +
+        '</div>';
+      resultsEl.classList.remove('hidden');
+      return;
+    }
+
+    resultsEl.classList.remove('is-loading');
+  }
+
+  function syncLoadingUI() {
+    var overlay = document.getElementById('global-loading-overlay');
+    var titleEl = document.getElementById('global-loading-title');
+    var messageEl = document.getElementById('global-loading-message');
+    var count = loadingState.pending.size;
+    var activity = getTopActivity();
+    var isBooting = document.body.classList.contains('app-booting');
+
+    clearTimeout(loadingState.overlayTimer);
+
+    document.body.classList.toggle('app-has-loading', count > 0 || isBooting);
+    document.title = count > 0
+      ? 'Procesando... (' + count + ') | ' + loadingState.baseTitle
+      : loadingState.baseTitle;
+
+    if (!overlay || !titleEl || !messageEl) return;
+
+    if (count === 0 && !isBooting) {
+      loadingState.overlayVisible = false;
+      overlay.classList.remove('is-visible');
+      overlay.dataset.mode = 'soft';
+      overlay.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('app-loading-blocking');
+      return;
+    }
+
+    if (activity && activity.blocking) {
+      loadingState.overlayVisible = true;
+    } else if (count > 0) {
+      loadingState.overlayTimer = setTimeout(function () {
+        if (loadingState.pending.size > 0 && !document.body.classList.contains('app-booting')) {
+          loadingState.overlayVisible = true;
+          syncLoadingUI();
+        }
+      }, 160);
+    }
+
+    if (!loadingState.overlayVisible && !isBooting) {
+      overlay.classList.remove('is-visible');
+      overlay.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('app-loading-blocking');
+      return;
+    }
+
+    var label = activity && activity.label ? activity.label : 'Iniciando POS';
+    var message = activity && activity.message
+      ? activity.message
+      : (count > 1 ? count + ' operaciones en curso' : 'Un momento por favor');
+    var isBlocking = isBooting || !!(activity && activity.blocking);
+
+    titleEl.textContent = label;
+    messageEl.textContent = message;
+    overlay.dataset.mode = isBlocking ? 'blocking' : 'soft';
+    overlay.classList.add('is-visible');
+    overlay.setAttribute('aria-hidden', 'false');
+    document.body.classList.toggle('app-loading-blocking', isBlocking);
+  }
+
+  function releaseBootState() {
+    document.body.classList.remove('app-booting');
+    syncLoadingUI();
+  }
+
+  window.addEventListener('monay-request-start', function (event) {
+    var detail = event.detail || {};
+    if (!detail.requestId) return;
+    loadingState.pending.set(detail.requestId, {
+      id: detail.requestId,
+      label: detail.label || 'Actualizando POS',
+      blocking: !!detail.blocking,
+      message: '',
+      source: detail.source || 'api',
+    });
+    syncLoadingUI();
+  });
+
+  window.addEventListener('monay-request-end', function (event) {
+    var detail = event.detail || {};
+    if (!detail.requestId) return;
+    if (loadingState.pending.delete(detail.requestId)) {
+      syncLoadingUI();
+    }
+  });
+
+  // ----------------------------------------------------------
   // Confirm dialog
   // ----------------------------------------------------------
   function showConfirm(message) {
@@ -170,6 +350,7 @@ import { Cart } from './cart.js';
   // Product Search
   // ----------------------------------------------------------
   var searchTimer = null;
+  var activeSearchRequest = 0;
 
   function initSearch() {
     var input = document.getElementById('product-search');
@@ -180,6 +361,8 @@ import { Cart } from './cart.js';
       clearTimeout(searchTimer);
       var query = input.value.trim();
       if (query.length < 2) {
+        activeSearchRequest += 1;
+        setSearchLoading(false);
         resultsEl.classList.add('hidden');
         return;
       }
@@ -217,20 +400,33 @@ import { Cart } from './cart.js';
 
   function searchProducts(query) {
     var resultsEl = document.getElementById('search-results');
+    var requestId = ++activeSearchRequest;
+    setSearchLoading(true, 'Buscando productos...');
 
     // First try exact barcode match
-    api.get('/products?barcode=' + encodeURIComponent(query)).then(function (products) {
+    api.get('/products?barcode=' + encodeURIComponent(query), {
+      label: 'Consultando productos',
+    }).then(function (products) {
+      if (requestId !== activeSearchRequest) return;
       if (products && products.length > 0) {
         renderSearchResults(resultsEl, products);
         return;
       }
       // Fallback to name search
-      return api.get('/products?name=' + encodeURIComponent(query)).then(function (nameProducts) {
+      return api.get('/products?name=' + encodeURIComponent(query), {
+        label: 'Consultando productos',
+      }).then(function (nameProducts) {
+        if (requestId !== activeSearchRequest) return;
         renderSearchResults(resultsEl, nameProducts);
       });
     }).catch(function () {
+      if (requestId !== activeSearchRequest) return;
       resultsEl.innerHTML = '<div class="search-no-results">Error al buscar</div>';
       resultsEl.classList.remove('hidden');
+    }).finally(function () {
+      if (requestId === activeSearchRequest) {
+        setSearchLoading(false);
+      }
     });
   }
 
@@ -333,6 +529,7 @@ import { Cart } from './cart.js';
   var scannerStream = null;
   var scannerActive = false;
   var codeReader = null;
+  var scannerLoadingToken = null;
 
   function initScanner() {
     var btnScan = document.getElementById('btn-scan');
@@ -345,11 +542,18 @@ import { Cart } from './cart.js';
     var overlay = document.getElementById('scanner-overlay');
     var video = document.getElementById('scanner-video');
     var statusEl = document.getElementById('scanner-status');
+    var btnScan = document.getElementById('btn-scan');
     if (!overlay || !video) return;
 
     overlay.classList.remove('hidden');
     statusEl.textContent = 'Iniciando cámara...';
     scannerActive = true;
+    setButtonLoading(btnScan, true, { label: 'Abriendo cámara' });
+    scannerLoadingToken = startActivity('Abriendo cámara', {
+      message: 'Solicitando permiso y preparando el lector.',
+      blocking: false,
+      source: 'scanner',
+    });
 
     navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
@@ -358,9 +562,15 @@ import { Cart } from './cart.js';
       video.srcObject = stream;
       video.play();
       statusEl.textContent = 'Apunte la cámara al código de barras';
+      finishActivity(scannerLoadingToken);
+      scannerLoadingToken = null;
+      setButtonLoading(btnScan, false);
       startBarcodeDetection(video, statusEl);
     }).catch(function (err) {
       statusEl.textContent = 'No se pudo acceder a la cámara';
+      finishActivity(scannerLoadingToken);
+      scannerLoadingToken = null;
+      setButtonLoading(btnScan, false);
       showToast('Error al acceder a la cámara: ' + err.message, 'error');
     });
   }
@@ -408,8 +618,9 @@ import { Cart } from './cart.js';
   }
 
   function lookupBarcode(code) {
-    var statusEl = document.getElementById('scanner-status');
-    api.get('/products?barcode=' + encodeURIComponent(code)).then(function (products) {
+    api.get('/products?barcode=' + encodeURIComponent(code), {
+      label: 'Consultando producto escaneado',
+    }).then(function (products) {
       if (products && products.length > 0) {
         var p = products[0];
         if (p.is_weighed) {
@@ -427,8 +638,11 @@ import { Cart } from './cart.js';
 
   function closeScanner() {
     scannerActive = false;
+    finishActivity(scannerLoadingToken);
+    scannerLoadingToken = null;
     var overlay = document.getElementById('scanner-overlay');
     if (overlay) overlay.classList.add('hidden');
+    setButtonLoading(document.getElementById('btn-scan'), false);
     if (scannerStream) {
       scannerStream.getTracks().forEach(function (track) { track.stop(); });
       scannerStream = null;
@@ -509,6 +723,7 @@ import { Cart } from './cart.js';
     var changeLabel = document.getElementById('change-label');
     var changeAmountEl = document.getElementById('change-amount');
     if (!btnPay) return;
+    if (isButtonLoading(btnPay)) return;
 
     var total = Cart.getTotal();
 
@@ -553,7 +768,8 @@ import { Cart } from './cart.js';
 
   function processSale() {
     var btnPay = document.getElementById('btn-pay');
-    if (btnPay) btnPay.disabled = true;
+    if (isButtonLoading(btnPay)) return;
+    setButtonLoading(btnPay, true, { label: 'Procesando venta' });
 
     var lines = Cart.items.map(function (item) {
       return { product_id: item.product_id, quantity: item.quantity };
@@ -575,7 +791,10 @@ import { Cart } from './cart.js';
       return;
     }
 
-    api.post('/sales', body).then(function (result) {
+    api.post('/sales', body, {
+      label: 'Procesando venta',
+      blocking: true,
+    }).then(function (result) {
       // result: { sale, critical_stock_alerts, receipt }
       Cart.clear();
       resetPaymentForm();
@@ -600,6 +819,9 @@ import { Cart } from './cart.js';
         msg = err.message;
       }
       showToast(msg, 'error');
+    }).finally(function () {
+      setButtonLoading(btnPay, false);
+      updatePaymentState();
     });
   }
 
@@ -612,14 +834,20 @@ import { Cart } from './cart.js';
   }
 
   function queueOfflineSale(body, btnPay) {
+    var activityId = startActivity('Guardando venta offline', {
+      blocking: true,
+      message: 'La venta quedara lista para sincronizarse apenas vuelva la conexion.',
+    });
     OfflineDB.savePendingSale(body).then(function () {
       Cart.clear();
       resetPaymentForm();
       showToast('Sin conexión: venta encolada para sincronizar', 'warning');
-      if (btnPay) btnPay.disabled = false;
     }).catch(function () {
       showToast('Error al guardar venta offline', 'error');
-      if (btnPay) btnPay.disabled = false;
+    }).finally(function () {
+      finishActivity(activityId);
+      setButtonLoading(btnPay, false);
+      updatePaymentState();
     });
   }
 
@@ -755,11 +983,15 @@ import { Cart } from './cart.js';
     pageTarjeta: 1,
     perPage: 5
   };
+  var historyLoadVersion = 0;
 
   function loadHistory() {
     var listEl = document.getElementById('history-list');
+    var btnRefresh = document.getElementById('btn-refresh-history');
     if (!listEl) return;
+    var currentLoadVersion = ++historyLoadVersion;
     listEl.innerHTML = '<p class="history-empty">Cargando ventas...</p>';
+    setButtonLoading(btnRefresh, true);
 
     // Get today's sales
     var now = new Date();
@@ -771,8 +1003,11 @@ import { Cart } from './cart.js';
     var dateFrom = todayStr;
     var dateTo = todayStr + 'T23:59:59Z';
 
-    api.get('/sales?date_from=' + encodeURIComponent(dateFrom) + '&date_to=' + encodeURIComponent(dateTo))
+    api.get('/sales?date_from=' + encodeURIComponent(dateFrom) + '&date_to=' + encodeURIComponent(dateTo), {
+      label: 'Actualizando historial',
+    })
       .then(function (sales) {
+        if (currentLoadVersion !== historyLoadVersion) return;
         if (!sales) sales = [];
         historyState.efectivo = sales.filter(function(s) { return s.payment_method === 'efectivo'; });
         historyState.tarjeta = sales.filter(function(s) { return s.payment_method === 'tarjeta'; });
@@ -781,7 +1016,13 @@ import { Cart } from './cart.js';
         renderHistoryView();
       })
       .catch(function () {
+        if (currentLoadVersion !== historyLoadVersion) return;
         listEl.innerHTML = '<p class="history-empty">Error al cargar ventas</p>';
+      })
+      .finally(function () {
+        if (currentLoadVersion === historyLoadVersion) {
+          setButtonLoading(btnRefresh, false);
+        }
       });
   }
 
@@ -898,7 +1139,7 @@ import { Cart } from './cart.js';
       listEl.addEventListener('click', function (e) {
         var btnView = e.target.closest('[data-action="view-receipt"]');
         if (btnView && btnView.dataset.saleId) {
-          viewSaleReceipt(btnView.dataset.saleId);
+          viewSaleReceipt(btnView.dataset.saleId, btnView);
           return;
         }
 
@@ -914,11 +1155,16 @@ import { Cart } from './cart.js';
     }
   }
 
-  function viewSaleReceipt(saleId) {
-    api.get('/sales/' + saleId + '/receipt').then(function (receipt) {
+  function viewSaleReceipt(saleId, triggerBtn) {
+    setButtonLoading(triggerBtn, true);
+    api.get('/sales/' + saleId + '/receipt', {
+      label: 'Cargando comprobante',
+    }).then(function (receipt) {
       showReceipt(receipt);
     }).catch(function () {
       showToast('Error al cargar comprobante', 'error');
+    }).finally(function () {
+      setButtonLoading(triggerBtn, false);
     });
   }
 
@@ -971,13 +1217,20 @@ function initArqueo() {
     var btnSubmit = document.getElementById('btn-submit-arqueo');
     if (btnSubmit) {
       btnSubmit.addEventListener('click', function() {
+        if (isButtonLoading(btnSubmit)) return;
         showConfirm('¿Está seguro de cerrar el turno? Esto registrará la cuadratura.').then(function(confirmed) {
           if(confirmed) {
-            api.post('/sales/close-register', { counted_efectivo: lastCountedCash }).then(function(res) {
+            setButtonLoading(btnSubmit, true, { label: 'Cerrando turno' });
+            api.post('/sales/close-register', { counted_efectivo: lastCountedCash }, {
+              label: 'Cerrando caja',
+              blocking: true,
+            }).then(function() {
                showToast('Caja cuadrada y turno cerrado con éxito', 'success');
                router.navigate('history');
             }).catch(function(err) {
                showToast('Error al guardar cuadratura: ' + (err.message || 'Error del servidor'), 'error');
+            }).finally(function () {
+               setButtonLoading(btnSubmit, false);
             });
           }
         });
@@ -1122,6 +1375,10 @@ function initArqueo() {
   }
 
   function redirectToCentralLogin() {
+    startActivity('Abriendo acceso del POS', {
+      blocking: true,
+      message: 'Redirigiendo al inicio de sesion central.',
+    });
     window.location.assign(getCentralLoginUrl());
   }
 
@@ -1203,16 +1460,22 @@ function initArqueo() {
   // Offline Sync
   // ----------------------------------------------------------
   async function syncOfflineSales() {
+    var activityId = null;
     try {
       const pending = await OfflineDB.getPendingSales();
       if (pending && pending.length > 0) {
+        activityId = startActivity('Sincronizando ventas pendientes', {
+          message: pending.length + ' ventas offline en proceso de reintento.',
+        });
         showToast('Sincronizando ' + pending.length + ' ventas offline...', 'success');
         let synced = 0;
         let failed = 0;
         for (let i = 0; i < pending.length; i++) {
           const sale = pending[i];
           try {
-            await api.post('/sales', sale.payload);
+            await api.post('/sales', sale.payload, {
+              label: 'Reintentando ventas pendientes',
+            });
             await OfflineDB.deletePendingSale(sale.id);
             synced += 1;
           } catch (err) {
@@ -1231,6 +1494,8 @@ function initArqueo() {
       }
     } catch (err) {
       console.error('Error al obtener ventas pendientes:', err);
+    } finally {
+      finishActivity(activityId);
     }
   }
 
@@ -1240,6 +1505,10 @@ function initArqueo() {
   // App Init
   // ----------------------------------------------------------
   function init() {
+    var startupActivity = startActivity('Validando acceso al POS', {
+      blocking: true,
+      message: 'Preparando la sesion del cajero.',
+    });
     registerServiceWorker();
     importRedirectSession();
     Cart.init(updateCartUI, showToast);
@@ -1267,6 +1536,8 @@ function initArqueo() {
     // If we have a token, go to sale screen; otherwise login
     if (isCashierSession()) {
       router.navigate('sale');
+      finishActivity(startupActivity);
+      releaseBootState();
     } else {
       api.clearToken();
       redirectToCentralLogin();
@@ -1274,7 +1545,15 @@ function initArqueo() {
   }
 
   // Expose api and router for future modules
-  window.MonayPOS = { api: api, router: router, CONFIG: CONFIG };
+  window.MonayPOS = {
+    api: api,
+    router: router,
+    CONFIG: CONFIG,
+    loading: {
+      start: startActivity,
+      finish: finishActivity,
+    },
+  };
 
   // Boot
   if (document.readyState === 'loading') {

@@ -9,6 +9,9 @@ monay-market/
 ├── api/               → Backend NestJS + TypeScript
 ├── dashboard/         → Panel Admin Flask + HTMX + Alpine.js
 ├── pwa/               → PWA Punto de Venta (vanilla JS)
+├── docker/            → Nginx y entrypoints del stack unificado
+├── proxy-squid/       → Proxy HTTP opcional para integraciones SII vía API Gateway
+├── postgres/          → Variables de entorno y persistencia local de PostgreSQL
 └── README.md
 ```
 
@@ -29,14 +32,16 @@ monay-market/
 ### API Backend (NestJS)
 - Multi-tenant con aislamiento por `tenant_id` en todas las tablas (esquema `market`)
 - Autenticación JWT con roles diferenciados (dueño / cajero)
+- Rate limit de login persistido en PostgreSQL para que siga funcionando en Docker/VPS y no dependa de memoria local
 - Guards: JwtAuth, Tenant, Roles, Subscription, Plan
 - Gestión de usuarios cajeros (CRUD, solo dueño)
-- Configuración de tenant: módulo SII y impresora térmica
+- Configuración de tenant: módulo SII y datos de impresora térmica
+- Cifrado en reposo de secretos sensibles del tenant (`sii_api_key`, `sii_clave_tributaria`, `sii_certificado_password`) usando `APP_DATA_ENCRYPTION_KEY`
 - Control de suscripción: planes Básico y Pro
 - CRUD de productos con soft-delete, validación de ventas recientes e indicador de venta a granel (`is_weighed`)
 - Soporte para productos a granel con control de stock y cantidades en decimales de alta precisión (numeric(10,3) en PostgreSQL)
 - Migración automática para convertir stock entero a decimal con 3 decimales
-- Lookup de código de barras multi-fuente: Open Food Facts → UPCItemDB → Open Beauty Facts (con fallback encadenado)
+- Lookup de código de barras multi-fuente: Open Food Facts → UPCItemDB → Open Beauty Facts → UPCDatabase → JustBC (con fallback encadenado y URLs configurables por env)
 - Importación masiva de productos desde Excel (.xlsx) con validación de formato
 - Descarga de plantilla Excel oficial para importación
 - Validación server-side del carrito (stock, subtotales, total)
@@ -53,18 +58,20 @@ monay-market/
 
 ### Panel Admin (Flask + HTMX)
 - Login con JWT almacenado en sesión Flask
+- Login unificado en `/login`: si entra un `dueno` va al dashboard, si entra un `cajero` va al POS
 - Dashboard con métricas auto-refresh vía HTMX: ventas del día, acumulado mensual, valorización inventario, gráfico diario (Chart.js), productos con stock crítico (paginado)
 - Gestión de productos: CRUD completo con soporte inteligente para productos a granel (decimales), búsqueda en tiempo real con HTMX, paginación server-side, barcode lookup con autocompletado, escáner de cámara
 - Asistente Inteligente de Compras: generación automática de lista de reposición optimizada para móviles, calculando faltantes y agrupada por categorías
 - Ventas: listado con filtros por fecha (desde/hasta) y estado de boleta, paginación, detalle de venta, reintento de boletas pendientes
 - Usuarios: gestión de cajeros (crear, activar/desactivar)
-- Configuración: módulo SII (proveedor, credenciales, sandbox), impresora térmica, estado de suscripción
+- Configuración: módulo SII (proveedor, credenciales, sandbox), impresora térmica, estado de suscripción y certificado digital
 - Mermas: registro de pérdidas de inventario (causa, cantidad, valor), estadísticas mensuales, paginación
+- Librerías frontend servidas localmente (`htmx`, `alpine`, `chart.js`) para no depender de CDN externos
 
 ### PWA Punto de Venta
 - Instalable en celular como app nativa (manifest.json + íconos PWA 192x192 y 512x512)
 - Service Worker: cache-first para assets, network-first para API, respuesta offline 503
-- Login con JWT efimero almacenado en sessionStorage
+- Login con JWT efímero almacenado en `sessionStorage`
 - Búsqueda de productos por nombre o código de barras
 - Escáner de código de barras con cámara (BarcodeDetector API)
 - "Calculadora Mágica" para productos a granel (ingreso de peso exacto o monto a cobrar con cálculo automático)
@@ -93,6 +100,7 @@ Todas las tablas de negocio viven en el esquema `market` (la tabla de migracione
 | `sale_lines` | Líneas de detalle de cada venta: producto, cantidad (entera o fraccional), precio unitario y subtotal | vacía |
 | `boletas` | Boletas electrónicas emitidas ante el SII: folio, timbre electrónico, PDF y proveedor | vacía |
 | `mermas` | Registro de pérdidas de inventario por causa (vencido, roto, robo, consumo interno) | vacía |
+| `login_rate_limits` | Buckets persistidos para rate limit de login por IP/identificador | vacía |
 
 ## Requisitos
 
@@ -164,6 +172,9 @@ docker compose up -d --build
 # Ver logs
 docker compose logs -f web api dashboard
 
+# Estado de salud
+docker compose ps
+
 # Bajar servicios
 docker compose down
 
@@ -172,6 +183,16 @@ docker compose down -v
 ```
 
 Para VPS, publicar solo el servicio `web` detrás de HTTPS y configurar `CORS_ORIGIN`, `WS_CORS_ORIGIN`, `PWA_LOGIN_URL`, `POS_URL`, `SESSION_COOKIE_SECURE=true`, `POS_AUTH_COOKIE_SECURE=true` y `STRICT_ENV_VALIDATION=true` según el dominio real. Mantener `postgres/.env`, `api/.env` y `dashboard/.env` fuera de git.
+
+## Endurecimiento y seguridad
+
+- El API valida secrets críticos cuando `STRICT_ENV_VALIDATION=true`.
+- `JWT_SECRET`, `SECRET_KEY` y `APP_DATA_ENCRYPTION_KEY` deben ser reales y largos en VPS/producción.
+- Los secretos sensibles del módulo SII no van en el frontend ni en `docker-compose.yml`; se guardan por tenant desde Configuración.
+- El POS usa `sessionStorage` para el token del cajero y el dashboard usa sesión Flask.
+- El endpoint `GET /tenant/config` quedó restringido a `dueno`.
+- El certificado cargado por el dueño se guarda con permisos restringidos en el contenedor (`0600`).
+- Las dependencias JS del dashboard se sirven localmente, sin depender de CDNs de terceros.
 
 ## Flujo productivo de boleta electrónica
 
@@ -186,6 +207,29 @@ Para API Gateway eBoleta:
 5. Desactivar `Modo sandbox` para emitir contra el proveedor real.
 
 La clave tributaria SII se guarda por tenant desde la pantalla de configuración y no se debe definir en `.env`. El POS muestra el folio/PDF oficial cuando la boleta queda emitida y permite imprimir el comprobante local desde el navegador.
+
+### Proxy opcional para API Gateway
+
+Si API Gateway debe salir por una IP propia para consultar SII, el repo incluye una base en `proxy-squid/`.
+
+```bash
+cd proxy-squid
+docker compose up -d
+```
+
+Archivos del directorio:
+
+- `proxy-squid/docker-compose.yml` → servicio proxy
+- `proxy-squid/squid.conf` → reglas y dominios permitidos
+- `proxy-squid/proxy.js` → apoyo local para pruebas
+
+Luego se configura la URL del proxy directamente en la conexión de API Gateway, por ejemplo:
+
+```text
+http://usuario:password@IP_PUBLICA:3128
+```
+
+Esto no reemplaza al stack principal de Monay Market; es un componente opcional cuando el proveedor SII necesita salir por una IP dedicada.
 
 ## Variables de entorno
 
@@ -219,6 +263,7 @@ La clave tributaria SII se guarda por tenant desde la pantalla de configuración
 | `PWA_LOGIN_URL` | Override opcional para logout/login central de la PWA |
 | `LOGIN_RATE_LIMIT_*` | Ventana, intentos máximos y bloqueo del login |
 | `SII_APIGATEWAY_BASE_URL` | URL base de API Gateway V2 (default: `https://app.apigateway.cl/api/v2`) |
+| `BARCODE_LOOKUP_*` | Overrides opcionales para las URLs de lookup de código de barras |
 | `SEED_DEMO_DATA` | Crea datos demo solo si está en `true`; mantener `false` en producción |
 | `SEED_PASSWORD` | Contraseña inicial para usuarios demo solo cuando `SEED_DEMO_DATA=true` |
 
@@ -236,10 +281,15 @@ La clave tributaria SII se guarda por tenant desde la pantalla de configuración
 | `SESSION_COOKIE_SAMESITE` | Política SameSite de sesión Flask |
 | `SESSION_LIFETIME_SECONDS` | Duración de la sesión de dueño |
 | `MAX_CONTENT_LENGTH` | Tamaño máximo de uploads recibidos por Flask |
+| `STRICT_ENV_VALIDATION` | Activa validación estricta de secrets para VPS/producción |
 
 ## Endpoints disponibles
 
 ```
+# Runtime / health
+GET    /health                        → Healthcheck simple del API
+GET    /runtime-config.js             → Configuración pública consumida por la PWA
+
 # Autenticación
 POST   /auth/login                    → Login con email + contraseña
 POST   /auth/refresh                  → Renovar token JWT (requiere token)
@@ -294,8 +344,8 @@ GET    /mermas/stats                  → Estadísticas de mermas por período (
 
 | Usuario | Email | Contraseña | Rol |
 |---------|-------|-----------|-----|
-| Dueño | dueno@example.com | definida en BD | dueno |
-| Cajero | cajero@example.com | definida en BD | cajero |
+| Dueño | dueno@example.com | `SEED_PASSWORD` si `SEED_DEMO_DATA=true` | dueno |
+| Cajero | cajero@example.com | `SEED_PASSWORD` si `SEED_DEMO_DATA=true` | cajero |
 
 Tenant: "Almacén Don Pedro" (RUT 76.123.456-7) con 10 categorías y 42 productos chilenos reales (Coca-Cola, Fruna, Nestlé, Colún, Lays, etc.) con precios estimados de almacén en CLP.
 
@@ -343,3 +393,4 @@ cd api && npm run test:cov
 3. Ejecutar migraciones como paso controlado de release si se escala a más de una réplica.
 4. Mantener `SEED_DEMO_DATA=false` en producción y crear usuarios reales desde un flujo controlado.
 5. Para escalar WebSockets a múltiples réplicas, agregar un adapter compartido como Redis.
+6. Si se opera con API Gateway + SII en producción, evaluar proxy dedicado por cliente/empresa para aislar IP y disponibilidad.

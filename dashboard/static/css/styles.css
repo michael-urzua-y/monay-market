@@ -22,6 +22,9 @@
     --color-success-bg: #edf8ef;
     --color-info: #5c7f2f;
     --color-info-bg: #eef5df;
+    --loading-overlay-bg: rgba(244, 246, 238, 0.68);
+    --loading-panel-bg: rgba(255, 254, 249, 0.94);
+    --loading-panel-border: rgba(201, 149, 42, 0.18);
 
     --sidebar-bg: linear-gradient(180deg, #01080b 0%, #04120f 52%, #020a0a 100%);
     --sidebar-text: rgba(231, 238, 224, 0.72);
@@ -43,6 +46,67 @@ body {
     color: var(--color-text);
     line-height: 1.5;
     min-height: 100vh;
+}
+
+body.is-busy {
+    cursor: progress;
+}
+
+@keyframes global-loading-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.global-loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 420;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--loading-overlay-bg);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.18s ease, visibility 0.18s ease;
+}
+
+.global-loading-overlay.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.global-loading-panel {
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    min-width: min(220px, 100%);
+    padding: 18px 22px;
+    border: 1px solid var(--loading-panel-border);
+    border-radius: 16px;
+    background: var(--loading-panel-bg);
+    box-shadow: 0 24px 60px rgba(23, 32, 22, 0.14);
+}
+
+.global-loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(23, 32, 22, 0.12);
+    border-top-color: var(--color-primary);
+    border-right-color: #d3a72f;
+    border-radius: 50%;
+    animation: global-loading-spin 0.8s linear infinite;
+}
+
+.global-loading-text {
+    color: var(--color-text);
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0;
 }
 
 /* === App Layout === */
@@ -373,6 +437,23 @@ body {
     cursor: pointer;
     transition: background 0.15s;
     text-decoration: none;
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"],
+button:disabled,
+button[aria-disabled="true"],
+input[type="submit"]:disabled,
+a[aria-disabled="true"] {
+    opacity: 0.68;
+    cursor: wait;
+    box-shadow: none;
+    transform: none;
+}
+
+.is-processing,
+a[aria-disabled="true"] {
+    pointer-events: none;
 }
 
 .btn-primary {

@@ -3,49 +3,225 @@
 {% block title %}Asistente de Compras{% endblock %}
 {% block page_title %}Lista de Compras 🛒{% endblock %}
 
+{% block head %}
+<style>
+    .shopping-list-shell {
+        max-width: 800px;
+        margin: 0 auto;
+        padding-bottom: 40px;
+    }
+
+    .shopping-list-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .shopping-list-copy {
+        color: var(--color-text-muted);
+        margin: 0;
+    }
+
+    .shopping-list-print {
+        background: var(--color-white);
+        gap: 8px;
+    }
+
+    .shopping-list-empty {
+        text-align: center;
+        padding: 60px 20px;
+    }
+
+    .shopping-list-empty-icon {
+        font-size: 4rem;
+        margin-bottom: 16px;
+    }
+
+    .shopping-list-empty-title {
+        font-size: 1.5rem;
+        color: var(--color-text);
+        margin-bottom: 8px;
+    }
+
+    .shopping-list-empty-copy {
+        color: var(--color-text-muted);
+        font-size: 1.1rem;
+    }
+
+    .shopping-list-empty-action {
+        margin-top: 24px;
+    }
+
+    .shopping-list-category {
+        margin-bottom: 24px;
+        overflow: hidden;
+        border-radius: 12px;
+        border: 1px solid var(--color-border);
+        box-shadow: 0 4px 6px -1px rgba(23, 32, 22, 0.05);
+    }
+
+    .shopping-list-category-header {
+        background-color: var(--color-bg);
+        border-bottom: 1px solid var(--color-border);
+        padding: 16px 20px;
+    }
+
+    .shopping-list-category-title {
+        margin: 0;
+        color: var(--color-text);
+        font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .shopping-list-count {
+        font-size: 0.9rem;
+    }
+
+    .shopping-list-category-body {
+        padding: 0;
+    }
+
+    .shopping-list-items {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .shopping-list-item {
+        border-bottom: 1px solid var(--color-border);
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .shopping-list-check {
+        width: 28px;
+        height: 28px;
+        cursor: pointer;
+        accent-color: var(--color-primary);
+        flex: 0 0 auto;
+    }
+
+    .shopping-list-label {
+        flex: 1;
+        cursor: pointer;
+        transition: opacity 0.2s ease, text-decoration-color 0.2s ease;
+    }
+
+    .shopping-list-item.done .shopping-list-label {
+        opacity: 0.4;
+        text-decoration: line-through;
+        text-decoration-thickness: 2px;
+    }
+
+    .shopping-list-product {
+        font-weight: 700;
+        color: var(--color-text);
+        font-size: 1.1rem;
+    }
+
+    .shopping-list-stock {
+        color: var(--color-text-muted);
+        font-size: 0.95rem;
+        margin-top: 4px;
+    }
+
+    .shopping-list-stock-now {
+        color: #ef4444;
+    }
+
+    .shopping-list-stock-critical {
+        font-size: 0.85rem;
+        margin-left: 4px;
+    }
+
+    .shopping-list-suggested {
+        text-align: right;
+        background: var(--color-info-bg);
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: 1px solid rgba(92, 127, 47, 0.26);
+        min-width: 80px;
+    }
+
+    .shopping-list-suggested-label {
+        font-size: 0.75rem;
+        color: var(--color-info);
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .shopping-list-suggested-value {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #4f6d2a;
+    }
+
+    @media (max-width: 640px) {
+        .shopping-list-item {
+            align-items: flex-start;
+        }
+
+        .shopping-list-suggested {
+            min-width: 72px;
+            padding: 8px 12px;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div style="max-width: 800px; margin: 0 auto; padding-bottom: 40px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
-        <p style="color: var(--color-text-muted); margin: 0;">Productos agrupados por pasillo/categoría que necesitan reposición.</p>
-        <button onclick="window.print()" class="btn btn-secondary" style="background: white; gap: 8px;">
+<div class="shopping-list-shell">
+    <div class="shopping-list-toolbar">
+        <p class="shopping-list-copy">Productos agrupados por pasillo/categoría que necesitan reposición.</p>
+        <button onclick="window.print()" class="btn btn-secondary shopping-list-print">
             🖨️ Imprimir Lista
         </button>
     </div>
 
     {% if not grouped_list %}
-    <div class="card" style="text-align: center; padding: 60px 20px;">
-        <div style="font-size: 4rem; margin-bottom: 16px;">🎉</div>
-        <h3 style="font-size: 1.5rem; color: var(--color-text); margin-bottom: 8px;">¡Todo en orden!</h3>
-        <p style="color: var(--color-text-muted); font-size: 1.1rem;">Tu almacén está lleno. No tienes productos por debajo de su stock crítico.</p>
-        <a href="{{ url_for('dashboard') }}" class="btn btn-primary" style="margin-top: 24px;">Volver al inicio</a>
+    <div class="card shopping-list-empty">
+        <div class="shopping-list-empty-icon">🎉</div>
+        <h3 class="shopping-list-empty-title">¡Todo en orden!</h3>
+        <p class="shopping-list-empty-copy">Tu almacén está lleno. No tienes productos por debajo de su stock crítico.</p>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-primary shopping-list-empty-action">Volver al inicio</a>
     </div>
     {% else %}
         {% for category, items in grouped_list.items() %}
-        <div class="card" style="margin-bottom: 24px; overflow: hidden; border-radius: 12px; border: 1px solid var(--color-border); box-shadow: 0 4px 6px -1px rgba(23,32,22,0.05);">
-            <div class="card-header" style="background-color: var(--color-bg); border-bottom: 1px solid var(--color-border); padding: 16px 20px;">
-                <h3 style="margin: 0; color: var(--color-text); font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">
-                    📂 {{ category }} <span class="badge badge-neutral" style="font-size: 0.9rem;">{{ items|length }} ítems</span>
+        <div class="card shopping-list-category">
+            <div class="card-header shopping-list-category-header">
+                <h3 class="shopping-list-category-title">
+                    📂 {{ category }} <span class="badge badge-neutral shopping-list-count">{{ items|length }} ítems</span>
                 </h3>
             </div>
-            <div class="card-body" style="padding: 0;">
-                <ul style="list-style: none; margin: 0; padding: 0;">
+            <div class="card-body shopping-list-category-body">
+                <ul class="shopping-list-items">
                     {% for p in items %}
-                    <li style="border-bottom: 1px solid var(--color-border); padding: 16px 20px; display: flex; align-items: center; gap: 16px;">
-                        <!-- Checkbox interactivo para el celular -->
-                        <input type="checkbox" id="chk-{{ p.id }}" style="width: 28px; height: 28px; cursor: pointer; accent-color: var(--color-primary);"
-                               onchange="this.nextElementSibling.style.opacity = this.checked ? '0.4' : '1'; this.nextElementSibling.style.textDecoration = this.checked ? 'line-through' : 'none';">
+                    <li class="shopping-list-item">
+                        <input
+                            type="checkbox"
+                            id="chk-{{ p.id }}"
+                            class="shopping-list-check"
+                            onchange="this.closest('.shopping-list-item').classList.toggle('done', this.checked);"
+                        >
                         
-                        <label for="chk-{{ p.id }}" style="flex: 1; cursor: pointer; transition: all 0.2s;">
-                            <div style="font-weight: 700; color: var(--color-text); font-size: 1.1rem;">{{ p.name }}</div>
-                            <div style="color: var(--color-text-muted); font-size: 0.95rem; margin-top: 4px;">
-                                Stock actual: <strong style="color: #ef4444;">{{ p.stock }}</strong> 
-                                <span style="font-size: 0.85rem; margin-left: 4px;">(Crítico: {{ p.critical_stock }})</span>
+                        <label for="chk-{{ p.id }}" class="shopping-list-label">
+                            <div class="shopping-list-product">{{ p.name }}</div>
+                            <div class="shopping-list-stock">
+                                Stock actual: <strong class="shopping-list-stock-now">{{ p.stock }}</strong>
+                                <span class="shopping-list-stock-critical">(Crítico: {{ p.critical_stock }})</span>
                             </div>
                         </label>
                         
-                        <div style="text-align: right; background: var(--color-info-bg); padding: 8px 16px; border-radius: 8px; border: 1px solid rgba(92, 127, 47, 0.26); min-width: 80px;">
-                            <div style="font-size: 0.75rem; color: var(--color-info); font-weight: 700; text-transform: uppercase;">Comprar</div>
-                            <div style="font-size: 1.4rem; font-weight: 800; color: #4f6d2a;">
+                        <div class="shopping-list-suggested">
+                            <div class="shopping-list-suggested-label">Comprar</div>
+                            <div class="shopping-list-suggested-value">
                                 +{{ p.suggested_qty }}
                             </div>
                         </div>

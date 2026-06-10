@@ -15,6 +15,9 @@
     --login-muted-soft: rgba(231, 238, 224, 0.56);
     --login-border: rgba(240, 185, 11, 0.32);
     --login-card: rgba(32, 55, 35, 0.55);
+    --loading-overlay-bg: rgba(2, 9, 11, 0.58);
+    --loading-panel-bg: rgba(7, 20, 15, 0.9);
+    --loading-panel-border: rgba(240, 185, 11, 0.26);
 }
 
 html,
@@ -35,6 +38,70 @@ body.login-page {
         linear-gradient(135deg, #01080b 0%, #04120f 50%, #020a0a 100%);
     font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     -webkit-font-smoothing: antialiased;
+}
+
+body.login-page.is-busy {
+    cursor: progress;
+}
+
+@keyframes global-loading-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.global-loading-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 18;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--loading-overlay-bg);
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.18s ease, visibility 0.18s ease;
+}
+
+.global-loading-overlay.is-visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+}
+
+.global-loading-panel {
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    min-width: min(220px, 100%);
+    padding: 18px 22px;
+    border: 1px solid var(--loading-panel-border);
+    border-radius: 16px;
+    color: var(--login-text);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+        var(--loading-panel-bg);
+    box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.38),
+        inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.global-loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba(231, 238, 224, 0.18);
+    border-top-color: var(--login-gold);
+    border-right-color: #ffd257;
+    border-radius: 50%;
+    animation: global-loading-spin 0.8s linear infinite;
+}
+
+.global-loading-text {
+    font-size: 0.95rem;
+    font-weight: 700;
 }
 
 .login-shell {
@@ -514,6 +581,22 @@ body.login-page {
     font-weight: 900;
     text-transform: uppercase;
     transition: transform 0.2s, box-shadow 0.2s, filter 0.2s;
+}
+
+.login-btn:disabled,
+.login-btn[aria-disabled="true"],
+.password-toggle:disabled,
+.password-toggle[aria-disabled="true"],
+a[aria-disabled="true"] {
+    opacity: 0.7;
+    cursor: wait;
+    box-shadow: none;
+    transform: none;
+}
+
+.is-processing,
+a[aria-disabled="true"] {
+    pointer-events: none;
 }
 
 .login-btn:hover,
