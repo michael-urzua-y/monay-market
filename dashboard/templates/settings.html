@@ -665,7 +665,7 @@
                                     <span class="badge badge-success">Bloqueado</span>
                                     <small class="settings-muted">Se protege para evitar reemplazos accidentales.</small>
                                     {% else %}
-                                    <input type="text" id="sii_api_key" name="sii_api_key" value="" placeholder="Clave de API del proveedor">
+                                    <input type="text" id="sii_api_key" name="sii_api_key" value="" placeholder="Clave de API del proveedor" autocomplete="off">
                                     {% endif %}
                                 </div>
 
@@ -679,7 +679,7 @@
                                     <span class="badge badge-success">Bloqueado</span>
                                     <small class="settings-muted">No se muestra nuevamente después de guardar.</small>
                                     {% else %}
-                                    <input type="password" id="sii_clave_tributaria" name="sii_clave_tributaria" value="" placeholder="Requerida para API Gateway eBoleta">
+                                    <input type="password" id="sii_clave_tributaria" name="sii_clave_tributaria" value="" placeholder="Requerida para API Gateway eBoleta" autocomplete="current-password">
                                     <small class="settings-muted">No se muestra nuevamente después de guardar.</small>
                                     {% endif %}
                                 </div>
@@ -711,7 +711,7 @@
                                     <span class="badge badge-success">Configurado</span>
                                     <small class="settings-muted">RUT del negocio que emite la boleta.</small>
                                     {% else %}
-                                    <input type="text" id="sii_rut_emisor" name="sii_rut_emisor" value="" placeholder="78.260.737-5">
+                                    <input type="text" id="sii_rut_emisor" name="sii_rut_emisor" value="" placeholder="78.260.737-5" autocomplete="off">
                                     <small class="settings-muted">RUT del negocio que emite la boleta.</small>
                                     {% endif %}
                                 </div>
@@ -726,7 +726,7 @@
                                     <span class="badge badge-success">Configurado</span>
                                     <small class="settings-muted">Usuario autorizado que inicia sesión en SII/e-Boleta.</small>
                                     {% else %}
-                                    <input type="text" id="sii_rut_autenticador" name="sii_rut_autenticador" value="" placeholder="18.673.997-3">
+                                    <input type="text" id="sii_rut_autenticador" name="sii_rut_autenticador" value="" placeholder="18.673.997-3" autocomplete="off">
                                     <small class="settings-muted">Usuario autorizado que inicia sesión en SII/e-Boleta.</small>
                                     {% endif %}
                                 </div>
@@ -741,7 +741,7 @@
                                     <span class="badge badge-success">Configurado</span>
                                     <small class="settings-muted">Sucursal activa en e-Boleta/SII.</small>
                                     {% else %}
-                                    <input type="number" id="sii_codigo_sucursal" name="sii_codigo_sucursal" value="" min="0" step="1" placeholder="92085921">
+                                    <input type="number" id="sii_codigo_sucursal" name="sii_codigo_sucursal" value="" min="0" step="1" placeholder="92085921" autocomplete="off">
                                     <small class="settings-muted">Sucursal activa en e-Boleta/SII.</small>
                                     {% endif %}
                                 </div>
@@ -765,7 +765,7 @@
                             <div class="settings-form-grid">
                                 <div class="form-group settings-standard-field">
                                     <label for="sii_razon_social">Razón social</label>
-                                    <input type="text" id="sii_razon_social" name="sii_razon_social" value="{{ config.get('sii_razon_social', '') }}" placeholder="Nombre de la empresa" :disabled="!editBusiness">
+                                    <input type="text" id="sii_razon_social" name="sii_razon_social" value="{{ config.get('sii_razon_social', '') }}" placeholder="Nombre de la empresa" :disabled="!editBusiness" autocomplete="organization">
                                     {% if config.get('sii_razon_social') %}
                                     <span class="badge badge-success" x-show="editBusiness" x-cloak>Configurado</span>
                                     <span class="badge badge-success" x-show="!editBusiness" x-cloak>Bloqueado</span>
@@ -775,7 +775,7 @@
 
                                 <div class="form-group settings-standard-field">
                                     <label for="sii_giro">Giro</label>
-                                    <input type="text" id="sii_giro" name="sii_giro" value="{{ config.get('sii_giro', '') }}" placeholder="Ej: Venta al por menor de alimentos" :disabled="!editBusiness">
+                                    <input type="text" id="sii_giro" name="sii_giro" value="{{ config.get('sii_giro', '') }}" placeholder="Ej: Venta al por menor de alimentos" :disabled="!editBusiness" autocomplete="organization-title">
                                     {% if config.get('sii_giro') %}
                                     <span class="badge badge-success" x-show="editBusiness" x-cloak>Configurado</span>
                                     <span class="badge badge-success" x-show="!editBusiness" x-cloak>Bloqueado</span>
@@ -805,7 +805,7 @@
                                     <span class="badge badge-success">Bloqueado</span>
                                     <small class="settings-muted">Carga controlada para no reemplazar la firma sin intención.</small>
                                     {% else %}
-                                    <input type="file" id="certificado" name="certificado" accept=".pfx,.p12">
+                                    <input type="file" id="certificado" name="certificado" accept=".pfx,.p12" autocomplete="off">
                                     <small class="settings-muted">Archivo .pfx o .p12 descargado desde el proveedor de firma.</small>
                                     {% endif %}
                                 </div>

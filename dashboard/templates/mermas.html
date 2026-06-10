@@ -254,22 +254,12 @@
                     </tbody>
                 </table>
 
-                <!-- Pagination -->
-                {% if total_pages > 1 %}
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding: 12px 16px; border-top: 1px solid var(--color-border);">
-                    <span style="color: var(--color-text-muted); font-size: 0.85rem;">
-                        {{ total }} merma{{ 's' if total != 1 else '' }} — Página {{ page }} de {{ total_pages }}
-                    </span>
-                    <div style="display: flex; gap: 8px;">
-                        <a href="{{ url_for('mermas') }}?page={{ page - 1 }}"
-                           class="btn btn-sm btn-secondary"
-                           {% if page <= 1 %}style="pointer-events: none; opacity: 0.5;"{% endif %}>Anterior</a>
-                        <a href="{{ url_for('mermas') }}?page={{ page + 1 }}"
-                           class="btn btn-sm btn-secondary"
-                           {% if page >= total_pages %}style="pointer-events: none; opacity: 0.5;"{% endif %}>Siguiente</a>
-                    </div>
-                </div>
-                {% endif %}
+                {% set pagination_label = total ~ ' merma' ~ ('s' if total != 1 else '') ~ ' — Página ' ~ page ~ ' de ' ~ total_pages %}
+                {% set previous_url = url_for('mermas') ~ '?page=' ~ (page - 1) %}
+                {% set next_url = url_for('mermas') ~ '?page=' ~ (page + 1) %}
+                {% set disable_previous = page <= 1 %}
+                {% set disable_next = page >= total_pages %}
+                {% include "partials/pagination_footer.html" %}
                 {% else %}
                 <p class="empty-msg" style="padding: 40px; text-align: center; color: var(--color-text-muted);">No hay mermas registradas.</p>
                 {% endif %}

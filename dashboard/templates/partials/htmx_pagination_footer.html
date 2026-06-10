@@ -1,0 +1,17 @@
+{% if total_pages and total_pages > 1 %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--color-border);">
+    <span style="color: var(--color-text-muted); font-size: 0.9rem;">{{ pagination_label }}</span>
+    <div style="display: flex; gap: 8px;">
+        <button class="btn btn-sm btn-secondary"
+                hx-get="{{ previous_url }}"
+                hx-target="{{ target_selector }}"
+                hx-swap="{{ swap_strategy|default('innerHTML') }}"
+                {% if disable_previous %}style="pointer-events: none; opacity: 0.5;" disabled{% endif %}>Anterior</button>
+        <button class="btn btn-sm btn-secondary"
+                hx-get="{{ next_url }}"
+                hx-target="{{ target_selector }}"
+                hx-swap="{{ swap_strategy|default('innerHTML') }}"
+                {% if disable_next %}style="pointer-events: none; opacity: 0.5;" disabled{% endif %}>Siguiente</button>
+    </div>
+</div>
+{% endif %}

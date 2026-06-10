@@ -4,17 +4,83 @@
 {% block page_title %}Historial de Cuadraturas 💵{% endblock %}
 
 {% block content %}
+<style>
+.arqueos-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.arqueos-title {
+    margin: 0;
+}
+
+.arqueos-filter-form {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    margin: 0;
+    flex-wrap: wrap;
+}
+
+.arqueos-filter-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.arqueos-filter-label {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    margin-bottom: 4px;
+}
+
+.arqueos-filter-input {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+}
+
+.arqueos-body {
+    padding: 0;
+    overflow-x: auto;
+}
+
+.arqueos-diff {
+    font-weight: bold;
+}
+
+.arqueos-diff--balanced {
+    color: #16a34a;
+}
+
+.arqueos-diff--negative {
+    color: #dc2626;
+}
+
+.arqueos-diff--positive {
+    color: #8a6a12;
+}
+
+.badge-warning-soft {
+    background: var(--color-primary-soft);
+    color: #8a6a12;
+    border: 1px solid rgba(240, 185, 11, 0.32);
+}
+</style>
 <div class="card">
-    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-        <h3 class="card-title" style="margin: 0;">Cierres de turno</h3>
-        <form method="GET" action="{{ url_for('arqueos') }}" style="display: flex; gap: 10px; align-items: flex-end; margin: 0;">
-            <div style="display: flex; flex-direction: column;">
-                <label for="date_from" style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 4px;">Desde:</label>
-                <input type="date" id="date_from" name="date_from" value="{{ date_from }}" class="form-control" style="padding: 6px 10px; font-size: 0.9rem; border: 1px solid var(--color-border); border-radius: 6px;">
+    <div class="card-header arqueos-header">
+        <h3 class="card-title arqueos-title">Cierres de turno</h3>
+        <form method="GET" action="{{ url_for('arqueos') }}" class="arqueos-filter-form">
+            <div class="arqueos-filter-group">
+                <label for="date_from" class="arqueos-filter-label">Desde:</label>
+                <input type="date" id="date_from" name="date_from" value="{{ date_from }}" class="form-control arqueos-filter-input">
             </div>
-            <div style="display: flex; flex-direction: column;">
-                <label for="date_to" style="font-size: 0.85rem; color: var(--color-text-muted); margin-bottom: 4px;">Hasta:</label>
-                <input type="date" id="date_to" name="date_to" value="{{ date_to }}" class="form-control" style="padding: 6px 10px; font-size: 0.9rem; border: 1px solid var(--color-border); border-radius: 6px;">
+            <div class="arqueos-filter-group">
+                <label for="date_to" class="arqueos-filter-label">Hasta:</label>
+                <input type="date" id="date_to" name="date_to" value="{{ date_to }}" class="form-control arqueos-filter-input">
             </div>
             <button type="submit" class="btn btn-primary" style="padding: 6px 12px; height: 35px;">Filtrar</button>
             {% if date_from or date_to %}
@@ -22,7 +88,7 @@
             {% endif %}
         </form>
     </div>
-    <div class="card-body" style="padding: 0; overflow-x: auto;">
+    <div class="card-body arqueos-body">
         {% if arqueos %}
         <table class="data-table">
             <thead>
@@ -46,11 +112,11 @@
                     <td>{{ a.get('expected_amount', 0) | clp }}</td>
                     <td>{{ a.get('counted_amount', 0) | clp }}</td>
                     {% if diff == 0 %}
-                    <td style="font-weight: bold; color: #16a34a;">
+                    <td class="arqueos-diff arqueos-diff--balanced">
                     {% elif diff < 0 %}
-                    <td style="font-weight: bold; color: #dc2626;">
+                    <td class="arqueos-diff arqueos-diff--negative">
                     {% else %}
-                    <td style="font-weight: bold; color: #8a6a12;">
+                    <td class="arqueos-diff arqueos-diff--positive">
                     {% endif %}
                         {{ diff | clp }}
                     </td>
@@ -60,32 +126,20 @@
                         {% elif diff < 0 %}
                             <span class="badge badge-error">Faltante</span>
                         {% else %}
-                            <span class="badge" style="background: var(--color-primary-soft); color: #8a6a12; border: 1px solid rgba(240, 185, 11, 0.32);">Sobrante</span>
+                            <span class="badge badge-warning-soft">Sobrante</span>
                         {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        
-        {% if total_pages > 1 %}
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-top: 1px solid var(--color-border); background-color: var(--color-bg);">
-            <span style="color: var(--color-text-muted); font-size: 0.9rem;">Mostrando página {{ page }} de {{ total_pages }} ({{ total }} registros)</span>
-            <div style="display: flex; gap: 8px;">
-                {% if page <= 1 %}
-                <a href="{{ url_for('arqueos', page=page-1, date_from=date_from, date_to=date_to) }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.9rem; pointer-events: none; opacity: 0.5;">Anterior</a>
-                {% else %}
-                <a href="{{ url_for('arqueos', page=page-1, date_from=date_from, date_to=date_to) }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.9rem;">Anterior</a>
-                {% endif %}
-                
-                {% if page >= total_pages %}
-                <a href="{{ url_for('arqueos', page=page+1, date_from=date_from, date_to=date_to) }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.9rem; pointer-events: none; opacity: 0.5;">Siguiente</a>
-                {% else %}
-                <a href="{{ url_for('arqueos', page=page+1, date_from=date_from, date_to=date_to) }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.9rem;">Siguiente</a>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
+
+        {% set pagination_label = 'Mostrando página ' ~ page ~ ' de ' ~ total_pages ~ ' (' ~ total ~ ' registro' ~ ('s' if total != 1 else '') ~ ')' %}
+        {% set previous_url = url_for('arqueos', page=page-1, date_from=date_from, date_to=date_to) %}
+        {% set next_url = url_for('arqueos', page=page+1, date_from=date_from, date_to=date_to) %}
+        {% set disable_previous = page <= 1 %}
+        {% set disable_next = page >= total_pages %}
+        {% include "partials/pagination_footer.html" %}
 
         {% else %}
         <p class="empty-msg">Aún no hay cuadraturas registradas.</p>
