@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Logger, Post, Request, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -6,6 +6,8 @@ import { LoginThrottleService } from './login-throttle.service';
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly loginThrottle: LoginThrottleService,
@@ -15,9 +17,18 @@ export class AuthController {
   async login(@Body() loginDto: LoginDto, @Request() req: any) {
     const throttleKey = this.getThrottleKey(req, loginDto.email);
     await this.loginThrottle.consume(throttleKey);
-    const result = await this.authService.login(loginDto);
-    await this.loginThrottle.reset(throttleKey);
-    return result;
+
+    try {
+      const result = await this.authService.login(loginDto);
+      await this.loginThrottle.reset(throttleKey);
+      this.logger.log(`Login exitoso: ${loginDto.email} desde ${this.getClientIp(req)}`);
+      return result;
+    } catch (error) {
+      this.logger.warn(
+        `Login fallido: ${loginDto.email} desde ${this.getClientIp(req)} — ${error.message || 'credenciales inválidas'}`,
+      );
+      throw error;
+    }
   }
 
   @UseGuards(AuthGuard('jwt'))
@@ -26,11 +37,15 @@ export class AuthController {
     return this.authService.refresh(req.user.user_id);
   }
 
-  private getThrottleKey(req: any, email: string): string {
+  private getClientIp(req: any): string {
     const forwardedFor = String(req.headers?.['x-forwarded-for'] || '')
       .split(',')[0]
       .trim();
-    const ip = forwardedFor || req.ip || req.socket?.remoteAddress || 'unknown';
+    return forwardedFor || req.ip || req.socket?.remoteAddress || 'unknown';
+  }
+
+  private getThrottleKey(req: any, email: string): string {
+    const ip = this.getClientIp(req);
     return `${ip}:${email.trim().toLowerCase()}`;
   }
 }

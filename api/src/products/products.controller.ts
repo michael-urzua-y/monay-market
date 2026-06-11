@@ -107,7 +107,16 @@ export class ProductsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateProductDto,
   ) {
-    return this.productsService.update(user.tenant_id, id, dto);
+    return this.productsService.update(user.tenant_id, id, dto, user.user_id);
+  }
+
+  @Get(':id/price-history')
+  @Roles(UserRole.DUENO)
+  getPriceHistory(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.productsService.getPriceHistory(user.tenant_id, id);
   }
 
   @Delete(':id')

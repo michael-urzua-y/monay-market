@@ -353,12 +353,14 @@ def products_new():
                 categories=categories,
             )
 
-        return redirect(url_for("products"))
+        created_name = data.get("name", "Producto")
+        return redirect(url_for("products_new", created=created_name))
 
     # GET: render empty form
+    created_name = request.args.get("created")
     categories_data = api.get("/products/categories", params={})
     categories = {c.get("id"): c.get("name") for c in (categories_data if isinstance(categories_data, list) else [])}
-    return render_template("products_new.html", categories=categories, form={})
+    return render_template("products_new.html", categories=categories, form={}, created=created_name)
 
 
 @app.route("/products/<product_id>/edit", methods=["GET", "POST"])
@@ -731,6 +733,29 @@ def users_toggle(user_id):
     return redirect(url_for("users"))
 
 
+@app.route("/users/<user_id>/reset-password", methods=["POST"])
+@login_required
+def users_reset_password(user_id):
+    """Reset password of a cajero user via API."""
+    user = session.get("user", {})
+    if user.get("role") != "dueno":
+        return redirect(url_for("dashboard"))
+
+    new_password = request.form.get("password", "").strip()
+    if not new_password or len(new_password) < 6:
+        return redirect(url_for("users"))
+
+    result = api.post(f"/users/{user_id}/reset-password", data={"password": new_password})
+
+    if isinstance(result, dict) and result.get("status_code", 200) >= 400:
+        error_msg = result.get("message", "Error al resetear contraseña")
+        if isinstance(error_msg, list):
+            error_msg = ", ".join(error_msg)
+        return redirect(url_for("users"))
+
+    return redirect(url_for("users"))
+
+
 @app.route("/settings")
 @login_required
 def settings():
@@ -952,6 +977,19 @@ def htmx_dashboard_critical_stock():
     )
 
 
+@app.route("/htmx/dashboard/critical-stock-count")
+@login_required
+def htmx_dashboard_critical_stock_count():
+    """Return badge count for critical stock products in sidebar."""
+    data = api.get("/dashboard/critical-stock")
+    if isinstance(data, dict) and (data.get("error") or data.get("status_code", 200) >= 400):
+        return ""
+    count = len(data) if isinstance(data, list) else 0
+    if count == 0:
+        return '<script>document.getElementById("critical-stock-badge").style.display="none";</script>'
+    return f'{count}<script>document.getElementById("critical-stock-badge").style.display="inline";</script>'
+
+
 @app.route("/htmx/dashboard/inventory-value")
 @login_required
 def htmx_dashboard_inventory_value():
@@ -999,6 +1037,43 @@ def htmx_dashboard_peak_hours():
     if isinstance(data, list):
         return jsonify(data)
     return jsonify([])
+
+
+@app.route("/htmx/dashboard/last-sale")
+@login_required
+def htmx_dashboard_last_sale():
+    """Return HTML fragment with the last sale info."""
+    data = api.get("/sales", params={"limit": "1"})
+
+    # Handle different response formats
+    sales = []
+    if isinstance(data, list):
+        sales = data
+    elif isinstance(data, dict):
+        if data.get("status_code", 200) >= 400 or data.get("error"):
+            return '<div class="card-header"><h3 class="card-title">Última venta</h3></div><div class="card-body"><p style="color:var(--color-text-muted);">Sin datos</p></div>'
+        sales = data.get("data", data.get("items", []))
+
+    if not sales:
+        return '<div class="card-header"><h3 class="card-title">Última venta</h3></div><div class="card-body"><p style="color:var(--color-text-muted);">No hay ventas registradas</p></div>'
+
+    sale = sales[0] if isinstance(sales, list) and sales else {}
+    total = format_clp(sale.get("total", 0))
+    method = sale.get("payment_method", "—")
+    method_icon = "💵" if method == "efectivo" else "💳"
+    created = sale.get("created_at", "")
+    time_str = created[11:16] if len(created) >= 16 else "—"
+    date_str = created[:10] if len(created) >= 10 else ""
+
+    return f'''<div class="card-header"><h3 class="card-title">Última venta</h3></div>
+<div class="card-body" style="display:flex; flex-direction:column; gap:8px;">
+    <div style="font-size:1.8rem; font-weight:800; color:var(--color-text);">{total}</div>
+    <div style="display:flex; gap:12px; color:var(--color-text-muted); font-size:0.9rem;">
+        <span>{method_icon} {method.capitalize()}</span>
+        <span>🕐 {time_str}</span>
+    </div>
+    <div style="font-size:0.8rem; color:var(--color-text-muted);">{date_str}</div>
+</div>'''
 
 
 # --- Mermas routes ---

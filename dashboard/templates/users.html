@@ -122,6 +122,7 @@
                                 <button type="submit" class="btn btn-sm btn-primary">Activar</button>
                                 {% endif %}
                             </form>
+                            <button type="button" class="btn btn-sm btn-secondary" onclick="resetPassword('{{ u.id }}', '{{ u.email }}')">🔑 Reset</button>
                             {% else %}
                             <span class="users-owner-placeholder">—</span>
                             {% endif %}
@@ -136,4 +137,26 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function resetPassword(userId, email) {
+    var newPass = prompt('Nueva contraseña para ' + email + ' (mínimo 6 caracteres):');
+    if (!newPass || newPass.length < 6) {
+        if (newPass !== null) alert('La contraseña debe tener al menos 6 caracteres');
+        return;
+    }
+    var form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/users/' + userId + '/reset-password';
+    var input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = 'password';
+    input.value = newPass;
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+}
+</script>
 {% endblock %}

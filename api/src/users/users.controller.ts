@@ -43,4 +43,13 @@ export class UsersController {
   ) {
     return this.usersService.toggleActive(user.tenant_id, id, updateUserDto);
   }
+
+  @Post(':id/reset-password')
+  resetPassword(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { password: string },
+  ) {
+    return this.usersService.resetPassword(user.tenant_id, id, body.password);
+  }
 }

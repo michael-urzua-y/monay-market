@@ -109,6 +109,11 @@
                 <a href="{{ url_for('products') }}" class="nav-item {% if request.endpoint in ('products', 'products_new', 'products_edit', 'products_import') %}active{% endif %}">
                     <span class="nav-icon">📦</span>
                     <span class="nav-label">Productos</span>
+                    <span id="critical-stock-badge"
+                          hx-get="/htmx/dashboard/critical-stock-count"
+                          hx-trigger="load, every 60s"
+                          hx-swap="innerHTML"
+                          style="display:none; background:#ef4444; color:white; font-size:0.7rem; font-weight:700; padding:2px 6px; border-radius:10px; margin-left:auto;"></span>
                 </a>
                 <a href="{{ url_for('shopping_list') }}" class="nav-item {% if request.endpoint == 'shopping_list' %}active{% endif %}">
                     <span class="nav-icon">🛒</span>

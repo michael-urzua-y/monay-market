@@ -7,6 +7,7 @@ import { of, throwError } from 'rxjs';
 import { Workbook } from 'exceljs';
 import { ProductsService } from './products.service';
 import { Product } from '../entities/product.entity';
+import { PriceHistory } from '../entities/price-history.entity';
 import { SaleLine } from '../entities/sale-line.entity';
 import { Category } from '../entities/category.entity';
 
@@ -57,6 +58,7 @@ describe('ProductsService', () => {
       providers: [
         ProductsService,
         { provide: getRepositoryToken(Product), useValue: mockProductRepo },
+        { provide: getRepositoryToken(PriceHistory), useValue: { save: jest.fn(), create: jest.fn((d) => d), find: jest.fn() } },
         { provide: getRepositoryToken(SaleLine), useValue: mockSaleLineRepo },
         { provide: getRepositoryToken(Category), useValue: { find: jest.fn() } },
         { provide: HttpService, useValue: mockHttpService },

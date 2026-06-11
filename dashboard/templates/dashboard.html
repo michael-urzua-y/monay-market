@@ -82,6 +82,14 @@
         <div class="card-loading">Cargando…</div>
     </div>
 
+    <!-- Última venta registrada -->
+    <div class="card"
+         hx-get="/htmx/dashboard/last-sale"
+         hx-trigger="load, every 15s"
+         hx-swap="innerHTML">
+        <div class="card-loading">Cargando…</div>
+    </div>
+
     <!-- Gráfico de ventas diarias -->
     <div class="card card-wide">
         <div class="card-header dashboard-card-toolbar">
@@ -284,13 +292,16 @@ function loadPeakHoursChart(fromUserAction) {
             });
             const labels = hours.map(function(h) { return String(h).padStart(2, '0') + ':00'; });
 
-            // Paleta alineada al tema Monay Market
-            const colors = [
-                '#315f3a', '#3f733e', '#5c7f2f', '#7a8d25', '#a67912', '#f0b90b',
-                '#ffd257', '#d7a72a', '#9f7b19', '#6f6f2a', '#4f6d2a', '#315f3a',
-                '#3f733e', '#5c7f2f', '#7a8d25', '#a67912', '#f0b90b', '#ffd257',
-                '#d7a72a', '#9f7b19', '#6f6f2a', '#4f6d2a', '#315f3a', '#3f733e'
-            ];
+            // Paleta multicolor vibrante para cada hora
+            const colors = values.map(function(v, i) {
+                var palette = [
+                    '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e',
+                    '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e',
+                    '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
+                    '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#ef4444'
+                ];
+                return palette[i % palette.length];
+            });
 
             if (peakHoursChart) {
                 peakHoursChart.data.datasets[0].data = values;

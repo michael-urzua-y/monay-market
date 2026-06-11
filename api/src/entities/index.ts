@@ -5,6 +5,7 @@ export * from './subscription.entity';
 export * from './user.entity';
 export * from './category.entity';
 export * from './product.entity';
+export * from './price-history.entity';
 export * from './sale.entity';
 export * from './sale-line.entity';
 export * from './boleta.entity';

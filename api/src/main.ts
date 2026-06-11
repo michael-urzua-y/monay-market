@@ -1,7 +1,8 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 function parseAllowedOrigins(value?: string): string[] | boolean {
@@ -45,8 +46,17 @@ function assertSecureEnv(): void {
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const logger = new Logger('Bootstrap');
   const isProduction = process.env.NODE_ENV === 'production';
   app.set('trust proxy', 1);
+
+  // Security headers
+  app.use(
+    helmet({
+      contentSecurityPolicy: false, // Managed by Nginx in production
+      crossOriginEmbedderPolicy: false, // Allow loading PWA resources
+    }),
+  );
 
   app.useGlobalPipes(
     new ValidationPipe({

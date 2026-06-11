@@ -29,6 +29,45 @@ import { Cart } from './cart.js';
   }
 
   // ----------------------------------------------------------
+  // Critical stock notifications
+  // ----------------------------------------------------------
+  function notifyCriticalStock(alerts) {
+    if (!alerts || alerts.length === 0) return;
+
+    // Show in-app toast
+    var names = alerts.map(function(a) { return a.name || a.product_name || 'Producto'; });
+    showToast('⚠️ Stock crítico: ' + names.join(', '), 'warning');
+
+    // Request browser notification permission and show notification
+    if ('Notification' in window) {
+      if (Notification.permission === 'granted') {
+        sendStockNotification(alerts);
+      } else if (Notification.permission !== 'denied') {
+        Notification.requestPermission().then(function(perm) {
+          if (perm === 'granted') sendStockNotification(alerts);
+        });
+      }
+    }
+  }
+
+  function sendStockNotification(alerts) {
+    var body = alerts.map(function(a) {
+      return (a.name || a.product_name) + ' (stock: ' + (a.stock || a.current_stock || 0) + ')';
+    }).join('\n');
+
+    try {
+      new Notification('⚠️ Stock Crítico - Monay POS', {
+        body: body,
+        icon: 'icons/icon-192x192.png',
+        tag: 'critical-stock',
+        renotify: true,
+      });
+    } catch (e) {
+      // Notification API not available in this context
+    }
+  }
+
+  // ----------------------------------------------------------
   // Toast notifications
   // ----------------------------------------------------------
   let toastTimer = null;
@@ -803,6 +842,11 @@ import { Cart } from './cart.js';
         showReceipt(result.receipt);
       } else {
         showToast('Venta registrada', 'success');
+      }
+
+      // Notify critical stock alerts
+      if (result.critical_stock_alerts && result.critical_stock_alerts.length > 0) {
+        notifyCriticalStock(result.critical_stock_alerts);
       }
     }).catch(function (err) {
       if (shouldQueueOfflineSale(err)) {

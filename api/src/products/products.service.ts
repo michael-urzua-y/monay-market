@@ -10,6 +10,7 @@ import { Repository, ILike } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { Workbook } from 'exceljs';
 import { Product } from '../entities/product.entity';
+import { PriceHistory } from '../entities/price-history.entity';
 import { SaleLine } from '../entities/sale-line.entity';
 import { Category } from '../entities/category.entity';
 import { CreateProductDto } from './dto/create-product.dto';
@@ -31,6 +32,8 @@ export class ProductsService {
   constructor(
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
+    @InjectRepository(PriceHistory)
+    private readonly priceHistoryRepository: Repository<PriceHistory>,
     @InjectRepository(SaleLine)
     private readonly saleLineRepository: Repository<SaleLine>,
     @InjectRepository(Category)
@@ -99,6 +102,7 @@ export class ProductsService {
     tenantId: string,
     id: string,
     dto: UpdateProductDto,
+    changedBy?: string,
   ): Promise<Product> {
     const product = await this.findOne(tenantId, id);
 
@@ -106,6 +110,18 @@ export class ProductsService {
       if (dto.barcode !== null) {
         await this.assertBarcodeUnique(tenantId, dto.barcode, id);
       }
+    }
+
+    // Record price change in history
+    if (dto.price !== undefined && dto.price !== product.price) {
+      await this.priceHistoryRepository.save(
+        this.priceHistoryRepository.create({
+          product_id: product.id,
+          old_price: product.price,
+          new_price: dto.price,
+          changed_by: changedBy || null,
+        }),
+      );
     }
 
     Object.assign(product, dto);
@@ -126,6 +142,16 @@ export class ProductsService {
 
     product.active = false;
     await this.productRepository.save(product);
+  }
+
+  async getPriceHistory(tenantId: string, productId: string): Promise<PriceHistory[]> {
+    // Verify product belongs to tenant
+    await this.findOne(tenantId, productId);
+    return this.priceHistoryRepository.find({
+      where: { product_id: productId },
+      order: { changed_at: 'DESC' },
+      take: 50,
+    });
   }
 
   async lookupBarcode(

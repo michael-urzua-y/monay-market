@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -6,6 +6,7 @@ import { LoginRateLimit } from '../entities/login-rate-limit.entity';
 
 @Injectable()
 export class LoginThrottleService {
+  private readonly logger = new Logger(LoginThrottleService.name);
   private readonly windowMs: number;
   private readonly maxAttempts: number;
   private readonly blockMs: number;
@@ -27,6 +28,7 @@ export class LoginThrottleService {
     });
 
     if (current?.blocked_until && current.blocked_until > now) {
+      this.logger.warn(`Login bloqueado por rate limit: ${key}`);
       throw this.createTooManyRequestsError();
     }
 
@@ -45,6 +47,7 @@ export class LoginThrottleService {
       bucket.blocked_until = new Date(now.getTime() + this.blockMs);
       bucket.reset_at = bucket.blocked_until;
       await this.loginRateLimitRepository.save(bucket);
+      this.logger.warn(`Rate limit excedido, bloqueando: ${key} por ${this.blockMs / 1000}s`);
       throw this.createTooManyRequestsError();
     }
 

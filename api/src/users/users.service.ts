@@ -77,6 +77,34 @@ export class UsersService {
     return this.excludePasswordHash(savedUser);
   }
 
+  async resetPassword(
+    tenantId: string,
+    userId: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    if (user.tenant_id !== tenantId) {
+      throw new ForbiddenException('No tiene acceso a este recurso');
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      throw new ConflictException('La contraseña debe tener al menos 6 caracteres');
+    }
+
+    const saltRounds = 10;
+    user.password_hash = await bcrypt.hash(newPassword, saltRounds);
+    await this.userRepository.save(user);
+
+    return { message: 'Contraseña actualizada exitosamente' };
+  }
+
   private excludePasswordHash(user: User): Partial<User> {
     const { password_hash, ...result } = user;
     return result;
