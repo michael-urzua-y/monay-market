@@ -138,11 +138,7 @@ export class ApiGatewayProvider implements ISiiProvider {
             DirRecep: 'Sin Dirección',
           },
         },
-        Detalle: saleData.items.map((item) => ({
-          NmbItem: this.sanitizeItemName(item.nombre),
-          QtyItem: Number(item.cantidad.toFixed(3)),
-          PrcItem: Math.round(item.precio_unitario),
-        })),
+        Detalle: this.buildDetalle(saleData),
       },
     };
   }
@@ -151,13 +147,41 @@ export class ApiGatewayProvider implements ISiiProvider {
     return paymentMethod === PaymentMethod.TARJETA ? 2 : 1;
   }
 
+  private buildDetalle(saleData: SiiSaleData): Array<Record<string, unknown>> {
+    // API Gateway puede tener límite de ítems.
+    // Si hay 1 ítem, lo enviamos detallado. Si hay más, consolidamos en 1 línea.
+    if (saleData.items.length === 1) {
+      const item = saleData.items[0];
+      return [{
+        NmbItem: this.sanitizeItemName(item.nombre),
+        QtyItem: Number(item.cantidad.toFixed(3)),
+        PrcItem: Math.round(item.precio_unitario),
+      }];
+    }
+
+    // Consolidar múltiples ítems en una sola línea con el total
+    const total = saleData.items.reduce(
+      (sum, item) => sum + Math.round(item.precio_unitario * item.cantidad),
+      0,
+    );
+    const count = saleData.items.length;
+    return [{
+      NmbItem: `Venta ${count} productos`,
+      QtyItem: 1,
+      PrcItem: total,
+    }];
+  }
+
   private normalizeRut(rut: string): string {
     return rut.replace(/\./g, '').trim();
   }
 
   private sanitizeItemName(name: string): string {
-    // SII NmbItem max 40 chars. Remove problematic characters for XML/JSON.
+    // SII NmbItem max 40 chars.
+    // Normalize accented chars and remove problematic characters for XML/JSON.
     return name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')  // Remove accents (á→a, ñ→n, etc.)
       .replace(/['"<>&]/g, '')
       .trim()
       .substring(0, 40);
