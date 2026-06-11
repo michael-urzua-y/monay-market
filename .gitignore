@@ -1,6 +1,9 @@
 # Kiro
 .kiro/
 
+# Kilo Code
+.kilo/
+
 # Dependencies
 node_modules/
 
