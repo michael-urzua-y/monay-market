@@ -66,6 +66,8 @@ export class ApiGatewayProvider implements ISiiProvider {
       saleData,
     );
 
+    this.logger.log(`Emitiendo eBoleta: ${saleData.items.length} ítems, total estimado ${saleData.items.reduce((s, i) => s + i.precio_unitario * i.cantidad, 0)}`);
+
     try {
       const response = await fetch(url, {
         method: 'POST',
@@ -137,7 +139,7 @@ export class ApiGatewayProvider implements ISiiProvider {
           },
         },
         Detalle: saleData.items.map((item) => ({
-          NmbItem: item.nombre.substring(0, 80),
+          NmbItem: this.sanitizeItemName(item.nombre),
           QtyItem: Number(item.cantidad.toFixed(3)),
           PrcItem: Math.round(item.precio_unitario),
         })),
@@ -151,6 +153,14 @@ export class ApiGatewayProvider implements ISiiProvider {
 
   private normalizeRut(rut: string): string {
     return rut.replace(/\./g, '').trim();
+  }
+
+  private sanitizeItemName(name: string): string {
+    // SII NmbItem max 40 chars. Remove problematic characters for XML/JSON.
+    return name
+      .replace(/['"<>&]/g, '')
+      .trim()
+      .substring(0, 40);
   }
 
   private parseJson(responseText: string): any {
