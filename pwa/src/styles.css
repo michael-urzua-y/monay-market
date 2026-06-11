@@ -25,11 +25,11 @@
   --color-on-dark: #f6faed;
   --color-on-dark-muted: rgba(231, 238, 224, 0.72);
   --color-on-gold: #12160e;
-  --denomination-1000: #356247;
-  --denomination-2000: #477347;
-  --denomination-5000: #5c7f2f;
-  --denomination-10000: #257a3e;
-  --denomination-20000: #d7a72a;
+  --denomination-1000: #5B9A60;
+  --denomination-2000: #6C3483;
+  --denomination-5000: #C0392B;
+  --denomination-10000: #2980B9;
+  --denomination-20000: #D35400;
   --radius: 8px;
   --shadow: 0 2px 8px rgba(23, 32, 22, 0.08);
   --header-height: 56px;
@@ -772,41 +772,7 @@ body.app-booting .global-loading-panel {
   transform: scale(0.95);
 }
 
-/* Colores por denominación de billete chileno */
-.denomination-1000 {
-  background: #5B9A60;
-  border-color: #4a8550;
-  color: #fff;
-}
-.denomination-1000:hover { background: #4a8550; }
-
-.denomination-2000 {
-  background: #6C3483;
-  border-color: #5b2d6e;
-  color: #fff;
-}
-.denomination-2000:hover { background: #5b2d6e; }
-
-.denomination-5000 {
-  background: #C0392B;
-  border-color: #a93226;
-  color: #fff;
-}
-.denomination-5000:hover { background: #a93226; }
-
-.denomination-10000 {
-  background: #2980B9;
-  border-color: #236fa0;
-  color: #fff;
-}
-.denomination-10000:hover { background: #236fa0; }
-
-.denomination-20000 {
-  background: #D35400;
-  border-color: #b84700;
-  color: #fff;
-}
-.denomination-20000:hover { background: #b84700; }
+/* Colores por denominación de billete chileno — definidos en :root como variables */
 
 .denomination-1000 { --denomination-color: var(--denomination-1000); --denomination-text: var(--color-on-dark); }
 .denomination-2000 { --denomination-color: var(--denomination-2000); --denomination-text: var(--color-on-dark); }
