@@ -134,8 +134,8 @@ export class ApiGatewayProvider implements ISiiProvider {
           },
           Receptor: {
             RUTRecep: '66666666-6',
-            RznSocRecep: 'Cliente Público',
-            DirRecep: 'Sin Dirección',
+            RznSocRecep: 'Cliente Publico',
+            DirRecep: 'Santiago',
           },
         },
         Detalle: this.buildDetalle(saleData),
