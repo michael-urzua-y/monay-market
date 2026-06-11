@@ -1,4 +1,4 @@
-const CACHE_NAME = 'monay-pos-v17';
+const CACHE_NAME = 'monay-pos-v18';
 const scopePath = new URL(self.registration.scope).pathname;
 const basePath = scopePath.endsWith('/') ? scopePath : scopePath + '/';
 const appPath = (path) => basePath + path.replace(/^\//, '');

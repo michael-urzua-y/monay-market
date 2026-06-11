@@ -808,7 +808,12 @@ import { Cart } from './cart.js';
   function processSale() {
     var btnPay = document.getElementById('btn-pay');
     if (isButtonLoading(btnPay)) return;
-    setButtonLoading(btnPay, true, { label: 'Procesando venta' });
+    setButtonLoading(btnPay, true, { label: 'Procesando...' });
+
+    var paymentActivity = startActivity('Procesando pago', {
+      message: 'Registrando venta y emitiendo boleta...',
+      blocking: true,
+    });
 
     var lines = Cart.items.map(function (item) {
       return { product_id: item.product_id, quantity: item.quantity };
@@ -826,15 +831,15 @@ import { Cart } from './cart.js';
     }
 
     if (!navigator.onLine) {
+      finishActivity(paymentActivity);
       queueOfflineSale(body, btnPay);
       return;
     }
 
     api.post('/sales', body, {
-      label: 'Procesando venta',
+      label: 'Procesando pago',
       blocking: true,
     }).then(function (result) {
-      // result: { sale, critical_stock_alerts, receipt }
       Cart.clear();
       resetPaymentForm();
 
@@ -856,14 +861,17 @@ import { Cart } from './cart.js';
       if (btnPay) btnPay.disabled = false;
       var msg = 'Error al procesar la venta';
       if (err.data && err.data.error === 'INSUFFICIENT_STOCK') {
-        msg = 'Stock insuficiente para uno o más productos';
+        msg = '⚠️ Stock insuficiente para uno o más productos';
       } else if (err.data && err.data.error === 'INSUFFICIENT_PAYMENT') {
-        msg = 'Monto recibido insuficiente';
+        msg = '⚠️ Monto recibido insuficiente';
+      } else if (err.data && err.data.error === 'DUPLICATE_SALE') {
+        msg = '⚠️ Esta venta ya fue registrada';
       } else if (err.message) {
-        msg = err.message;
+        msg = '❌ ' + err.message;
       }
       showToast(msg, 'error');
     }).finally(function () {
+      finishActivity(paymentActivity);
       setButtonLoading(btnPay, false);
       updatePaymentState();
     });
