@@ -127,4 +127,13 @@ export class ProductsController {
   ) {
     return this.productsService.softDelete(user.tenant_id, id);
   }
+
+  @Post('bulk-delete')
+  @Roles(UserRole.DUENO)
+  bulkDelete(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { ids: string[] },
+  ) {
+    return this.productsService.bulkSoftDelete(user.tenant_id, body.ids || []);
+  }
 }

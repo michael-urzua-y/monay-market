@@ -55,12 +55,21 @@
 {% endblock %}
 
 {% block content %}
-<div x-data="{ showDeleteModal: false, deleteId: null, deleteName: '' }">
+<div x-data="{ showDeleteModal: false, deleteId: null, deleteName: '', selectedIds: [], selectAll: false }"
+     x-effect="selectAll ? selectedIds = [...document.querySelectorAll('.product-check')].map(el => el.value) : null">
 
     <!-- Action bar -->
-    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;">
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center;">
         <a href="{{ url_for('products_new') }}" class="btn btn-primary">+ Nuevo producto</a>
         <a href="{{ url_for('products_import') }}" class="btn btn-secondary">📥 Importar Excel</a>
+        <form method="post" action="{{ url_for('products_bulk_delete') }}" x-show="selectedIds.length > 0" x-cloak
+              style="margin-left: auto;"
+              @submit.prevent="if(confirm('¿Eliminar ' + selectedIds.length + ' productos seleccionados?')) $el.submit()">
+            <template x-for="id in selectedIds" :key="id">
+                <input type="hidden" name="ids" :value="id">
+            </template>
+            <button type="submit" class="btn btn-danger" x-text="'🗑️ Eliminar (' + selectedIds.length + ')'"></button>
+        </form>
     </div>
 
     <!-- Search and filter with live HTMX search -->
@@ -112,6 +121,9 @@
 
     {% if error %}
     <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+    {% if success %}
+    <div class="alert alert-success" style="background:#dcfce7;color:#166534;border:1px solid #86efac;padding:12px 16px;border-radius:8px;">✅ {{ success }}</div>
     {% endif %}
 
     <!-- Products table (HTMX target) -->

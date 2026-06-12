@@ -144,6 +144,45 @@ export class ProductsService {
     await this.productRepository.save(product);
   }
 
+  async bulkSoftDelete(
+    tenantId: string,
+    ids: string[],
+  ): Promise<{ deleted: number; skipped: number; skipped_names: string[] }> {
+    if (!ids || ids.length === 0) {
+      return { deleted: 0, skipped: 0, skipped_names: [] };
+    }
+
+    let deleted = 0;
+    const skippedNames: string[] = [];
+
+    for (const id of ids) {
+      try {
+        const product = await this.productRepository.findOne({
+          where: { id, tenant_id: tenantId, active: true },
+        });
+        if (!product) continue;
+
+        const hasRecentSales = await this.hasRecentSales(product.id);
+        if (hasRecentSales) {
+          skippedNames.push(product.name);
+          continue;
+        }
+
+        product.active = false;
+        await this.productRepository.save(product);
+        deleted++;
+      } catch {
+        // Skip individual failures
+      }
+    }
+
+    return {
+      deleted,
+      skipped: skippedNames.length,
+      skipped_names: skippedNames,
+    };
+  }
+
   async getPriceHistory(tenantId: string, productId: string): Promise<PriceHistory[]> {
     // Verify product belongs to tenant
     await this.findOne(tenantId, productId);

@@ -246,6 +246,7 @@ def products():
         page=page,
         total_pages=total_pages,
         total=total,
+        success=request.args.get("success"),
     )
 
 
@@ -449,6 +450,32 @@ def products_delete(product_id):
             category_id=category_id,
             error=error_msg,
         )
+
+    return redirect(url_for("products"))
+
+
+@app.route("/products/bulk-delete", methods=["POST"])
+@login_required
+def products_bulk_delete():
+    """Bulk soft-delete products via API."""
+    user = session.get("user", {})
+    if user.get("role") != "dueno":
+        return redirect(url_for("dashboard"))
+
+    ids = request.form.getlist("ids")
+    if not ids:
+        return redirect(url_for("products"))
+
+    result = api.post("/products/bulk-delete", data={"ids": ids})
+
+    if isinstance(result, dict) and result.get("status_code", 200) < 400:
+        deleted = result.get("deleted", 0)
+        skipped = result.get("skipped", 0)
+        skipped_names = result.get("skipped_names", [])
+        msg = f"{deleted} producto{'s' if deleted != 1 else ''} eliminado{'s' if deleted != 1 else ''}"
+        if skipped > 0:
+            msg += f". {skipped} no se pudieron eliminar (ventas recientes): {', '.join(skipped_names[:5])}"
+        return redirect(url_for("products", success=msg))
 
     return redirect(url_for("products"))
 

@@ -2,6 +2,7 @@
 <table class="data-table">
     <thead>
         <tr>
+            <th style="width: 36px;"><input type="checkbox" @change="selectAll = $el.checked; if(!$el.checked) selectedIds = []" style="width:18px;height:18px;cursor:pointer;accent-color:var(--color-primary);"></th>
             <th>Nombre</th>
             <th>Código de barras</th>
             <th>Precio</th>
@@ -13,6 +14,7 @@
     <tbody>
         {% for p in products %}
         <tr data-id="{{ p.id }}">
+            <td><input type="checkbox" class="product-check" value="{{ p.id }}" x-model="selectedIds" style="width:18px;height:18px;cursor:pointer;accent-color:var(--color-primary);"></td>
             <td>{{ p.name }}</td>
             <td>{{ p.barcode or '—' }}</td>
             <td>{{ p.price|clp }}</td>
