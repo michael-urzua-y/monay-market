@@ -936,3 +936,124 @@ input:focus, select:focus, textarea:focus {
     background: rgba(240, 185, 11, 0.15);
     color: var(--color-primary);
 }
+
+
+/* ============================================================
+   Mobile Responsiveness — Modals, Popups & Tables
+   ============================================================ */
+
+/* Ensure ALL fixed overlays/modals are centered on mobile */
+[x-show][style*="position: fixed"],
+[style*="position: fixed"][style*="inset: 0"] {
+    padding: 16px !important;
+    box-sizing: border-box;
+}
+
+/* Modal inner cards — max width and centered on mobile */
+@media (max-width: 768px) {
+    [x-show][style*="position: fixed"] > .card,
+    [style*="position: fixed"][style*="inset: 0"] > .card {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        border-radius: 12px;
+    }
+
+    /* Tables: better mobile handling */
+    .data-table {
+        font-size: 0.82rem;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 8px 10px;
+    }
+
+    /* Hide less important columns on small screens */
+    .data-table .hide-mobile {
+        display: none;
+    }
+
+    /* Action buttons in tables: stack vertically */
+    .data-table td:last-child {
+        white-space: normal !important;
+    }
+
+    .data-table td:last-child .btn {
+        margin-bottom: 4px;
+        display: inline-block;
+    }
+
+    /* Cards: reduce padding */
+    .card-body {
+        padding: 16px 12px;
+    }
+
+    .card-header {
+        padding: 12px;
+    }
+
+    /* Action bars: stack on mobile */
+    .action-bar .card-body {
+        padding: 12px;
+    }
+
+    /* Buttons: full width on very small screens */
+    .btn-sm {
+        padding: 6px 10px;
+        font-size: 0.78rem;
+    }
+
+    /* Improve touch targets */
+    .btn {
+        min-height: 40px;
+    }
+
+    /* Products filter: stack vertically */
+    .products-filters {
+        flex-direction: column;
+    }
+
+    .products-filter-group {
+        width: 100% !important;
+        min-width: unset !important;
+    }
+
+    /* Users form: stack vertically */
+    .users-form {
+        flex-direction: column;
+    }
+
+    .users-form-group {
+        width: 100%;
+        min-width: unset !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .data-table {
+        font-size: 0.78rem;
+    }
+
+    .data-table th,
+    .data-table td {
+        padding: 6px 8px;
+    }
+
+    /* Very small: scroll table horizontally with hint */
+    .card-body[style*="overflow-x"],
+    .users-table-wrap {
+        position: relative;
+    }
+
+    .card-body[style*="overflow-x"]::after,
+    .users-table-wrap::after {
+        content: '← desliza →';
+        display: block;
+        text-align: center;
+        font-size: 0.7rem;
+        color: var(--color-text-muted);
+        padding: 6px 0 0;
+        opacity: 0.7;
+    }
+}
