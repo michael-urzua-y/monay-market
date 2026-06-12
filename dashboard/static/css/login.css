@@ -761,25 +761,30 @@ a[aria-disabled="true"] {
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        padding: 24px 20px;
-        border-radius: 0;
+        padding: 32px 24px;
+        border-radius: 24px;
         max-width: 100%;
         width: 100%;
+        margin: 16px;
     }
 
     .login-card-inner {
         width: 100%;
         max-width: 380px;
         padding: 0;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(240,185,11,0.15);
+        border-radius: 20px;
+        padding: 32px 24px;
     }
 
     /* Add logo above form on mobile */
     .login-card-inner::before {
         content: '';
         display: block;
-        width: 140px;
-        height: 90px;
-        margin: 0 auto 24px;
+        width: 200px;
+        height: 130px;
+        margin: 0 auto 28px;
         background: url('/static/monay-market-logo-horizontal.png') center / contain no-repeat;
     }
 
