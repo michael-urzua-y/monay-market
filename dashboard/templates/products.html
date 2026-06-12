@@ -62,14 +62,6 @@
     <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center;">
         <a href="{{ url_for('products_new') }}" class="btn btn-primary">+ Nuevo producto</a>
         <a href="{{ url_for('products_import') }}" class="btn btn-secondary">📥 Importar Excel</a>
-        <form method="post" action="{{ url_for('products_bulk_delete') }}" x-show="selectedIds.length > 0" x-cloak
-              style="margin-left: auto;"
-              @submit.prevent="if(confirm('¿Eliminar ' + selectedIds.length + ' productos seleccionados?')) $el.submit()">
-            <template x-for="id in selectedIds" :key="id">
-                <input type="hidden" name="ids" :value="id">
-            </template>
-            <button type="submit" class="btn btn-danger" x-text="'🗑️ Eliminar (' + selectedIds.length + ')'"></button>
-        </form>
     </div>
 
     <!-- Search and filter with live HTMX search -->
@@ -128,6 +120,15 @@
 
     <!-- Products table (HTMX target) -->
     <div class="card">
+        <div x-show="selectedIds.length > 0" x-cloak style="padding: 14px 20px; background: linear-gradient(135deg, #fef2f2, #fff1f2); border-bottom: 1px solid #fecaca; display: flex; align-items: center; gap: 16px; border-radius: 8px 8px 0 0;">
+            <form method="post" action="{{ url_for('products_bulk_delete') }}" style="width: 100%;"
+                  @submit.prevent="if(confirm('¿Eliminar ' + selectedIds.length + ' productos seleccionados?')) $el.submit()">
+                <template x-for="id in selectedIds" :key="id">
+                    <input type="hidden" name="ids" :value="id">
+                </template>
+                <button type="submit" class="btn btn-danger" style="width: 100%; padding: 12px 20px; font-size: 0.95rem; font-weight: 600; border-radius: 8px;" x-text="'🗑️ Eliminar ' + selectedIds.length + ' producto' + (selectedIds.length > 1 ? 's' : '')"></button>
+            </form>
+        </div>
         <div class="card-body" style="overflow-x: auto;" id="products-table-container">
             {% include "htmx/products_table.html" %}
         </div>
