@@ -297,5 +297,74 @@
             });
         })();
     </script>
+
+    <!-- PWA Install Banner (mobile only) -->
+    <div class="pwa-install-banner" id="pwa-install-banner">
+        <div class="pwa-install-inner">
+            <div class="pwa-install-icon">
+                <svg viewBox="0 0 24 24">
+                    <rect x="5" y="2" width="14" height="20" rx="2"/>
+                    <line x1="12" y1="18" x2="12" y2="18.01"/>
+                </svg>
+            </div>
+            <div class="pwa-install-text">
+                <strong>Instalar Monay Market</strong>
+                <small>Accede más rápido desde tu pantalla de inicio</small>
+            </div>
+            <button class="pwa-install-close" id="pwa-install-close" aria-label="Cerrar">&times;</button>
+        </div>
+        <button class="pwa-install-btn" id="pwa-install-btn">Instalar App</button>
+    </div>
+
+    <script>
+    (() => {
+        let deferredPrompt = null;
+        const banner = document.getElementById('pwa-install-banner');
+        const installBtn = document.getElementById('pwa-install-btn');
+        const closeBtn = document.getElementById('pwa-install-close');
+
+        if (!banner || !installBtn) return;
+
+        // Only show on mobile
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (!isMobile) return;
+
+        // Check if already installed or dismissed
+        if (localStorage.getItem('pwa-install-dismissed')) return;
+        if (window.matchMedia('(display-mode: standalone)').matches) return;
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            banner.classList.add('is-visible');
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const result = await deferredPrompt.userChoice;
+                if (result.outcome === 'accepted') {
+                    banner.classList.remove('is-visible');
+                }
+                deferredPrompt = null;
+            } else {
+                // Fallback: show instructions
+                alert('Para instalar: toca los 3 puntos (⋮) y selecciona "Instalar app" o "Agregar a pantalla de inicio"');
+            }
+        });
+
+        closeBtn.addEventListener('click', () => {
+            banner.classList.remove('is-visible');
+            localStorage.setItem('pwa-install-dismissed', '1');
+        });
+
+        // Show banner after short delay even without beforeinstallprompt (for Safari/iOS)
+        setTimeout(() => {
+            if (!deferredPrompt && isMobile && !banner.classList.contains('is-visible')) {
+                banner.classList.add('is-visible');
+            }
+        }, 3000);
+    })();
+    </script>
 </body>
 </html>
