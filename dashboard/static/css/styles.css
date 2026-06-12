@@ -942,17 +942,29 @@ input:focus, select:focus, textarea:focus {
    Mobile Responsiveness — Modals, Popups & Tables
    ============================================================ */
 
-/* Ensure ALL fixed overlays/modals are centered on mobile */
-[x-show][style*="position: fixed"],
-[style*="position: fixed"][style*="inset: 0"] {
-    padding: 16px !important;
+/* Global modal overlay — always centered when visible */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
     box-sizing: border-box;
+    z-index: 200;
+    background: rgba(0,0,0,0.4);
+}
+
+.modal-overlay > .card {
+    max-width: 420px;
+    width: 100%;
+    margin: 0;
+    border-radius: 12px;
 }
 
 /* Modal inner cards — max width and centered on mobile */
 @media (max-width: 768px) {
-    [x-show][style*="position: fixed"] > .card,
-    [style*="position: fixed"][style*="inset: 0"] > .card {
+    .modal-overlay > .card {
         max-width: 100% !important;
         width: 100% !important;
         margin: 0 !important;

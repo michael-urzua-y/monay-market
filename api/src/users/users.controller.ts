@@ -52,4 +52,12 @@ export class UsersController {
   ) {
     return this.usersService.resetPassword(user.tenant_id, id, body.password);
   }
+
+  @Post('me/change-password')
+  changePassword(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { current_password: string; new_password: string },
+  ) {
+    return this.usersService.changePassword(user.user_id, body.current_password, body.new_password);
+  }
 }

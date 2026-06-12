@@ -49,7 +49,7 @@
 {% endblock %}
 
 {% block content %}
-<div x-data="{ showForm: false }">
+<div x-data="{ showForm: false, showChangePassword: false }">
 
     {% if error %}
     <div class="alert alert-error">{{ error }}</div>
@@ -124,7 +124,7 @@
                             </form>
                             <button type="button" class="btn btn-sm btn-secondary" onclick="resetPassword('{{ u.id }}', '{{ u.email }}')">🔑 Reset</button>
                             {% else %}
-                            <span class="users-owner-placeholder">—</span>
+                            <button type="button" class="btn btn-sm btn-secondary" @click="showChangePassword = true">🔑 Cambiar clave</button>
                             {% endif %}
                         </td>
                     </tr>
@@ -134,6 +134,34 @@
             {% else %}
             <p class="empty-msg">No hay usuarios registrados.</p>
             {% endif %}
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div x-show="showChangePassword" x-cloak class="modal-overlay"
+         @keydown.escape.window="showChangePassword = false">
+        <div class="card" @click.outside="showChangePassword = false">
+            <div class="card-header"><h3 class="card-title">🔑 Cambiar Contraseña</h3></div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('settings_change_password') }}">
+                    <div class="form-group">
+                        <label for="current_password">Contraseña actual</label>
+                        <input type="password" id="current_password" name="current_password" required placeholder="••••••••" minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="new_password">Nueva contraseña</label>
+                        <input type="password" id="new_password" name="new_password" required placeholder="Mínimo 6 caracteres" minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password">Confirmar nueva contraseña</label>
+                        <input type="password" id="confirm_password" name="confirm_password" required placeholder="Repite la nueva contraseña" minlength="6">
+                    </div>
+                    <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
+                        <button type="button" class="btn btn-secondary" @click="showChangePassword = false">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Cambiar contraseña</button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 </div>

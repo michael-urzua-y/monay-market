@@ -105,6 +105,39 @@ export class UsersService {
     return { message: 'Contraseña actualizada exitosamente' };
   }
 
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<{ message: string }> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    if (!currentPassword) {
+      throw new ConflictException('La contraseña actual es requerida');
+    }
+
+    const isValid = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isValid) {
+      throw new ConflictException('La contraseña actual es incorrecta');
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      throw new ConflictException('La nueva contraseña debe tener al menos 6 caracteres');
+    }
+
+    const saltRounds = 10;
+    user.password_hash = await bcrypt.hash(newPassword, saltRounds);
+    await this.userRepository.save(user);
+
+    return { message: 'Contraseña cambiada exitosamente' };
+  }
+
   private excludePasswordHash(user: User): Partial<User> {
     const { password_hash, ...result } = user;
     return result;

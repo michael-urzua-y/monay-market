@@ -898,6 +898,37 @@ def settings_printer():
     return redirect(url_for("settings", success="Configuración de impresora actualizada"))
 
 
+@app.route("/settings/change-password", methods=["POST"])
+@login_required
+def settings_change_password():
+    """Change the current user's password."""
+    current_password = request.form.get("current_password", "").strip()
+    new_password = request.form.get("new_password", "").strip()
+    confirm_password = request.form.get("confirm_password", "").strip()
+
+    if not current_password or not new_password:
+        return redirect(url_for("users"))
+
+    if new_password != confirm_password:
+        return redirect(url_for("users", error="Las contraseñas nuevas no coinciden"))
+
+    if len(new_password) < 6:
+        return redirect(url_for("users", error="La contraseña debe tener al menos 6 caracteres"))
+
+    result = api.post("/users/me/change-password", data={
+        "current_password": current_password,
+        "new_password": new_password,
+    })
+
+    if isinstance(result, dict) and result.get("status_code", 200) >= 400:
+        error_msg = result.get("message", "Error al cambiar contraseña")
+        if isinstance(error_msg, list):
+            error_msg = ", ".join(error_msg)
+        return redirect(url_for("users", error=error_msg))
+
+    return redirect(url_for("users", success="Contraseña cambiada exitosamente"))
+
+
 def format_clp(value):
     """Format an integer as Chilean peso with dot thousands separator."""
     try:
