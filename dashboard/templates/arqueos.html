@@ -108,7 +108,7 @@
                 
                 <tr>
                     <td class="local-date" data-date="{{ a.get('created_at', '') }}">{{ a.get('created_at', '')[:10] if a.get('created_at') else '—' }}</td>
-                    <td>{{ a.get('user', {}).get('email', 'Desconocido') if a.get('user') else 'Desconocido' }}</td>
+                    <td>{{ a.get('user', {}).get('username') or a.get('user', {}).get('email', 'Desconocido') if a.get('user') else 'Desconocido' }}</td>
                     <td>{{ a.get('expected_amount', 0) | clp }}</td>
                     <td>{{ a.get('counted_amount', 0) | clp }}</td>
                     {% if diff == 0 %}

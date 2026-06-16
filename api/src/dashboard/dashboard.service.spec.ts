@@ -201,7 +201,7 @@ describe('DashboardService', () => {
   });
 
   describe('getCriticalStock', () => {
-    it('should return products with stock > 0 and stock < critical_stock', async () => {
+    it('should return products with configured critical stock reached', async () => {
       const criticalProducts = [
         { id: 'p1', name: 'Leche', stock: 2, critical_stock: 5 },
         { id: 'p2', name: 'Pan', stock: 1, critical_stock: 10 },
@@ -219,9 +219,11 @@ describe('DashboardService', () => {
         'product.active = :active',
         { active: true },
       );
+      expect(productQb.andWhere).toHaveBeenCalledWith('product.tracks_stock = true');
       expect(productQb.andWhere).toHaveBeenCalledWith('product.stock > 0');
+      expect(productQb.andWhere).toHaveBeenCalledWith('product.critical_stock > 0');
       expect(productQb.andWhere).toHaveBeenCalledWith(
-        'product.stock < product.critical_stock',
+        'product.stock <= product.critical_stock',
       );
       expect(productQb.orderBy).toHaveBeenCalledWith('product.stock', 'ASC');
     });
@@ -250,6 +252,7 @@ describe('DashboardService', () => {
         'product.active = :active',
         { active: true },
       );
+      expect(productQb.andWhere).toHaveBeenCalledWith('product.tracks_stock = true');
     });
 
     it('should return 0 when no active products', async () => {

@@ -27,8 +27,26 @@ export class SeedDatosPrueba1700000000001 implements MigrationInterface {
 
     // Config
     await queryRunner.query(
-      `INSERT INTO "market"."tenant_configs" ("tenant_id", "sii_enabled", "sii_sandbox_mode", "printer_enabled") VALUES ($1, $2, $3, $4)`,
-      [t, false, true, false],
+      `INSERT INTO "market"."tenant_configs" (
+        "tenant_id",
+        "sii_enabled",
+        "sii_provider",
+        "sii_rut_emisor",
+        "sii_razon_social",
+        "sii_giro",
+        "sii_sandbox_mode",
+        "printer_enabled"
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        t,
+        true, // sii_enabled
+        'api_gateway', // sii_provider
+        '76.123.456-7', // sii_rut_emisor
+        'Almacén Don Pedro', // sii_razon_social
+        'Venta al por menor en comercios no especializados', // sii_giro
+        true, // sii_sandbox_mode
+        false, // printer_enabled
+      ],
     );
 
     // Suscripción
@@ -39,12 +57,12 @@ export class SeedDatosPrueba1700000000001 implements MigrationInterface {
 
     // Usuarios
     await queryRunner.query(
-      `INSERT INTO "market"."users" ("tenant_id", "email", "password_hash", "role", "active") VALUES ($1, $2, $3, $4, $5)`,
-      [t, 'dueno@example.com', passwordHash, 'dueno', true],
+      `INSERT INTO "market"."users" ("tenant_id", "email", "username", "password_hash", "role", "active") VALUES ($1, $2, $3, $4, $5, $6)`,
+      [t, 'dueno@example.com', 'admin', passwordHash, 'dueno', true],
     );
     await queryRunner.query(
-      `INSERT INTO "market"."users" ("tenant_id", "email", "password_hash", "role", "active") VALUES ($1, $2, $3, $4, $5)`,
-      [t, 'cajero@example.com', passwordHash, 'cajero', true],
+      `INSERT INTO "market"."users" ("tenant_id", "email", "username", "password_hash", "role", "active") VALUES ($1, $2, $3, $4, $5, $6)`,
+      [t, 'cajero@example.com', 'sebastian.urzuay', passwordHash, 'cajero', true],
     );
 
     // Categorías organizadas para almacén

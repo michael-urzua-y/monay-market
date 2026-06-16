@@ -5,11 +5,13 @@ import { ConfigService } from '@nestjs/config';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { of, throwError } from 'rxjs';
 import { Workbook } from 'exceljs';
+import { DataSource } from 'typeorm';
 import { ProductsService } from './products.service';
 import { Product } from '../entities/product.entity';
 import { PriceHistory } from '../entities/price-history.entity';
 import { SaleLine } from '../entities/sale-line.entity';
 import { Category } from '../entities/category.entity';
+import { ProductReception } from '../entities/product-reception.entity';
 
 describe('ProductsService', () => {
   let service: ProductsService;
@@ -26,12 +28,15 @@ describe('ProductsService', () => {
     stock: 50,
     critical_stock: 5,
     is_weighed: false,
+    tracks_stock: true,
+    allow_cashier_reception: false,
     active: true,
     created_at: new Date('2024-01-01'),
     updated_at: new Date('2024-01-01'),
     tenant: null as any,
     category: null,
     sale_lines: [],
+    receptions: [],
   };
 
   const mockProductRepo = {
@@ -43,6 +48,11 @@ describe('ProductsService', () => {
 
   const mockSaleLineRepo = {
     createQueryBuilder: jest.fn(),
+  };
+
+  const mockProductReceptionRepo = {
+    create: jest.fn(),
+    save: jest.fn(),
   };
 
   const mockHttpService = {
@@ -61,8 +71,10 @@ describe('ProductsService', () => {
         { provide: getRepositoryToken(PriceHistory), useValue: { save: jest.fn(), create: jest.fn((d) => d), find: jest.fn() } },
         { provide: getRepositoryToken(SaleLine), useValue: mockSaleLineRepo },
         { provide: getRepositoryToken(Category), useValue: { find: jest.fn() } },
+        { provide: getRepositoryToken(ProductReception), useValue: mockProductReceptionRepo },
         { provide: HttpService, useValue: mockHttpService },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: DataSource, useValue: { transaction: jest.fn() } },
       ],
     }).compile();
 
@@ -77,6 +89,7 @@ describe('ProductsService', () => {
       barcode: '7801234567890',
       price: 1500,
       stock: 50,
+      critical_stock: 5,
     };
 
     it('should create a product successfully', async () => {
@@ -88,6 +101,8 @@ describe('ProductsService', () => {
 
       expect(mockProductRepo.create).toHaveBeenCalledWith({
         ...createDto,
+        tracks_stock: true,
+        allow_cashier_reception: false,
         tenant_id: tenantId,
         active: true,
       });
@@ -103,7 +118,7 @@ describe('ProductsService', () => {
     });
 
     it('should allow creating product without barcode', async () => {
-      const dto = { name: 'Pan', price: 500, stock: 100 };
+      const dto = { name: 'Pan', price: 500, stock: 100, critical_stock: 5 };
       mockProductRepo.create.mockReturnValue({ ...mockProduct, barcode: null });
       mockProductRepo.save.mockResolvedValue({ ...mockProduct, barcode: null });
 
@@ -111,6 +126,61 @@ describe('ProductsService', () => {
 
       expect(mockProductRepo.findOne).not.toHaveBeenCalled();
       expect(result).toBeDefined();
+    });
+
+    it('should require critical stock for products sold by unit', async () => {
+      const dto = {
+        name: 'Arroz 1kg',
+        price: 1200,
+        stock: 20,
+        critical_stock: 0,
+        is_weighed: false,
+      };
+
+      await expect(service.create(tenantId, dto as any)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(mockProductRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('should allow optional critical stock for bulk products', async () => {
+      const dto = {
+        name: 'Pan corriente',
+        price: 1800,
+        stock: 30.5,
+        critical_stock: 0,
+        is_weighed: true,
+      };
+      mockProductRepo.findOne.mockResolvedValue(null);
+      mockProductRepo.create.mockImplementation((data) => data);
+      mockProductRepo.save.mockImplementation(async (data) => data);
+
+      const result = await service.create(tenantId, dto as any);
+
+      expect(result.is_weighed).toBe(true);
+      expect(result.critical_stock).toBe(0);
+      expect(result.barcode).toMatch(/^MMG-/);
+    });
+
+    it('should normalize stock fields when inventory control is disabled', async () => {
+      const dto = {
+        name: 'Pan del día',
+        price: 1800,
+        stock: 12,
+        critical_stock: 4,
+        is_weighed: true,
+        tracks_stock: false,
+        allow_cashier_reception: true,
+      };
+      mockProductRepo.findOne.mockResolvedValue(null);
+      mockProductRepo.create.mockImplementation((data) => data);
+      mockProductRepo.save.mockImplementation(async (data) => data);
+
+      const result = await service.create(tenantId, dto as any);
+
+      expect(result.stock).toBe(0);
+      expect(result.critical_stock).toBe(0);
+      expect(result.allow_cashier_reception).toBe(true);
     });
   });
 
@@ -153,6 +223,15 @@ describe('ProductsService', () => {
 
       const callArgs = mockProductRepo.find.mock.calls[0][0];
       expect(callArgs.where.barcode).toBe('7801234567890');
+    });
+
+    it('should apply cashier reception filter', async () => {
+      mockProductRepo.find.mockResolvedValue([mockProduct]);
+
+      await service.findAll(tenantId, { allow_cashier_reception: true });
+
+      const callArgs = mockProductRepo.find.mock.calls[0][0];
+      expect(callArgs.where.allow_cashier_reception).toBe(true);
     });
   });
 

@@ -15,6 +15,7 @@ describe('AuthService', () => {
   const mockUser: Partial<User> = {
     id: 'user-uuid-1',
     email: 'test@example.com',
+    username: 'admin',
     password_hash: '',
     role: UserRole.DUENO,
     tenant_id: 'tenant-uuid-1',
@@ -27,6 +28,7 @@ describe('AuthService', () => {
 
     userRepository = {
       findOne: jest.fn(),
+      createQueryBuilder: jest.fn(),
     };
 
     jwtService = {
@@ -42,20 +44,28 @@ describe('AuthService', () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
+    userRepository.createQueryBuilder.mockReturnValue({
+      where: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue(mockUser),
+    });
   });
 
   describe('login', () => {
     it('should return accessToken and user data on valid credentials', async () => {
-      userRepository.findOne.mockResolvedValue(mockUser);
+      userRepository.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(mockUser),
+      });
 
       const result = await service.login({
-        email: 'test@example.com',
+        username: 'admin',
         password: 'correctPassword123',
       });
 
       expect(result.accessToken).toBe('signed-jwt-token');
       expect(result.user).toEqual({
         id: mockUser.id,
+        username: mockUser.username,
         email: mockUser.email,
         role: mockUser.role,
         tenant_id: mockUser.tenant_id,
@@ -67,62 +77,83 @@ describe('AuthService', () => {
       });
     });
 
-    it('should throw UnauthorizedException with generic message for non-existent email', async () => {
-      userRepository.findOne.mockResolvedValue(null);
+    it('should throw UnauthorizedException with generic message for non-existent username', async () => {
+      userRepository.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      });
 
       await expect(
-        service.login({ email: 'nonexistent@example.com', password: 'anyPassword' }),
+        service.login({ username: 'ghost.user', password: 'anyPassword' }),
       ).rejects.toThrow(new UnauthorizedException('Credenciales inválidas'));
     });
 
     it('should throw UnauthorizedException with generic message for wrong password', async () => {
-      userRepository.findOne.mockResolvedValue(mockUser);
+      userRepository.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(mockUser),
+      });
 
       await expect(
-        service.login({ email: 'test@example.com', password: 'wrongPassword' }),
+        service.login({ username: 'admin', password: 'wrongPassword' }),
       ).rejects.toThrow(new UnauthorizedException('Credenciales inválidas'));
     });
 
     it('should throw UnauthorizedException for inactive user', async () => {
-      userRepository.findOne.mockResolvedValue({ ...mockUser, active: false });
+      userRepository.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({ ...mockUser, active: false }),
+      });
 
       await expect(
-        service.login({ email: 'test@example.com', password: 'correctPassword123' }),
+        service.login({ username: 'admin', password: 'correctPassword123' }),
       ).rejects.toThrow(new UnauthorizedException('Credenciales inválidas'));
     });
 
     it('should use the same error message for all failure cases', async () => {
       const expectedMessage = 'Credenciales inválidas';
 
-      // Non-existent email
-      userRepository.findOne.mockResolvedValue(null);
+      // Non-existent username
+      userRepository.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      });
       try {
-        await service.login({ email: 'no@example.com', password: 'pass' });
+        await service.login({ username: 'ghost.user', password: 'pass' });
       } catch (e) {
         expect(e.message).toBe(expectedMessage);
       }
 
       // Wrong password
-      userRepository.findOne.mockResolvedValue(mockUser);
+      userRepository.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(mockUser),
+      });
       try {
-        await service.login({ email: 'test@example.com', password: 'wrong' });
+        await service.login({ username: 'admin', password: 'wrong' });
       } catch (e) {
         expect(e.message).toBe(expectedMessage);
       }
 
       // Inactive user
-      userRepository.findOne.mockResolvedValue({ ...mockUser, active: false });
+      userRepository.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue({ ...mockUser, active: false }),
+      });
       try {
-        await service.login({ email: 'test@example.com', password: 'correctPassword123' });
+        await service.login({ username: 'admin', password: 'correctPassword123' });
       } catch (e) {
         expect(e.message).toBe(expectedMessage);
       }
     });
 
     it('should include user_id, role, and tenant_id in JWT payload', async () => {
-      userRepository.findOne.mockResolvedValue(mockUser);
+      userRepository.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(mockUser),
+      });
 
-      await service.login({ email: 'test@example.com', password: 'correctPassword123' });
+      await service.login({ username: 'admin', password: 'correctPassword123' });
 
       expect(jwtService.sign).toHaveBeenCalledWith({
         user_id: 'user-uuid-1',

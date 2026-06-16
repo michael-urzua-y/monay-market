@@ -3,6 +3,9 @@
     <thead>
         <tr>
             <th>Fecha</th>
+            {% if show_cashier %}
+            <th>Cajero</th>
+            {% endif %}
             <th>Total</th>
             <th>Método de pago</th>
             <th>{{ status_heading|default('Estado boleta') }}</th>
@@ -12,7 +15,10 @@
     <tbody>
         {% for s in sales %}
         <tr>
-            <td>{{ s.created_at[:16]|replace('T', ' ') if s.created_at else '—' }}</td>
+            <td>{{ s.created_at|receipt_datetime }}</td>
+            {% if show_cashier %}
+            <td>{{ (s.user.username or s.user.email) if s.user else '—' }}</td>
+            {% endif %}
             <td>{{ s.total|clp }}</td>
             <td>{{ s.payment_method|capitalize if s.payment_method else '—' }}</td>
             <td>

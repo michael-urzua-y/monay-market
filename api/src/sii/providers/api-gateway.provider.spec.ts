@@ -73,6 +73,7 @@ describe('ApiGatewayProvider', () => {
           data: {
             folio: 123456,
             pdf_url: 'https://app.apigateway.cl/boletas/123456.pdf',
+            timbre_electronico: '<TED>api-gateway-real</TED>',
           },
         }),
     });
@@ -82,8 +83,7 @@ describe('ApiGatewayProvider', () => {
     expect(result).toEqual({
       folio: '123456',
       pdf_url: 'https://app.apigateway.cl/boletas/123456.pdf',
-      timbre_electronico:
-        '<EBOLETA><PROVEEDOR>api_gateway</PROVEEDOR><FOLIO>123456</FOLIO></EBOLETA>',
+      timbre_electronico: '<TED>api-gateway-real</TED>',
     });
     expect(fetchMock).toHaveBeenCalledWith(
       'https://app.apigateway.cl/api/v2/sii/eboleta/emitidas/emitir',
@@ -119,6 +119,63 @@ describe('ApiGatewayProvider', () => {
         PrcItem: 1500,
       },
     ]);
+  });
+
+  it('consolidates multiple products into one API Gateway line', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          data: {
+            folio: 109,
+            pdf_url: 'https://app.apigateway.cl/boletas/109.pdf',
+            TED: '<TED>api-gateway-consolidada</TED>',
+          },
+        }),
+    });
+
+    await provider.emitBoleta(
+      'token-real',
+      {
+        ...saleData,
+        items: [
+          { nombre: 'Pan', cantidad: 2.5, precio_unitario: 1200, subtotal: 3000 },
+          { nombre: 'Sal Lobos 1kg', cantidad: 1, precio_unitario: 100, subtotal: 100 },
+          { nombre: "Lay's tamaño S Sabor Jamón Serrano", cantidad: 1, precio_unitario: 990, subtotal: 990 },
+        ],
+        monto_total: 4090,
+      },
+      false,
+    );
+
+    const [, requestOptions] = fetchMock.mock.calls[0];
+    const body = JSON.parse(requestOptions.body);
+
+    expect(body.dte.Detalle).toHaveLength(1);
+    expect(body.dte.Detalle[0]).toEqual({
+      NmbItem: 'Venta 3 productos',
+      QtyItem: 1,
+      PrcItem: 4090,
+    });
+  });
+
+  it('requires API Gateway timbre in real mode', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () =>
+        JSON.stringify({
+          data: {
+            folio: 123456,
+            pdf_url: 'https://app.apigateway.cl/boletas/123456.pdf',
+          },
+        }),
+    });
+
+    await expect(provider.emitBoleta('token-real', saleData, false)).rejects.toThrow(
+      'API Gateway no retornó timbre electrónico de la boleta',
+    );
   });
 
   it('requires SII tax password outside sandbox mode', async () => {

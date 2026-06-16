@@ -1,4 +1,4 @@
-import { IsOptional, IsEnum, IsDateString } from 'class-validator';
+import { IsOptional, IsEnum, IsDateString, IsUUID } from 'class-validator';
 import { BoletaStatus } from '../../entities/enums';
 
 export class FilterSalesDto {
@@ -13,4 +13,8 @@ export class FilterSalesDto {
   @IsOptional()
   @IsEnum(BoletaStatus)
   boleta_status?: BoletaStatus;
+
+  @IsOptional()
+  @IsUUID('4', { message: 'El cajero seleccionado no es válido' })
+  user_id?: string;
 }

@@ -17,9 +17,11 @@ export interface ReceiptData {
   sale_id: string;
   store_name: string;
   store_rut: string;
+  store_giro: string;
   date: string;
   items: ReceiptItem[];
   total: number;
+  iva_included: number;
   payment_method: string;
   amount_received: number | null;
   change_amount: number | null;
@@ -28,6 +30,7 @@ export interface ReceiptData {
   boleta_timbre: string | null;
   boleta_pdf_url: string | null;
   boleta_provider: string | null;
+  boleta_emitted_at: string | null;
 }
 
 @Injectable()
@@ -50,6 +53,9 @@ export class ReceiptService {
 
     const storeName = config?.sii_razon_social || tenant?.name || 'Tienda';
     const storeRut = config?.sii_rut_emisor || tenant?.rut || '';
+    const storeGiro = config?.sii_giro || '';
+    const montoNeto = Math.round(sale.total / 1.19);
+    const ivaIncluded = sale.total - montoNeto;
 
     const items: ReceiptItem[] = (sale.lines ?? []).map((line) => ({
       name: line.product_name,
@@ -74,14 +80,20 @@ export class ReceiptService {
       sale.boleta_status === BoletaStatus.EMITIDA && sale.boleta
         ? sale.boleta.provider
         : null;
+    const boletaEmittedAt =
+      sale.boleta_status === BoletaStatus.EMITIDA && sale.boleta
+        ? sale.boleta.emitted_at.toISOString()
+        : null;
 
     return {
       sale_id: sale.id,
       store_name: storeName,
       store_rut: storeRut,
+      store_giro: storeGiro,
       date: sale.created_at.toISOString(),
       items,
       total: sale.total,
+      iva_included: ivaIncluded,
       payment_method: sale.payment_method,
       amount_received:
         sale.payment_method === PaymentMethod.EFECTIVO
@@ -96,6 +108,7 @@ export class ReceiptService {
       boleta_timbre: boletaTimbre,
       boleta_pdf_url: boletaPdfUrl,
       boleta_provider: boletaProvider,
+      boleta_emitted_at: boletaEmittedAt,
     };
   }
 }

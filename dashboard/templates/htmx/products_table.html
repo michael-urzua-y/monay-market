@@ -15,11 +15,25 @@
         {% for p in products %}
         <tr data-id="{{ p.id }}">
             <td><input type="checkbox" class="product-check" value="{{ p.id }}" x-model="selectedIds" style="width:18px;height:18px;cursor:pointer;accent-color:var(--color-primary);"></td>
-            <td>{{ p.name }}</td>
+            <td>
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                    <span>{{ p.name }}</span>
+                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                        {% if p.is_weighed %}
+                        <span class="badge">Granel</span>
+                        {% endif %}
+                        {% if not p.tracks_stock %}
+                        <span class="badge badge-warning">Sin inventario</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </td>
             <td>{{ p.barcode or '—' }}</td>
             <td>{{ p.price|clp }}</td>
             <td>
-                {% if p.stock is defined and p.critical_stock is defined and p.stock <= p.critical_stock %}
+                {% if not p.tracks_stock %}
+                <span style="color: var(--color-text-muted);">No controlado</span>
+                {% elif p.stock is defined and p.critical_stock is defined and p.critical_stock > 0 and p.stock <= p.critical_stock %}
                 <span class="badge badge-error">{{ p.stock }}</span>
                 {% else %}
                 {{ p.stock }}

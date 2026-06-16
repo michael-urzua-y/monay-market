@@ -1,9 +1,14 @@
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsString, Matches, MaxLength, MinLength } from 'class-validator';
 
 export class LoginDto {
-  @IsEmail()
+  @IsString()
   @IsNotEmpty()
-  email: string;
+  @MinLength(3)
+  @MaxLength(50)
+  @Matches(/^[a-z0-9._-]+$/i, {
+    message: 'El nombre de usuario solo puede contener letras, números, puntos, guiones y guion bajo',
+  })
+  username: string;
 
   @IsString()
   @IsNotEmpty()

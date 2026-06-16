@@ -18,17 +18,20 @@ describe('UsersService', () => {
     id: 'user-uuid-1',
     tenant_id: tenantId,
     email: 'cajero@test.com',
+    username: 'cajero.test',
     password_hash: 'hashed-password',
     role: UserRole.CAJERO,
     active: true,
     created_at: new Date('2024-01-01'),
     tenant: null as any,
     sales: [],
+    product_receptions: [],
   };
 
   const mockRepository = {
     find: jest.fn(),
     findOne: jest.fn(),
+    createQueryBuilder: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
   };
@@ -46,6 +49,11 @@ describe('UsersService', () => {
 
     service = module.get<UsersService>(UsersService);
     jest.clearAllMocks();
+    mockRepository.createQueryBuilder.mockReturnValue({
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue(null),
+    });
   });
 
   describe('findAllByTenant', () => {
@@ -60,7 +68,7 @@ describe('UsersService', () => {
       });
       expect(result).toHaveLength(1);
       expect(result[0]).not.toHaveProperty('password_hash');
-      expect(result[0].email).toBe('cajero@test.com');
+      expect(result[0].username).toBe('cajero.test');
     });
 
     it('should return empty array when no users exist', async () => {
@@ -73,14 +81,22 @@ describe('UsersService', () => {
   });
 
   describe('create', () => {
-    const createDto = { email: 'nuevo@test.com', password: 'password123' };
+    const createDto = {
+      username: 'sebastian.urzuay',
+      password: 'password123',
+    };
 
     it('should create a cajero user with hashed password', async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockRepository.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      });
       (bcrypt.hash as jest.Mock).mockResolvedValue('bcrypt-hashed');
       const createdUser = {
         ...mockUser,
-        email: createDto.email,
+        email: createDto.username,
+        username: createDto.username,
         password_hash: 'bcrypt-hashed',
       };
       mockRepository.create.mockReturnValue(createdUser);
@@ -91,17 +107,22 @@ describe('UsersService', () => {
       expect(bcrypt.hash).toHaveBeenCalledWith('password123', 10);
       expect(mockRepository.create).toHaveBeenCalledWith({
         tenant_id: tenantId,
-        email: createDto.email,
+        email: createDto.username,
+        username: createDto.username,
         password_hash: 'bcrypt-hashed',
         role: UserRole.CAJERO,
         active: true,
       });
       expect(result).not.toHaveProperty('password_hash');
-      expect(result.email).toBe(createDto.email);
+      expect(result.username).toBe(createDto.username);
     });
 
     it('should force role to cajero regardless of input', async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockRepository.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      });
       (bcrypt.hash as jest.Mock).mockResolvedValue('bcrypt-hashed');
       const createdUser = { ...mockUser, password_hash: 'bcrypt-hashed' };
       mockRepository.create.mockReturnValue(createdUser);
@@ -115,7 +136,11 @@ describe('UsersService', () => {
     });
 
     it('should force tenant_id from authenticated user', async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockRepository.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(null),
+      });
       (bcrypt.hash as jest.Mock).mockResolvedValue('bcrypt-hashed');
       const createdUser = { ...mockUser, password_hash: 'bcrypt-hashed' };
       mockRepository.create.mockReturnValue(createdUser);
@@ -128,8 +153,12 @@ describe('UsersService', () => {
       );
     });
 
-    it('should throw ConflictException if email already exists in tenant', async () => {
-      mockRepository.findOne.mockResolvedValue(mockUser);
+    it('should throw ConflictException if username already exists in tenant', async () => {
+      mockRepository.createQueryBuilder.mockReturnValue({
+        where: jest.fn().mockReturnThis(),
+        andWhere: jest.fn().mockReturnThis(),
+        getOne: jest.fn().mockResolvedValue(mockUser),
+      });
 
       await expect(service.create(tenantId, createDto)).rejects.toThrow(
         ConflictException,
@@ -167,6 +196,48 @@ describe('UsersService', () => {
 
       await expect(
         service.toggleActive(tenantId, mockUser.id, { active: false }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should reject managing a dueno account', async () => {
+      mockRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        role: UserRole.DUENO,
+      });
+
+      await expect(
+        service.toggleActive(tenantId, mockUser.id, { active: false }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('resetPassword', () => {
+    it('should reset password for cajero account', async () => {
+      mockRepository.findOne.mockResolvedValue(mockUser);
+      (bcrypt.hash as jest.Mock).mockResolvedValue('new-bcrypt-hash');
+      mockRepository.save.mockResolvedValue({
+        ...mockUser,
+        password_hash: 'new-bcrypt-hash',
+      });
+
+      const result = await service.resetPassword(
+        tenantId,
+        mockUser.id,
+        'nueva123',
+      );
+
+      expect(bcrypt.hash).toHaveBeenCalledWith('nueva123', 10);
+      expect(result).toEqual({ message: 'Contraseña actualizada exitosamente' });
+    });
+
+    it('should reject reset for dueno account', async () => {
+      mockRepository.findOne.mockResolvedValue({
+        ...mockUser,
+        role: UserRole.DUENO,
+      });
+
+      await expect(
+        service.resetPassword(tenantId, mockUser.id, 'nueva123'),
       ).rejects.toThrow(ForbiddenException);
     });
   });

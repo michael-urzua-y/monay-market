@@ -58,6 +58,12 @@ export class MermasService {
         throw new NotFoundException('Producto no encontrado');
       }
 
+      if (!product.tracks_stock) {
+        throw new BadRequestException(
+          'Este producto no utiliza control de stock. Registre la recepcion o venta sin inventario.',
+        );
+      }
+
       if (product.stock < dto.quantity) {
         throw new BadRequestException('Stock insuficiente');
       }

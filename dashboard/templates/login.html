@@ -12,6 +12,7 @@
 <body class="login-page">
     <main class="login-shell">
         <header class="login-topbar">
+            {% set whatsapp_message = "Hola Monay Market, les escribo desde la versión web y me gustaría conocer más sobre el servicio y sus costos." %}
             <a href="{{ url_for('login') }}" class="login-brand" aria-label="Monay Market">
                 <img
                     src="{{ url_for('static', filename='monay-market-logo-horizontal.png') }}"
@@ -21,13 +22,18 @@
             </a>
 
             <nav class="login-nav" aria-label="Menú principal">
-                <button type="button" class="login-contact-btn">
+                <a
+                    href="https://wa.me/56949790992?text={{ whatsapp_message|urlencode }}"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="login-contact-btn"
+                    aria-label="Contactar por WhatsApp"
+                >
                     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                        <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8Z"/>
-                        <path d="M8 9h8M8 13h5"/>
+                        <path fill="currentColor" stroke="none" d="M19.05 4.91A9.82 9.82 0 0 0 12.02 2C6.57 2 2.13 6.42 2.13 11.87c0 1.75.46 3.45 1.34 4.95L2 22l5.34-1.39a9.82 9.82 0 0 0 4.68 1.2h.01c5.45 0 9.88-4.43 9.88-9.88a9.8 9.8 0 0 0-2.86-7.02Zm-7.03 15.24h-.01a8.15 8.15 0 0 1-4.15-1.14l-.3-.18-3.17.83.85-3.09-.2-.32a8.13 8.13 0 0 1-1.25-4.36c0-4.49 3.65-8.14 8.14-8.14 2.17 0 4.2.84 5.74 2.38a8.06 8.06 0 0 1 2.38 5.76c0 4.48-3.66 8.13-8.13 8.13Zm4.46-6.1c-.24-.12-1.4-.69-1.62-.77-.22-.08-.38-.12-.53.12-.16.24-.61.77-.75.93-.14.16-.28.18-.52.06-.24-.12-1.03-.38-1.95-1.21-.72-.64-1.2-1.44-1.34-1.68-.14-.24-.01-.37.11-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.53-1.28-.73-1.75-.19-.46-.38-.39-.53-.39h-.45c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.32.98 2.48c.12.16 1.69 2.58 4.1 3.62.57.25 1.02.4 1.37.51.57.18 1.1.15 1.52.09.46-.07 1.4-.57 1.6-1.12.2-.55.2-1.02.14-1.12-.05-.1-.21-.16-.45-.28Z"/>
                     </svg>
                     <span>Contacto</span>
-                </button>
+                </a>
             </nav>
         </header>
 
@@ -103,20 +109,20 @@
 
                     <form method="POST" action="{{ url_for('login') }}" class="login-form" data-loading-text="Validando acceso...">
                         <div class="form-group">
-                            <label for="email">Correo electrónico</label>
+                            <label for="username">Nombre de usuario</label>
                             <div class="input-wrap">
                                 <svg class="input-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                                     <path d="M4 6h16v12H4z"/>
                                     <path d="m4 7 8 6 8-6"/>
                                 </svg>
                                 <input
-                                    type="email"
-                                    id="email"
-                                    name="email"
-                                    placeholder="Tu correo"
+                                    type="text"
+                                    id="username"
+                                    name="username"
+                                    placeholder="Tu usuario"
                                     required
                                     autofocus
-                                    autocomplete="email"
+                                    autocomplete="username"
                                 >
                             </div>
                         </div>

@@ -71,7 +71,12 @@ export class SalesController {
     @CurrentUser() user: JwtPayload,
     @Query() filters: FilterSalesDto,
   ): Promise<Sale[]> {
-    return this.salesService.findAll(user.tenant_id, filters);
+    return this.salesService.findAll(
+      user.tenant_id,
+      filters,
+      user.role,
+      user.user_id,
+    );
   }
 
   @Post('close-register')
@@ -82,7 +87,11 @@ export class SalesController {
     @Body() dto: CloseRegisterDto,
   ): Promise<CloseRegisterResult> {
     const userId = (user as any).id || user.user_id;
-    return this.salesService.closeRegister(user.tenant_id, userId, dto.counted_efectivo);
+    return this.salesService.closeRegister(
+      user.tenant_id,
+      userId,
+      dto.counted_efectivo,
+    );
   }
 
   @Get('arqueos')
@@ -101,7 +110,12 @@ export class SalesController {
     @CurrentUser() user: JwtPayload,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<ReceiptData> {
-    const sale = await this.salesService.findOne(user.tenant_id, id);
+    const sale = await this.salesService.findOne(
+      user.tenant_id,
+      id,
+      user.role,
+      user.user_id,
+    );
     return this.receiptService.generateReceipt(user.tenant_id, sale);
   }
 
@@ -111,6 +125,11 @@ export class SalesController {
     @CurrentUser() user: JwtPayload,
     @Param('id', ParseUUIDPipe) id: string,
   ): Promise<Sale> {
-    return this.salesService.findOne(user.tenant_id, id);
+    return this.salesService.findOne(
+      user.tenant_id,
+      id,
+      user.role,
+      user.user_id,
+    );
   }
 }

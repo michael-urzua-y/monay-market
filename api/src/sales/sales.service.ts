@@ -8,7 +8,7 @@ import { Repository, DataSource, EntityManager } from 'typeorm';
 import { Sale } from '../entities/sale.entity';
 import { SaleLine } from '../entities/sale-line.entity';
 import { Product } from '../entities/product.entity';
-import { PaymentMethod, BoletaStatus } from '../entities/enums';
+import { PaymentMethod, BoletaStatus, UserRole } from '../entities/enums';
 import { Arqueo } from '../entities/arqueo.entity';
 import { CreateSaleDto, SaleLineDto } from './dto/create-sale.dto';
 import { FilterSalesDto } from './dto/filter-sales.dto';
@@ -163,7 +163,7 @@ export class SalesService {
 
     for (const line of lines) {
       const product = productMap.get(line.product_id);
-      if (product && line.quantity > product.stock) {
+      if (product && product.tracks_stock && line.quantity > product.stock) {
         errors.push({
           product_id: product.id,
           requested: line.quantity,
@@ -295,11 +295,12 @@ export class SalesService {
     for (const line of lines) {
       const product = productMap.get(line.product_id);
       if (!product) continue;
+      if (!product.tracks_stock) continue;
       const newStock = product.stock - line.quantity;
 
       await manager.update(Product, product.id, { stock: newStock });
 
-      if (newStock > 0 && newStock < product.critical_stock) {
+      if (product.critical_stock > 0 && newStock > 0 && newStock <= product.critical_stock) {
         alerts.push({
           product_id: product.id,
           product_name: product.name,
@@ -312,13 +313,27 @@ export class SalesService {
     return alerts;
   }
 
-  async findAll(tenantId: string, filters: FilterSalesDto): Promise<Sale[]> {
+  async findAll(
+    tenantId: string,
+    filters: FilterSalesDto,
+    role: UserRole,
+    userId: string,
+  ): Promise<Sale[]> {
     const qb = this.saleRepository
       .createQueryBuilder('sale')
       .leftJoinAndSelect('sale.lines', 'lines')
       .leftJoinAndSelect('sale.boleta', 'boleta')
+      .leftJoinAndSelect('sale.user', 'user')
       .where('sale.tenant_id = :tenantId', { tenantId })
       .orderBy('sale.created_at', 'DESC');
+
+    if (role === UserRole.CAJERO) {
+      qb.andWhere('sale.user_id = :userId', { userId });
+    } else if (filters.user_id) {
+      qb.andWhere('sale.user_id = :filterUserId', {
+        filterUserId: filters.user_id,
+      });
+    }
 
     if (filters.date_from) {
       qb.andWhere('sale.created_at >= :dateFrom', {
@@ -338,20 +353,30 @@ export class SalesService {
       });
     }
 
-    return qb.getMany();
+    const sales = await qb.getMany();
+    return sales.map((sale) => this.sanitizeSaleUser(sale));
   }
 
-  async findOne(tenantId: string, saleId: string): Promise<Sale> {
+  async findOne(
+    tenantId: string,
+    saleId: string,
+    role: UserRole,
+    userId: string,
+  ): Promise<Sale> {
     const sale = await this.saleRepository.findOne({
-      where: { id: saleId, tenant_id: tenantId },
-      relations: ['lines', 'boleta'],
+      where: {
+        id: saleId,
+        tenant_id: tenantId,
+        ...(role === UserRole.CAJERO ? { user_id: userId } : {}),
+      },
+      relations: ['lines', 'boleta', 'user'],
     });
 
     if (!sale) {
       throw new NotFoundException(`Venta ${saleId} no encontrada`);
     }
 
-    return sale;
+    return this.sanitizeSaleUser(sale);
   }
 
   async closeRegister(tenantId: string, userId: string, countedEfectivo: number): Promise<CloseRegisterResult> {
@@ -375,6 +400,7 @@ export class SalesService {
       .createQueryBuilder('sale')
       .leftJoinAndSelect('sale.lines', 'lines')
       .where('sale.tenant_id = :tenantId', { tenantId })
+      .andWhere('sale.user_id = :userId', { userId })
       .andWhere('sale.created_at >= :startOfDay', { startOfDay })
       .andWhere('sale.created_at <= :endOfDay', { endOfDay })
       .orderBy('sale.created_at', 'ASC')
@@ -434,6 +460,38 @@ export class SalesService {
       qb.andWhere('arqueo.created_at <= :dateTo', { dateTo });
     }
 
-    return qb.getMany();
+    const arqueos = await qb.getMany();
+    return arqueos.map((arqueo) => {
+      if (arqueo.user) {
+        arqueo.user = {
+          id: arqueo.user.id,
+          username: arqueo.user.username,
+          email: arqueo.user.email,
+          role: arqueo.user.role,
+          active: arqueo.user.active,
+          created_at: arqueo.user.created_at,
+          tenant_id: arqueo.user.tenant_id,
+        } as any;
+      }
+      return arqueo;
+    });
+  }
+
+  private sanitizeSaleUser(sale: Sale): Sale {
+    if (!sale.user) {
+      return sale;
+    }
+
+    sale.user = {
+      id: sale.user.id,
+      username: sale.user.username,
+      email: sale.user.email,
+      role: sale.user.role,
+      active: sale.user.active,
+      created_at: sale.user.created_at,
+      tenant_id: sale.user.tenant_id,
+    } as any;
+
+    return sale;
   }
 }

@@ -32,19 +32,25 @@ describe('AuthController', () => {
 
   describe('POST /auth/login', () => {
     it('should call authService.login and return the result', async () => {
-      const loginDto = { email: 'test@example.com', password: 'password123' };
+      const loginDto = { username: 'admin', password: 'password123' };
       const expected = {
         accessToken: 'jwt-token',
-        user: { id: 'u1', email: 'test@example.com', role: UserRole.DUENO, tenant_id: 't1' },
+        user: {
+          id: 'u1',
+          username: 'admin',
+          email: 'test@example.com',
+          role: UserRole.DUENO,
+          tenant_id: 't1',
+        },
       };
       authService.login.mockResolvedValue(expected);
 
       const req = { ip: '127.0.0.1', headers: {} };
       const result = await controller.login(loginDto, req);
 
-      expect(loginThrottle.consume).toHaveBeenCalledWith('127.0.0.1:test@example.com');
+      expect(loginThrottle.consume).toHaveBeenCalledWith('127.0.0.1:admin');
       expect(authService.login).toHaveBeenCalledWith(loginDto);
-      expect(loginThrottle.reset).toHaveBeenCalledWith('127.0.0.1:test@example.com');
+      expect(loginThrottle.reset).toHaveBeenCalledWith('127.0.0.1:admin');
       expect(result).toEqual(expected);
     });
   });

@@ -89,12 +89,14 @@ describe('ReceiptService', () => {
       tenant_id: tenantId,
       sii_razon_social: 'MINIMARKET JUAN PABLO FAUNDEZ ESPINOSA E.I.R.L.',
       sii_rut_emisor: '78.260.737-5',
+      sii_giro: 'ALMACEN, MINIMARKE, VTA DE ABARROTES',
     });
 
     const receipt = await service.generateReceipt(tenantId, makeSale());
 
     expect(receipt.store_name).toBe('MINIMARKET JUAN PABLO FAUNDEZ ESPINOSA E.I.R.L.');
     expect(receipt.store_rut).toBe('78.260.737-5');
+    expect(receipt.store_giro).toBe('ALMACEN, MINIMARKE, VTA DE ABARROTES');
   });
 
   it('should fallback to "Tienda" when tenant not found', async () => {
@@ -143,6 +145,15 @@ describe('ReceiptService', () => {
     const receipt = await service.generateReceipt(tenantId, sale);
 
     expect(receipt.total).toBe(7500);
+  });
+
+  it('should include IVA amount already included in the total', async () => {
+    mockTenantRepository.findOne.mockResolvedValue({ id: tenantId, name: 'Mi Tienda' });
+
+    const sale = makeSale({ total: 11900 });
+    const receipt = await service.generateReceipt(tenantId, sale);
+
+    expect(receipt.iva_included).toBe(1900);
   });
 
   it('should include payment_method', async () => {
@@ -195,7 +206,7 @@ describe('ReceiptService', () => {
         timbre_electronico: 'timbre',
         pdf_url: null,
         provider: 'haulmer' as any,
-        emitted_at: new Date(),
+        emitted_at: new Date('2024-06-15T14:35:00.000Z'),
       } as any,
     });
     const receipt = await service.generateReceipt(tenantId, sale);
@@ -203,6 +214,7 @@ describe('ReceiptService', () => {
     expect(receipt.boleta_status).toBe(BoletaStatus.EMITIDA);
     expect(receipt.boleta_folio).toBe('F-12345');
     expect(receipt.boleta_provider).toBe('haulmer');
+    expect(receipt.boleta_emitted_at).toBe('2024-06-15T14:35:00.000Z');
   });
 
   it('should set boleta_folio to null when boleta_status is not emitida', async () => {

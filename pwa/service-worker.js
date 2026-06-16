@@ -1,4 +1,4 @@
-const CACHE_NAME = 'monay-pos-v18';
+const CACHE_NAME = 'monay-pos-v25';
 const scopePath = new URL(self.registration.scope).pathname;
 const basePath = scopePath.endsWith('/') ? scopePath : scopePath + '/';
 const appPath = (path) => basePath + path.replace(/^\//, '');
@@ -10,6 +10,7 @@ const APP_SHELL = [
   appPath('src/cart.js'),
   appPath('src/offline.js'),
   appPath('src/styles.css'),
+  appPath('src/vendor/bwip-js.min.js'),
   appPath('manifest.json'),
   '/runtime-config.js',
 ];

@@ -27,13 +27,13 @@ class TestLoginRoute:
         resp = client.get("/login", base_url="http://localhost:5000")
         assert resp.status_code == 200
         assert b"Iniciar" in resp.data
-        assert b"email" in resp.data
+        assert b"username" in resp.data
 
     def test_get_login_redirects_if_authenticated(self, client):
         """GET /login should redirect to dashboard if already logged in."""
         with client.session_transaction() as sess:
             sess["jwt_token"] = "some-token"
-            sess["user"] = {"email": "dueno@example.com", "role": "dueno"}
+            sess["user"] = {"username": "admin", "email": "dueno@example.com", "role": "dueno"}
         resp = client.get("/login", base_url="http://localhost:5000")
         assert resp.status_code == 302
         assert "/dashboard" in resp.headers["Location"]
@@ -42,7 +42,7 @@ class TestLoginRoute:
         """GET /login should redirect POS operators to the POS URL."""
         with client.session_transaction() as sess:
             sess["jwt_token"] = "some-token"
-            sess["user"] = {"email": "cajero@example.com", "role": "cajero"}
+            sess["user"] = {"username": "sebastian.urzuay", "email": "cajero@example.com", "role": "cajero"}
         resp = client.get("/login", base_url="http://localhost:5000")
         assert resp.status_code == 302
         assert resp.headers["Location"].endswith("/pos/")
@@ -67,17 +67,17 @@ class TestLoginRoute:
         mock_api.post.return_value = {
             "status_code": 201,
             "accessToken": "jwt-abc-123",
-            "user": {"email": "admin@test.com", "role": "dueno"},
+            "user": {"username": "admin", "email": "admin@test.com", "role": "dueno"},
         }
         resp = client.post(
             "/login",
-            data={"email": "admin@test.com", "password": "secret123"},
+            data={"username": "admin", "password": "secret123"},
         )
         assert resp.status_code == 302
         assert "/dashboard" in resp.headers["Location"]
         with client.session_transaction() as sess:
             assert sess["jwt_token"] == "jwt-abc-123"
-            assert sess["user"]["email"] == "admin@test.com"
+            assert sess["user"]["username"] == "admin"
 
     @patch("app.api")
     def test_post_login_redirects_cashier_to_pos(self, mock_api, client):
@@ -85,11 +85,11 @@ class TestLoginRoute:
         mock_api.post.return_value = {
             "status_code": 201,
             "accessToken": "jwt-cajero-123",
-            "user": {"email": "cajero@example.com", "role": "cajero"},
+            "user": {"username": "sebastian.urzuay", "email": "cajero@example.com", "role": "cajero"},
         }
         resp = client.post(
             "/login",
-            data={"email": "cajero@example.com", "password": "secret123"},
+            data={"username": "sebastian.urzuay", "password": "secret123"},
             base_url="http://localhost:5000",
         )
         assert resp.status_code == 302
@@ -110,7 +110,7 @@ class TestLoginRoute:
         }
         resp = client.post(
             "/login",
-            data={"email": "bad@test.com", "password": "wrong"},
+            data={"username": "baduser", "password": "wrong"},
             follow_redirects=True,
         )
         assert resp.status_code == 200
@@ -125,7 +125,7 @@ class TestLoginRoute:
         }
         resp = client.post(
             "/login",
-            data={"email": "admin@test.com", "password": "secret123"},
+            data={"username": "admin", "password": "secret123"},
             follow_redirects=True,
         )
         assert resp.status_code == 200
@@ -139,7 +139,7 @@ class TestLogoutRoute:
         """GET /logout should clear session and redirect to login."""
         with client.session_transaction() as sess:
             sess["jwt_token"] = "some-token"
-            sess["user"] = {"email": "test@test.com"}
+            sess["user"] = {"username": "admin", "email": "test@test.com"}
         resp = client.get("/logout")
         assert resp.status_code == 302
         assert "/login" in resp.headers["Location"]
@@ -155,7 +155,7 @@ class TestSalesRetryBoleta:
         """Store an owner session in the Flask test client."""
         with client.session_transaction() as sess:
             sess["jwt_token"] = "valid-token"
-            sess["user"] = {"email": "dueno@example.com", "role": "dueno"}
+            sess["user"] = {"username": "admin", "email": "dueno@example.com", "role": "dueno"}
 
     @patch("app.api")
     def test_retry_boleta_success_requires_emitida_status(self, mock_api, client):
@@ -203,7 +203,7 @@ class TestLoginRequired:
         """Protected routes should be accessible for owner sessions."""
         with client.session_transaction() as sess:
             sess["jwt_token"] = "valid-token"
-            sess["user"] = {"email": "dueno@example.com", "role": "dueno"}
+            sess["user"] = {"username": "admin", "email": "dueno@example.com", "role": "dueno"}
         resp = client.get("/dashboard")
         assert resp.status_code == 200
 
@@ -211,7 +211,7 @@ class TestLoginRequired:
         """Protected routes should redirect non-owner sessions."""
         with client.session_transaction() as sess:
             sess["jwt_token"] = "valid-token"
-            sess["user"] = {"email": "cajero@example.com", "role": "cajero"}
+            sess["user"] = {"username": "sebastian.urzuay", "email": "cajero@example.com", "role": "cajero"}
         resp = client.get("/dashboard")
         assert resp.status_code == 302
         assert "/login" in resp.headers["Location"]

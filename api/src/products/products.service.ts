@@ -6,16 +6,18 @@ import {
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { DataSource, ILike, Repository } from 'typeorm';
 import { firstValueFrom } from 'rxjs';
 import { Workbook } from 'exceljs';
 import { Product } from '../entities/product.entity';
 import { PriceHistory } from '../entities/price-history.entity';
 import { SaleLine } from '../entities/sale-line.entity';
 import { Category } from '../entities/category.entity';
+import { ProductReception } from '../entities/product-reception.entity';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { FilterProductsDto } from './dto/filter-products.dto';
+import { CreateProductReceptionDto } from './dto/create-product-reception.dto';
 
 export interface ImportResult {
   updated: number;
@@ -40,6 +42,7 @@ export class ProductsService {
     private readonly categoryRepository: Repository<Category>,
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async getCategories(tenantId: string): Promise<Category[]> {
@@ -50,17 +53,38 @@ export class ProductsService {
   }
 
   async create(tenantId: string, dto: CreateProductDto): Promise<Product> {
-    if (dto.barcode) {
-      await this.assertBarcodeUnique(tenantId, dto.barcode);
+    const payload = this.normalizeProductInput(dto);
+    if (payload.is_weighed && !payload.barcode) {
+      payload.barcode = await this.generateInternalBulkBarcode(tenantId);
     }
 
+    if (payload.barcode) {
+      await this.assertBarcodeUnique(tenantId, payload.barcode);
+    }
+
+    this.validateProductConfiguration(payload);
+
     const product = this.productRepository.create({
-      ...dto,
+      ...payload,
       tenant_id: tenantId,
       active: true,
     });
 
     return this.productRepository.save(product);
+  }
+
+  async createBulkProduct(
+    tenantId: string,
+    dto: CreateProductDto,
+  ): Promise<Product> {
+    return this.create(tenantId, {
+      ...dto,
+      barcode: dto.barcode || undefined,
+      is_weighed: true,
+      tracks_stock: true,
+      allow_cashier_reception: false,
+      critical_stock: dto.critical_stock || 0,
+    });
   }
 
   async findAll(
@@ -77,6 +101,12 @@ export class ProductsService {
     }
     if (filters.barcode) {
       where.barcode = filters.barcode;
+    }
+    if (filters.tracks_stock !== undefined) {
+      where.tracks_stock = filters.tracks_stock;
+    }
+    if (filters.allow_cashier_reception !== undefined) {
+      where.allow_cashier_reception = filters.allow_cashier_reception;
     }
 
     return this.productRepository.find({
@@ -124,8 +154,68 @@ export class ProductsService {
       );
     }
 
-    Object.assign(product, dto);
+    const nextState = this.normalizeProductInput({
+      ...product,
+      ...dto,
+    });
+    if (nextState.is_weighed && !nextState.barcode) {
+      nextState.barcode = await this.generateInternalBulkBarcode(tenantId);
+    }
+    this.validateProductConfiguration(nextState);
+
+    Object.assign(product, dto, {
+      barcode: nextState.barcode,
+      stock: nextState.stock,
+      critical_stock: nextState.critical_stock,
+      tracks_stock: nextState.tracks_stock,
+      allow_cashier_reception: nextState.allow_cashier_reception,
+    });
     return this.productRepository.save(product);
+  }
+
+  async createReception(
+    tenantId: string,
+    productId: string,
+    userId: string,
+    dto: CreateProductReceptionDto,
+  ): Promise<ProductReception> {
+    return this.dataSource.transaction(async (manager) => {
+      const product = await manager
+        .createQueryBuilder(Product, 'product')
+        .setLock('pessimistic_write')
+        .where('product.id = :productId', { productId })
+        .andWhere('product.tenant_id = :tenantId', { tenantId })
+        .andWhere('product.active = :active', { active: true })
+        .getOne();
+
+      if (!product) {
+        throw new NotFoundException('Producto no encontrado');
+      }
+
+      if (!product.allow_cashier_reception) {
+        throw new BadRequestException(
+          'Este producto no permite recepcion por cajero',
+        );
+      }
+
+      const reception = manager.create(ProductReception, {
+        tenant_id: tenantId,
+        product_id: product.id,
+        user_id: userId,
+        quantity: this.roundQuantity(dto.quantity),
+        note: dto.note?.trim() || null,
+        tracked_in_stock: product.tracks_stock,
+      });
+
+      if (product.tracks_stock) {
+        product.stock = this.roundQuantity(
+          Number(product.stock) + Number(dto.quantity),
+        );
+        await manager.save(Product, product);
+      }
+
+      return manager.save(ProductReception, reception);
+    });
   }
 
   async softDelete(tenantId: string, id: string): Promise<void> {
@@ -339,8 +429,60 @@ export class ProductsService {
     return count > 0;
   }
 
+  private async generateInternalBulkBarcode(tenantId: string): Promise<string> {
+    for (let attempt = 0; attempt < 10; attempt++) {
+      const randomPart = Math.random().toString(36).slice(2, 8).toUpperCase();
+      const code = `MMG-${Date.now().toString(36).toUpperCase()}-${randomPart}`;
+      const existing = await this.productRepository.findOne({
+        where: { tenant_id: tenantId, barcode: code },
+      });
+      if (!existing) return code;
+    }
+
+    throw new BadRequestException(
+      'No fue posible generar un codigo interno para el producto a granel',
+    );
+  }
+
   private roundQuantity(value: number): number {
     return Math.round(value * 1000) / 1000;
+  }
+
+  private normalizeProductInput<T extends Partial<Product>>(dto: T): T {
+    const normalized = { ...dto } as T;
+
+    if (normalized.tracks_stock === undefined) {
+      normalized.tracks_stock = true as T['tracks_stock'];
+    }
+
+    if (normalized.allow_cashier_reception === undefined) {
+      normalized.allow_cashier_reception = false as T['allow_cashier_reception'];
+    }
+
+    if (normalized.tracks_stock === false) {
+      normalized.stock = 0 as T['stock'];
+      normalized.critical_stock = 0 as T['critical_stock'];
+    }
+
+    return normalized;
+  }
+
+  private validateProductConfiguration(product: Partial<Product>): void {
+    if (product.allow_cashier_reception && !product.is_weighed) {
+      throw new BadRequestException(
+        'La recepcion por cajero solo se puede activar en productos vendidos por peso o a granel',
+      );
+    }
+
+    if (
+      product.tracks_stock !== false &&
+      !product.is_weighed &&
+      Number(product.critical_stock ?? 0) <= 0
+    ) {
+      throw new BadRequestException(
+        'El stock critico es requerido para productos con inventario por unidad',
+      );
+    }
   }
 
   private async lookupOpenFoodFacts(code: string): Promise<BarcodeLookupMatch | null> {

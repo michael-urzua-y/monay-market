@@ -4,7 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { SalesService } from './sales.service';
 import { Sale } from '../entities/sale.entity';
-import { PaymentMethod, BoletaStatus } from '../entities/enums';
+import { PaymentMethod, BoletaStatus, UserRole } from '../entities/enums';
 import { CreateSaleDto } from './dto/create-sale.dto';
 
 describe('SalesService', () => {
@@ -22,6 +22,7 @@ describe('SalesService', () => {
     price: 1500,
     stock: 10,
     critical_stock: 3,
+    tracks_stock: true,
     active: true,
     ...overrides,
   });
@@ -237,6 +238,22 @@ describe('SalesService', () => {
         NotFoundException,
       );
     });
+
+    it('should allow selling products without inventory control', async () => {
+      lockedProducts = [makeProduct({ stock: 0, tracks_stock: false })];
+
+      const dto: CreateSaleDto = {
+        lines: [{ product_id: productId1, quantity: 5 }],
+        payment_method: PaymentMethod.EFECTIVO,
+        amount_received: 10000,
+      };
+
+      const result = await service.create(tenantId, userId, dto);
+
+      expect(result.sale.total).toBe(7500);
+      expect(updatedProducts).toEqual([]);
+      expect(result.critical_stock_alerts).toEqual([]);
+    });
   });
 
   describe('stock deduction', () => {
@@ -318,6 +335,26 @@ describe('SalesService', () => {
       expect(result.critical_stock_alerts).toEqual([]);
     });
 
+    it('should alert when stock reaches the configured critical threshold', async () => {
+      lockedProducts = [makeProduct({ stock: 5, critical_stock: 3 })];
+
+      const dto: CreateSaleDto = {
+        lines: [{ product_id: productId1, quantity: 2 }],
+        payment_method: PaymentMethod.TARJETA,
+      };
+
+      const result = await service.create(tenantId, userId, dto);
+
+      expect(result.critical_stock_alerts).toEqual([
+        {
+          product_id: productId1,
+          product_name: 'Coca Cola 1.5L',
+          current_stock: 3,
+          critical_stock: 3,
+        },
+      ]);
+    });
+
     it('should NOT alert when stock stays above critical_stock', async () => {
       lockedProducts = [makeProduct({ stock: 10, critical_stock: 3 })];
 
@@ -391,7 +428,12 @@ describe('SalesService', () => {
       ] as Sale[];
       repoQueryBuilder.getMany.mockResolvedValue(mockSales);
 
-      const result = await service.findAll(tenantId, {});
+      const result = await service.findAll(
+        tenantId,
+        {},
+        UserRole.DUENO,
+        userId,
+      );
 
       expect(mockSaleRepository.createQueryBuilder).toHaveBeenCalledWith('sale');
       expect(repoQueryBuilder.where).toHaveBeenCalledWith(
@@ -404,7 +446,7 @@ describe('SalesService', () => {
     it('should apply date_from filter', async () => {
       repoQueryBuilder.getMany.mockResolvedValue([]);
 
-      await service.findAll(tenantId, { date_from: '2024-01-01' });
+      await service.findAll(tenantId, { date_from: '2024-01-01' }, UserRole.DUENO, userId);
 
       expect(repoQueryBuilder.andWhere).toHaveBeenCalledWith(
         'sale.created_at >= :dateFrom',
@@ -415,7 +457,7 @@ describe('SalesService', () => {
     it('should apply date_to filter', async () => {
       repoQueryBuilder.getMany.mockResolvedValue([]);
 
-      await service.findAll(tenantId, { date_to: '2024-12-31' });
+      await service.findAll(tenantId, { date_to: '2024-12-31' }, UserRole.DUENO, userId);
 
       expect(repoQueryBuilder.andWhere).toHaveBeenCalledWith(
         'sale.created_at <= :dateTo',
@@ -426,9 +468,12 @@ describe('SalesService', () => {
     it('should apply boleta_status filter', async () => {
       repoQueryBuilder.getMany.mockResolvedValue([]);
 
-      await service.findAll(tenantId, {
-        boleta_status: BoletaStatus.PENDIENTE,
-      });
+      await service.findAll(
+        tenantId,
+        { boleta_status: BoletaStatus.PENDIENTE },
+        UserRole.DUENO,
+        userId,
+      );
 
       expect(repoQueryBuilder.andWhere).toHaveBeenCalledWith(
         'sale.boleta_status = :boletaStatus',
@@ -439,11 +484,16 @@ describe('SalesService', () => {
     it('should apply all filters together', async () => {
       repoQueryBuilder.getMany.mockResolvedValue([]);
 
-      await service.findAll(tenantId, {
-        date_from: '2024-01-01',
-        date_to: '2024-12-31',
-        boleta_status: BoletaStatus.EMITIDA,
-      });
+      await service.findAll(
+        tenantId,
+        {
+          date_from: '2024-01-01',
+          date_to: '2024-12-31',
+          boleta_status: BoletaStatus.EMITIDA,
+        },
+        UserRole.DUENO,
+        userId,
+      );
 
       expect(repoQueryBuilder.andWhere).toHaveBeenCalledTimes(3);
     });
@@ -451,7 +501,7 @@ describe('SalesService', () => {
     it('should join lines and boleta relations', async () => {
       repoQueryBuilder.getMany.mockResolvedValue([]);
 
-      await service.findAll(tenantId, {});
+      await service.findAll(tenantId, {}, UserRole.DUENO, userId);
 
       expect(repoQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
         'sale.lines',
@@ -460,6 +510,37 @@ describe('SalesService', () => {
       expect(repoQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
         'sale.boleta',
         'boleta',
+      );
+      expect(repoQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
+        'sale.user',
+        'user',
+      );
+    });
+
+    it('should restrict cajero sales to current user', async () => {
+      repoQueryBuilder.getMany.mockResolvedValue([]);
+
+      await service.findAll(tenantId, {}, UserRole.CAJERO, userId);
+
+      expect(repoQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'sale.user_id = :userId',
+        { userId },
+      );
+    });
+
+    it('should apply owner cashier filter when provided', async () => {
+      repoQueryBuilder.getMany.mockResolvedValue([]);
+
+      await service.findAll(
+        tenantId,
+        { user_id: '33333333-3333-4333-8333-333333333333' },
+        UserRole.DUENO,
+        userId,
+      );
+
+      expect(repoQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'sale.user_id = :filterUserId',
+        { filterUserId: '33333333-3333-4333-8333-333333333333' },
       );
     });
   });
@@ -477,11 +558,11 @@ describe('SalesService', () => {
 
       mockSaleRepository.findOne.mockResolvedValue(mockSale);
 
-      const result = await service.findOne(tenantId, saleId);
+      const result = await service.findOne(tenantId, saleId, UserRole.DUENO, userId);
 
       expect(mockSaleRepository.findOne).toHaveBeenCalledWith({
         where: { id: saleId, tenant_id: tenantId },
-        relations: ['lines', 'boleta'],
+        relations: ['lines', 'boleta', 'user'],
       });
       expect(result).toEqual(mockSale);
     });
@@ -490,7 +571,7 @@ describe('SalesService', () => {
       const saleId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
       mockSaleRepository.findOne.mockResolvedValue(null);
 
-      await expect(service.findOne(tenantId, saleId)).rejects.toThrow(
+      await expect(service.findOne(tenantId, saleId, UserRole.DUENO, userId)).rejects.toThrow(
         NotFoundException,
       );
     });
@@ -500,8 +581,22 @@ describe('SalesService', () => {
       mockSaleRepository.findOne.mockResolvedValue(null);
 
       await expect(
-        service.findOne('other-tenant-id', saleId),
+        service.findOne('other-tenant-id', saleId, UserRole.DUENO, userId),
       ).rejects.toThrow(NotFoundException);
+    });
+
+    it('should restrict cajero detail to own sale', async () => {
+      const saleId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+      mockSaleRepository.findOne.mockResolvedValue(null);
+
+      await expect(
+        service.findOne(tenantId, saleId, UserRole.CAJERO, userId),
+      ).rejects.toThrow(NotFoundException);
+
+      expect(mockSaleRepository.findOne).toHaveBeenCalledWith({
+        where: { id: saleId, tenant_id: tenantId, user_id: userId },
+        relations: ['lines', 'boleta', 'user'],
+      });
     });
   });
 
@@ -583,6 +678,10 @@ describe('SalesService', () => {
       expect(repoQueryBuilder.where).toHaveBeenCalledWith(
         'sale.tenant_id = :tenantId',
         { tenantId },
+      );
+      expect(repoQueryBuilder.andWhere).toHaveBeenCalledWith(
+        'sale.user_id = :userId',
+        { userId },
       );
       expect(repoQueryBuilder.andWhere).toHaveBeenCalledWith(
         'sale.created_at >= :startOfDay',

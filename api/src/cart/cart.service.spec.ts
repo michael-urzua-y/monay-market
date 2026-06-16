@@ -17,6 +17,7 @@ describe('CartService', () => {
       name: 'Coca-Cola 1.5L',
       price: 1500,
       stock: 20,
+      tracks_stock: true,
       active: true,
     },
     {
@@ -25,6 +26,7 @@ describe('CartService', () => {
       name: 'Pan Molde',
       price: 2000,
       stock: 5,
+      tracks_stock: true,
       active: true,
     },
     {
@@ -33,6 +35,7 @@ describe('CartService', () => {
       name: 'Leche Entera 1L',
       price: 1200,
       stock: 0,
+      tracks_stock: true,
       active: true,
     },
   ];
@@ -76,6 +79,7 @@ describe('CartService', () => {
         quantity: 3,
         subtotal: 4500,
         available_stock: 20,
+        tracks_stock: true,
       });
       expect(result.total).toBe(4500);
     });
@@ -203,6 +207,25 @@ describe('CartService', () => {
       expect(result.valid).toBe(true);
       expect(result.errors).toHaveLength(0);
       expect(result.total).toBe(10000); // 5 × 2000
+    });
+
+    it('should allow selling products without inventory control', async () => {
+      mockProductRepository.findOne.mockResolvedValueOnce({
+        ...mockProducts[2],
+        stock: 0,
+        tracks_stock: false,
+      });
+
+      const dto: ValidateCartDto = {
+        lines: [{ product_id: mockProducts[2].id!, quantity: 3 }],
+      };
+
+      const result = await service.validate(tenantId, dto);
+
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(result.lines[0].available_stock).toBeNull();
+      expect(result.lines[0].tracks_stock).toBe(false);
     });
   });
 });

@@ -10,6 +10,7 @@ import {
 import { Tenant } from './tenant.entity';
 import { Sale } from './sale.entity';
 import { UserRole } from './enums';
+import { ProductReception } from './product-reception.entity';
 
 @Entity('users', { schema: 'market' })
 export class User {
@@ -21,6 +22,9 @@ export class User {
 
   @Column({ type: 'varchar', length: 255 })
   email: string;
+
+  @Column({ type: 'varchar', length: 80 })
+  username: string;
 
   @Column({ name: 'password_hash', type: 'varchar', length: 255 })
   password_hash: string;
@@ -40,4 +44,7 @@ export class User {
 
   @OneToMany(() => Sale, (sale) => sale.user)
   sales: Sale[];
+
+  @OneToMany(() => ProductReception, (reception) => reception.user)
+  product_receptions: ProductReception[];
 }

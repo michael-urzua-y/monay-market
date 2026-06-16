@@ -44,4 +44,12 @@ export class UpdateProductDto {
   @IsOptional()
   @IsBoolean()
   is_weighed?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  tracks_stock?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  allow_cashier_reception?: boolean;
 }

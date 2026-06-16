@@ -10,6 +10,8 @@ import { Cart } from './cart.js';
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
+  var RECEIPT_TIME_ZONE = 'America/Santiago';
+
   function formatCLP(amount) {
     if (amount == null) return '$0';
     const abs = Math.abs(amount);
@@ -18,14 +20,68 @@ import { Cart } from './cart.js';
   }
 
   function formatTime(dateStr) {
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' });
+    var parts = getChileDateParts(dateStr);
+    if (!parts) return '—';
+    return parts.hour24 + ':' + parts.minute;
   }
 
   function formatDate(dateStr) {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
-      ' ' + formatTime(dateStr);
+    var parts = getChileDateParts(dateStr);
+    if (!parts) return '—';
+    return parts.day + '-' + parts.month + '-' + parts.year + ' ' + parts.hour24 + ':' + parts.minute;
+  }
+
+  function formatReceiptDate(dateStr) {
+    var parts = getChileDateParts(dateStr);
+    if (!parts) return '—';
+    return parts.day + '-' + parts.month + '-' + parts.year;
+  }
+
+  function formatReceiptDateTime(dateStr) {
+    var parts = getChileDateParts(dateStr);
+    if (!parts) return '—';
+    var suffix = parts.hour >= 12 ? 'p. m.' : 'a. m.';
+    var hour12 = parts.hour % 12 || 12;
+    return parts.day + '-' + parts.month + '-' + parts.year + ' ' +
+      hour12 + ':' + parts.minute + ' ' + suffix;
+  }
+
+  function getChileDateParts(dateStr) {
+    if (!dateStr) return null;
+    var d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return null;
+    var parts = new Intl.DateTimeFormat('es-CL', {
+      timeZone: RECEIPT_TIME_ZONE,
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(d).reduce(function (acc, part) {
+      acc[part.type] = part.value;
+      return acc;
+    }, {});
+    var hour = Number(parts.hour);
+    if (hour === 24) hour = 0;
+    return {
+      day: parts.day,
+      month: parts.month,
+      year: parts.year,
+      hour: hour,
+      hour24: padReceiptNumber(hour),
+      minute: parts.minute,
+    };
+  }
+
+  function padReceiptNumber(value) {
+    return String(value).padStart(2, '0');
+  }
+
+  function formatReceiptQuantity(quantity) {
+    var n = Number(quantity);
+    if (!Number.isFinite(n)) return quantity || 0;
+    return Number.isInteger(n) ? String(n) : String(parseFloat(n.toFixed(3)));
   }
 
   // ----------------------------------------------------------
@@ -385,6 +441,98 @@ import { Cart } from './cart.js';
     return div.innerHTML;
   }
 
+  function escapeAttr(str) {
+    return escapeHtml(str == null ? '' : String(str))
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function renderReceiptTimbres(root) {
+    if (!root) return;
+    root.querySelectorAll('canvas[data-receipt-timbre]').forEach(function (canvas) {
+      var value = (canvas.getAttribute('data-receipt-timbre') || '').trim();
+      var renderPromise = renderReceiptTimbrePdf417(canvas, value);
+      canvas.__receiptTimbrePromise = renderPromise;
+    });
+  }
+
+  function renderReceiptTimbrePdf417(canvas, value) {
+    if (!value) {
+      renderReceiptTimbreUnavailable(canvas, 'Timbre no recibido desde API Gateway');
+      return Promise.resolve(false);
+    }
+
+    return waitForBwipJs(4000)
+      .then(function (bwipjs) {
+        try {
+          bwipjs.toCanvas(canvas, {
+            bcid: 'pdf417',
+            text: value,
+            scale: 2,
+            includetext: false,
+            paddingwidth: 0,
+            paddingheight: 0,
+          });
+          canvas.dataset.receiptTimbreRendered = 'api-gateway';
+          return true;
+        } catch (e) {
+          console.warn('No se pudo generar el PDF417 con el timbre de API Gateway', e);
+          renderReceiptTimbreUnavailable(canvas, 'No se pudo generar el timbre PDF417');
+          return false;
+        }
+      })
+      .catch(function (e) {
+        console.warn('bwip-js no está disponible para generar el timbre PDF417', e);
+        renderReceiptTimbreUnavailable(canvas, 'No se pudo cargar el generador PDF417');
+        return false;
+      });
+  }
+
+  function waitForBwipJs(timeoutMs) {
+    if (window.bwipjs && typeof window.bwipjs.toCanvas === 'function') {
+      return Promise.resolve(window.bwipjs);
+    }
+
+    return new Promise(function (resolve, reject) {
+      var startedAt = Date.now();
+      var timer = window.setInterval(function () {
+        if (window.bwipjs && typeof window.bwipjs.toCanvas === 'function') {
+          window.clearInterval(timer);
+          resolve(window.bwipjs);
+          return;
+        }
+
+        if (Date.now() - startedAt >= timeoutMs) {
+          window.clearInterval(timer);
+          reject(new Error('Timeout esperando bwip-js'));
+        }
+      }, 100);
+    });
+  }
+
+  function renderReceiptTimbreUnavailable(canvas, message) {
+    var ctx = canvas.getContext && canvas.getContext('2d');
+    if (!ctx) return;
+
+    var width = canvas.width || 520;
+    var height = canvas.height || 128;
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = '#6b7280';
+    ctx.font = '18px Courier New, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(message, width / 2, height / 2);
+  }
+
+  function formatProductStockLabel(product) {
+    if (!product || product.tracks_stock === false) {
+      return 'Sin control de stock';
+    }
+    return 'Stock: ' + product.stock;
+  }
+
   // ----------------------------------------------------------
   // Product Search
   // ----------------------------------------------------------
@@ -476,12 +624,19 @@ import { Cart } from './cart.js';
       var html = '';
       for (var i = 0; i < products.length; i++) {
         var p = products[i];
-        var productData = JSON.stringify({ id: p.id, name: p.name, price: p.price, stock: p.stock, is_weighed: p.is_weighed }).replace(/"/g, '&quot;');
+        var productData = JSON.stringify({
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          stock: p.stock,
+          is_weighed: p.is_weighed,
+          tracks_stock: p.tracks_stock
+        }).replace(/"/g, '&quot;');
         html +=
           '<div class="search-result-item" data-product="' + productData + '">' +
           '<div>' +
           '<div class="search-result-name">' + escapeHtml(p.name) + '</div>' +
-          '<div class="search-result-stock">Stock: ' + p.stock + '</div>' +
+          '<div class="search-result-stock">' + escapeHtml(formatProductStockLabel(p)) + '</div>' +
           '</div>' +
           '<div class="search-result-price">' + formatCLP(p.price) + '</div>' +
           '</div>';
@@ -663,9 +818,9 @@ import { Cart } from './cart.js';
       if (products && products.length > 0) {
         var p = products[0];
         if (p.is_weighed) {
-          openWeighModal({ id: p.id, name: p.name, price: p.price, stock: p.stock, is_weighed: true });
+          openWeighModal({ id: p.id, name: p.name, price: p.price, stock: p.stock, is_weighed: true, tracks_stock: p.tracks_stock });
         } else {
-          Cart.add({ id: p.id, name: p.name, price: p.price, stock: p.stock, is_weighed: false });
+          Cart.add({ id: p.id, name: p.name, price: p.price, stock: p.stock, is_weighed: false, tracks_stock: p.tracks_stock });
         }
       } else {
         showToast('Producto no encontrado: ' + code, 'warning');
@@ -929,58 +1084,76 @@ import { Cart } from './cart.js';
   // Receipt Display
   // ----------------------------------------------------------
   function showReceipt(receipt) {
-    // receipt: { store_name, date, items, total, payment_method, amount_received, change_amount, boleta_status, boleta_folio }
+    // API Gateway receives a consolidated line; this printable copy uses the
+    // official boleta metadata plus the real Monay sale lines.
     var content = document.getElementById('receipt-content');
     if (!content) return;
 
+    var items = Array.isArray(receipt.items) ? receipt.items : [];
+    var methodLabel = receipt.payment_method === 'efectivo' ? 'Efectivo' : 'Tarjeta';
+    var emittedAt = receipt.boleta_emitted_at || receipt.date;
     var html = '';
     html += '<div class="receipt-store-name">' + escapeHtml(receipt.store_name) + '</div>';
     if (receipt.store_rut) {
-      html += '<div class="receipt-store-rut">RUT ' + escapeHtml(receipt.store_rut) + '</div>';
+      html += '<div class="receipt-store-line">' + escapeHtml(receipt.store_rut) + '</div>';
     }
-    html += '<div class="receipt-date">' + formatDate(receipt.date) + '</div>';
+    if (receipt.store_giro) {
+      html += '<div class="receipt-store-line">Giro: ' + escapeHtml(receipt.store_giro) + '</div>';
+    }
+    if (receipt.boleta_folio) {
+      html += '<div class="receipt-doc-line">BOLETA ELECTRÓNICA NUMERO: ' + escapeHtml(receipt.boleta_folio) + '</div>';
+      if (receipt.store_rut) {
+        html += '<div class="receipt-doc-line">REF. VENDEDOR: ' + escapeHtml(receipt.store_rut) + '</div>';
+      }
+    }
+    html += '<div class="receipt-doc-line">Fecha: ' + formatReceiptDate(receipt.date) + '</div>';
+    html += '<div class="receipt-date">Emitida: ' + formatReceiptDateTime(emittedAt) + '</div>';
     html += '<hr class="receipt-divider">';
 
-    // Items
+    html += '<div class="receipt-payment-info receipt-payment-official">Medio de pago: ' + methodLabel + '</div>';
+
     html += '<div class="receipt-items">';
-    for (var i = 0; i < receipt.items.length; i++) {
-      var item = receipt.items[i];
-      html += '<div class="receipt-item">';
-      html += '<span>' + escapeHtml(item.name) + '</span>';
-      html += '<span>' + formatCLP(item.subtotal) + '</span>';
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      var quantity = formatReceiptQuantity(item.quantity);
+      html += '<div class="receipt-item-row">';
+      html += '<span class="receipt-item-name">' + escapeHtml(item.name) + '</span>';
+      html += '<span class="receipt-item-amount">' + formatCLP(item.subtotal) + '</span>';
       html += '</div>';
-      html += '<div class="receipt-item-detail">' + item.quantity + ' x ' + formatCLP(item.unit_price) + '</div>';
+      html += '<div class="receipt-item-detail">' + quantity + ' x ' + formatCLP(item.unit_price) + '</div>';
     }
     html += '</div>';
 
     html += '<hr class="receipt-divider">';
 
-    // Total
     html += '<div class="receipt-total-row">';
     html += '<span>TOTAL</span>';
     html += '<span>' + formatCLP(receipt.total) + '</span>';
     html += '</div>';
-
-    // Payment info
-    var methodLabel = receipt.payment_method === 'efectivo' ? 'Efectivo' : 'Tarjeta';
-    html += '<div class="receipt-payment-info">Método: ' + methodLabel + '</div>';
 
     if (receipt.payment_method === 'efectivo' && receipt.amount_received != null) {
       html += '<div class="receipt-payment-info">Recibido: ' + formatCLP(receipt.amount_received) + '</div>';
       html += '<div class="receipt-payment-info">Vuelto: ' + formatCLP(receipt.change_amount) + '</div>';
     }
 
-    // Boleta
+    html += '<div class="receipt-tax-note">';
+    html += '<div>El IVA incluido en esta boleta es de:</div>';
+    html += '<div>' + formatCLP(receipt.iva_included) + '</div>';
+    html += '</div>';
+
     if (receipt.boleta_folio) {
-      html += '<div class="receipt-boleta">Boleta N° ' + escapeHtml(receipt.boleta_folio) + '</div>';
+      html += '<div class="receipt-timbre">';
       if (receipt.boleta_timbre) {
-        html += '<div class="receipt-timbre">';
-        html += '<div class="receipt-timbre-label">Timbre Electrónico SII</div>';
-        html += '<div class="receipt-timbre-code">' + escapeHtml(receipt.boleta_timbre) + '</div>';
-        html += '</div>';
+        html += '<canvas class="receipt-timbre-code" width="520" height="128" data-receipt-timbre="' + escapeAttr(receipt.boleta_timbre) + '" aria-label="Timbre electrónico SII"></canvas>';
+      } else {
+        html += '<div class="receipt-boleta-status error">Timbre electrónico no recibido desde API Gateway</div>';
       }
+      html += '<div class="receipt-timbre-label">Timbre Electrónico SII</div>';
+      html += '<div class="receipt-timbre-resolution">Res. 99 de 2014</div>';
+      html += '<div class="receipt-timbre-summary">Verifique documento en sii.cl</div>';
+      html += '</div>';
       if (receipt.boleta_pdf_url) {
-        html += '<div class="receipt-pdf-link"><a href="' + escapeHtml(receipt.boleta_pdf_url) + '" target="_blank">Ver PDF oficial</a></div>';
+        html += '<div class="receipt-pdf-link"><a href="' + escapeAttr(receipt.boleta_pdf_url) + '" target="_blank">Ver PDF oficial</a></div>';
       }
     } else {
       var boletaStatus = getReceiptBoletaStatus(receipt.boleta_status);
@@ -993,6 +1166,7 @@ import { Cart } from './cart.js';
     html += '<div class="receipt-footer">¡Gracias por su compra!</div>';
 
     content.innerHTML = html;
+    renderReceiptTimbres(content);
     router.navigate('receipt');
   }
 
@@ -1020,9 +1194,22 @@ import { Cart } from './cart.js';
     var btnPrint = document.getElementById('btn-print-receipt');
     if (btnPrint) {
       btnPrint.addEventListener('click', function () {
-        window.print();
+        waitForReceiptTimbres().then(function () {
+          window.print();
+        });
       });
     }
+  }
+
+  function waitForReceiptTimbres() {
+    var content = document.getElementById('receipt-content');
+    if (!content) return Promise.resolve();
+    var pending = Array.prototype.slice
+      .call(content.querySelectorAll('canvas[data-receipt-timbre]'))
+      .map(function (canvas) {
+        return canvas.__receiptTimbrePromise || Promise.resolve();
+      });
+    return Promise.allSettled(pending);
   }
 
   // ----------------------------------------------------------
@@ -1048,12 +1235,8 @@ import { Cart } from './cart.js';
     // Get today's sales
     var now = new Date();
     var y = now.getFullYear();
-    var m = String(now.getMonth() + 1).padStart(2, '0');
-    var d = String(now.getDate()).padStart(2, '0');
-    var todayStr = y + '-' + m + '-' + d;
-
-    var dateFrom = todayStr;
-    var dateTo = todayStr + 'T23:59:59Z';
+    var dateFrom = new Date(y, now.getMonth(), now.getDate(), 0, 0, 0, 0).toISOString();
+    var dateTo = new Date(y, now.getMonth(), now.getDate(), 23, 59, 59, 999).toISOString();
 
     api.get('/sales?date_from=' + encodeURIComponent(dateFrom) + '&date_to=' + encodeURIComponent(dateTo), {
       label: 'Actualizando historial',
@@ -1175,6 +1358,121 @@ import { Cart } from './cart.js';
       case 'no_aplica': return 'Sin boleta';
       default: return 'Sin boleta';
     }
+  }
+
+  // ----------------------------------------------------------
+  // Bulk Product Quick Create
+  // ----------------------------------------------------------
+  function resetBulkProductForm() {
+    var form = document.getElementById('bulk-product-form');
+    var useCritical = document.getElementById('bulk-product-use-critical');
+    var criticalGroup = document.getElementById('bulk-product-critical-group');
+    var criticalInput = document.getElementById('bulk-product-critical');
+    if (form) form.reset();
+    if (useCritical) useCritical.checked = false;
+    if (criticalGroup) criticalGroup.classList.add('hidden');
+    if (criticalInput) criticalInput.value = '';
+  }
+
+  function openBulkProductModal() {
+    var modal = document.getElementById('bulk-product-modal');
+    var nameInput = document.getElementById('bulk-product-name');
+    if (!modal) return;
+    resetBulkProductForm();
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    if (nameInput) {
+      setTimeout(function () { nameInput.focus(); }, 40);
+    }
+  }
+
+  function closeBulkProductModal() {
+    var modal = document.getElementById('bulk-product-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    modal.style.display = '';
+  }
+
+  function parseBulkDecimal(input) {
+    if (!input) return 0;
+    return Number(String(input.value || '').replace(',', '.'));
+  }
+
+  function initBulkProductModal() {
+    var openBtn = document.getElementById('btn-open-bulk-product');
+    var closeBtn = document.getElementById('btn-close-bulk-product');
+    var cancelBtn = document.getElementById('btn-cancel-bulk-product');
+    var form = document.getElementById('bulk-product-form');
+    var useCritical = document.getElementById('bulk-product-use-critical');
+    var criticalGroup = document.getElementById('bulk-product-critical-group');
+    var saveBtn = document.getElementById('btn-save-bulk-product');
+
+    if (openBtn) openBtn.addEventListener('click', openBulkProductModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeBulkProductModal);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeBulkProductModal);
+
+    if (useCritical) {
+      useCritical.addEventListener('change', function () {
+        if (criticalGroup) {
+          criticalGroup.classList.toggle('hidden', !useCritical.checked);
+        }
+      });
+    }
+
+    if (!form) return;
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+
+      var nameInput = document.getElementById('bulk-product-name');
+      var priceInput = document.getElementById('bulk-product-price');
+      var stockInput = document.getElementById('bulk-product-stock');
+      var criticalInput = document.getElementById('bulk-product-critical');
+      var name = nameInput ? nameInput.value.trim() : '';
+      var price = priceInput ? parseInt(priceInput.value, 10) : 0;
+      var stock = parseBulkDecimal(stockInput);
+      var criticalStock = useCritical && useCritical.checked ? parseBulkDecimal(criticalInput) : 0;
+
+      if (!name) {
+        showToast('Ingresa el nombre del producto a granel.', 'warning');
+        if (nameInput) nameInput.focus();
+        return;
+      }
+      if (!price || price <= 0) {
+        showToast('Ingresa el precio por kilo.', 'warning');
+        if (priceInput) priceInput.focus();
+        return;
+      }
+      if (Number.isNaN(stock) || stock < 0) {
+        showToast('Ingresa el stock inicial en kilos.', 'warning');
+        if (stockInput) stockInput.focus();
+        return;
+      }
+      if (Number.isNaN(criticalStock) || criticalStock < 0) {
+        showToast('Ingresa un stock crítico válido.', 'warning');
+        if (criticalInput) criticalInput.focus();
+        return;
+      }
+
+      setButtonLoading(saveBtn, true, { label: 'Creando...' });
+      api.post('/products/granel', {
+        name: name,
+        price: price,
+        stock: stock,
+        critical_stock: criticalStock,
+      }, {
+        label: 'Creando producto a granel',
+        blocking: true,
+      }).then(function () {
+        showToast('Producto a granel creado correctamente.', 'success');
+        closeBulkProductModal();
+      }).catch(function (err) {
+        var message = (err && err.data && err.data.message) || err.message || 'No se pudo crear el producto a granel.';
+        showToast(message, 'error');
+      }).finally(function () {
+        setButtonLoading(saveBtn, false);
+      });
+    });
   }
 
   function initHistory() {
@@ -1572,6 +1870,7 @@ function initArqueo() {
     initCartEvents();
     initPayment();
     initReceipt();
+    initBulkProductModal();
     initHistory();
     initArqueo();
 

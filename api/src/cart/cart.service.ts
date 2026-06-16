@@ -10,13 +10,14 @@ export interface ValidatedCartLine {
   unit_price: number;
   quantity: number;
   subtotal: number;
-  available_stock: number;
+  available_stock: number | null;
+  tracks_stock: boolean;
 }
 
 export interface StockError {
   product_id: string;
   requested: number;
-  available: number;
+  available: number | null;
 }
 
 export interface ValidatedCartResult {
@@ -51,7 +52,7 @@ export class CartService {
         );
       }
 
-      if (line.quantity > product.stock) {
+      if (product.tracks_stock && line.quantity > product.stock) {
         errors.push({
           product_id: product.id,
           requested: line.quantity,
@@ -67,7 +68,8 @@ export class CartService {
         unit_price: product.price,
         quantity: line.quantity,
         subtotal,
-        available_stock: product.stock,
+        available_stock: product.tracks_stock ? product.stock : null,
+        tracks_stock: product.tracks_stock,
       });
     }
 

@@ -32,12 +32,15 @@ export class UsersService {
     tenantId: string,
     createUserDto: CreateUserDto,
   ): Promise<Partial<User>> {
-    const existingUser = await this.userRepository.findOne({
-      where: { email: createUserDto.email, tenant_id: tenantId },
-    });
+    const normalizedUsername = this.normalizeUsername(createUserDto.username);
+    const existingUser = await this.userRepository
+      .createQueryBuilder('user')
+      .where('user.tenant_id = :tenantId', { tenantId })
+      .andWhere('LOWER(user.username) = :username', { username: normalizedUsername })
+      .getOne();
 
     if (existingUser) {
-      throw new ConflictException('Ya existe un usuario con este email en el tenant');
+      throw new ConflictException('Ya existe un cajero con este nombre de usuario');
     }
 
     const saltRounds = 10;
@@ -45,7 +48,8 @@ export class UsersService {
 
     const user = this.userRepository.create({
       tenant_id: tenantId,
-      email: createUserDto.email,
+      email: normalizedUsername,
+      username: normalizedUsername,
       password_hash: passwordHash,
       role: UserRole.CAJERO,
       active: true,
@@ -71,6 +75,9 @@ export class UsersService {
     if (user.tenant_id !== tenantId) {
       throw new ForbiddenException('No tiene acceso a este recurso');
     }
+    if (user.role !== UserRole.CAJERO) {
+      throw new ForbiddenException('Solo se pueden administrar cuentas de cajero');
+    }
 
     user.active = updateUserDto.active;
     const savedUser = await this.userRepository.save(user);
@@ -92,6 +99,9 @@ export class UsersService {
 
     if (user.tenant_id !== tenantId) {
       throw new ForbiddenException('No tiene acceso a este recurso');
+    }
+    if (user.role !== UserRole.CAJERO) {
+      throw new ForbiddenException('Solo se pueden resetear cuentas de cajero');
     }
 
     if (!newPassword || newPassword.length < 6) {
@@ -141,5 +151,9 @@ export class UsersService {
   private excludePasswordHash(user: User): Partial<User> {
     const { password_hash, ...result } = user;
     return result;
+  }
+
+  private normalizeUsername(username: string): string {
+    return username.trim().toLowerCase();
   }
 }

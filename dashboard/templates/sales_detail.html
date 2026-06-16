@@ -68,6 +68,170 @@
     .sales-detail-pdf {
         margin-top: 16px;
     }
+
+    .sales-receipt-stage {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+        padding: 18px 0 8px;
+    }
+
+    .sales-printable-receipt {
+        width: 100%;
+        max-width: 520px;
+        background: #fffef8;
+        border: 1px solid #dbe4d3;
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+        padding: 42px 36px;
+        font-family: "Courier New", Courier, monospace;
+        color: #172115;
+        font-size: 1.12rem;
+        line-height: 1.7;
+    }
+
+    .sales-receipt-store {
+        text-align: center;
+        font-weight: 900;
+        font-size: 1.34rem;
+        line-height: 1.45;
+        text-transform: uppercase;
+        max-width: 34ch;
+        margin: 4px auto 18px;
+    }
+
+    .sales-receipt-line,
+    .sales-receipt-date,
+    .sales-receipt-muted,
+    .sales-receipt-item-detail {
+        font-size: 1.05rem;
+    }
+
+    .sales-receipt-line {
+        margin-bottom: 6px;
+    }
+
+    .sales-receipt-muted,
+    .sales-receipt-date,
+    .sales-receipt-item-detail {
+        color: var(--color-text-muted);
+    }
+
+    .sales-receipt-divider {
+        border: 0;
+        border-top: 1px dashed #d7dfce;
+        margin: 14px 0;
+    }
+
+    .sales-receipt-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 8px;
+        font-size: 1.08rem;
+        padding: 3px 0;
+    }
+
+    .sales-receipt-product {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .sales-receipt-amount {
+        flex: 0 0 auto;
+        text-align: right;
+    }
+
+    .sales-receipt-total {
+        font-weight: 800;
+        font-size: 1.34rem;
+        padding: 6px 0;
+    }
+
+    .sales-receipt-tax {
+        margin: 24px 0 12px;
+        font-size: 1.08rem;
+    }
+
+    .sales-receipt-timbre {
+        margin-top: 16px;
+        padding: 12px 8px 14px;
+        border: 1px dashed #d7dfce;
+        background: #fffef8;
+        text-align: center;
+        font-size: 1rem;
+        color: #172115;
+    }
+
+    .sales-receipt-timbre-code {
+        display: block;
+        width: 88%;
+        max-width: 390px;
+        height: auto;
+        margin: 0 auto 8px;
+        background: #fff;
+        image-rendering: pixelated;
+    }
+
+    .sales-receipt-timbre-label {
+        font-size: 1.04rem;
+        color: #172115;
+    }
+
+    .sales-receipt-pdf-link {
+        text-align: center;
+        margin-top: 10px;
+        font-size: 1.04rem;
+    }
+
+    .sales-print-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+        width: min(520px, 100%);
+    }
+
+    @media print {
+        body * {
+            visibility: hidden !important;
+        }
+
+        #sales-printable-receipt,
+        #sales-printable-receipt * {
+            visibility: visible !important;
+        }
+
+        #sales-printable-receipt {
+            position: absolute;
+            inset: 0 auto auto 0;
+            width: 72mm;
+            max-width: 72mm;
+            border: 0;
+            box-shadow: none;
+            padding: 4mm;
+            background: #fff;
+            color: #000;
+            font-size: 10pt;
+        }
+
+        .sales-receipt-timbre-code {
+            width: 56mm;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .sales-printable-receipt {
+            max-width: 100%;
+            padding: 30px 22px;
+            font-size: 0.95rem;
+        }
+
+        .sales-receipt-store {
+            font-size: 1.05rem;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -90,7 +254,7 @@
             <div class="sales-detail-grid">
                 <div>
                     <span class="sales-detail-label">Fecha</span>
-                    <p class="sales-detail-value">{{ sale.created_at[:16]|replace('T', ' ') if sale.created_at else '—' }}</p>
+                    <p class="sales-detail-value">{{ sale.created_at|receipt_datetime }}</p>
                 </div>
                 <div>
                     <span class="sales-detail-label">Total</span>
@@ -99,6 +263,10 @@
                 <div>
                     <span class="sales-detail-label">Método de pago</span>
                     <p class="sales-detail-value">{{ sale.payment_method|capitalize if sale.payment_method else '—' }}</p>
+                </div>
+                <div>
+                    <span class="sales-detail-label">Cajero</span>
+                    <p class="sales-detail-value">{{ (sale.user.username or sale.user.email) if sale.user else '—' }}</p>
                 </div>
                 <div>
                     <span class="sales-detail-label">Estado boleta</span>
@@ -147,20 +315,28 @@
         </div>
     </div>
 
-    {% if sale.boleta %}
     <div class="card">
         <div class="card-header"><h3 class="card-title">Datos de boleta electrónica</h3></div>
         <div class="card-body">
             <div class="sales-detail-boleta-grid">
-                <div><span class="sales-detail-label">Folio</span><p class="sales-detail-value">{{ sale.boleta.folio }}</p></div>
-                <div><span class="sales-detail-label">Proveedor</span><p class="sales-detail-value">{{ sale.boleta.provider|capitalize }}</p></div>
-                <div><span class="sales-detail-label">Fecha emisión</span><p class="sales-detail-value">{{ sale.boleta.emitted_at[:16]|replace('T', ' ') if sale.boleta.emitted_at else '—' }}</p></div>
+                <div>
+                    <span class="sales-detail-label">Folio</span>
+                    <p class="sales-detail-value">{{ sale.boleta.folio if sale.boleta and sale.boleta.folio else '—' }}</p>
+                </div>
+                <div>
+                    <span class="sales-detail-label">Proveedor</span>
+                    <p class="sales-detail-value">{{ sale.boleta.provider|capitalize if sale.boleta and sale.boleta.provider else '—' }}</p>
+                </div>
+                <div>
+                    <span class="sales-detail-label">Fecha emisión</span>
+                    <p class="sales-detail-value">{{ sale.boleta.emitted_at|receipt_datetime if sale.boleta and sale.boleta.emitted_at else '—' }}</p>
+                </div>
             </div>
-            {% if sale.boleta.pdf_url %}
+            {% if sale.boleta and sale.boleta.pdf_url %}
             <div class="sales-detail-pdf"><a href="{{ sale.boleta.pdf_url }}" target="_blank" class="btn btn-primary btn-sm">📄 Ver PDF</a></div>
             {% endif %}
         </div>
     </div>
-    {% endif %}
+
 </div>
 {% endblock %}

@@ -16,9 +16,13 @@ export class AuthService {
   ) {}
 
   async login(loginDto: LoginDto): Promise<{ accessToken: string; user: Partial<User> }> {
-    const { email, password } = loginDto;
+    const username = loginDto.username.trim().toLowerCase();
+    const { password } = loginDto;
 
-    const user = await this.userRepository.findOne({ where: { email } });
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.username) = :username', { username })
+      .getOne();
 
     if (!user) {
       throw new UnauthorizedException('Credenciales inválidas');
@@ -46,6 +50,7 @@ export class AuthService {
       accessToken,
       user: {
         id: user.id,
+        username: user.username,
         email: user.email,
         role: user.role,
         tenant_id: user.tenant_id,

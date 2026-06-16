@@ -29,14 +29,14 @@ export const Cart = {
     }
     if (existing) {
       var newQty = existing.quantity + quantity;
-      if (newQty > existing.available_stock) {
+      if (existing.tracks_stock && newQty > existing.available_stock) {
         this.callbacks.onToast('Stock insuficiente. Disponible: ' + existing.available_stock, 'warning');
         return;
       }
       existing.quantity = Math.round(newQty * 1000) / 1000;
       existing.subtotal = Math.round(existing.unit_price * existing.quantity);
     } else {
-      if (product.stock < quantity) {
+      if (product.tracks_stock !== false && product.stock < quantity) {
         this.callbacks.onToast('Producto sin stock disponible', 'warning');
         return;
       }
@@ -46,8 +46,9 @@ export const Cart = {
         unit_price: product.price,
         quantity: Math.round(quantity * 1000) / 1000,
         subtotal: Math.round(product.price * quantity),
-        available_stock: product.stock,
-        is_weighed: product.is_weighed || false
+        available_stock: product.tracks_stock === false ? null : product.stock,
+        is_weighed: product.is_weighed || false,
+        tracks_stock: product.tracks_stock !== false
       });
     }
     this.callbacks.onUpdate();
@@ -62,7 +63,7 @@ export const Cart = {
           this.remove(productId);
           return;
         }
-        if (newQty > this.items[i].available_stock) {
+        if (this.items[i].tracks_stock && newQty > this.items[i].available_stock) {
           this.callbacks.onToast('Stock insuficiente. Disponible: ' + this.items[i].available_stock, 'warning');
           return;
         }

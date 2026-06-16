@@ -12,6 +12,7 @@ import {
 import { Tenant } from './tenant.entity';
 import { Category } from './category.entity';
 import { SaleLine } from './sale-line.entity';
+import { ProductReception } from './product-reception.entity';
 
 @Entity('products', { schema: 'market' })
 @Index('IDX_product_tenant_barcode', ['tenant_id', 'barcode'], { unique: true })
@@ -44,6 +45,12 @@ export class Product {
   @Column({ type: 'boolean', default: false })
   is_weighed: boolean;
 
+  @Column({ name: 'tracks_stock', type: 'boolean', default: true })
+  tracks_stock: boolean;
+
+  @Column({ name: 'allow_cashier_reception', type: 'boolean', default: false })
+  allow_cashier_reception: boolean;
+
   @Column({ type: 'boolean', default: true })
   active: boolean;
 
@@ -66,4 +73,7 @@ export class Product {
 
   @OneToMany(() => SaleLine, (saleLine) => saleLine.product)
   sale_lines: SaleLine[];
+
+  @OneToMany(() => ProductReception, (reception) => reception.product)
+  receptions: ProductReception[];
 }

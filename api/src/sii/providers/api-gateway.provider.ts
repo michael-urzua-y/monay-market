@@ -208,30 +208,83 @@ export class ApiGatewayProvider implements ISiiProvider {
 
   private parseEmitResult(data: any): SiiEmitResult {
     const result = data?.data || data?.documento || data?.dte || data || {};
-    const folio = result.folio || result.Folio || result.FOLIO;
+    const folio = this.pickString(result, [
+      'folio',
+      'Folio',
+      'FOLIO',
+      'documento.folio',
+      'dte.folio',
+    ]);
     if (!folio) {
       throw new Error('API Gateway no retornó folio de boleta');
     }
 
-    const pdfUrl =
-      result.pdf_url ||
-      result.pdfUrl ||
-      result.PDF ||
-      result.pdf ||
-      result.url_pdf ||
-      result.urlPdf ||
-      null;
-    const timbre =
-      result.timbre_electronico ||
-      result.timbre ||
-      result.TIMBRE ||
-      result.codigo ||
-      `<EBOLETA><PROVEEDOR>api_gateway</PROVEEDOR><FOLIO>${folio}</FOLIO></EBOLETA>`;
+    const pdfUrl = this.pickString(result, [
+      'pdf_url',
+      'pdfUrl',
+      'PDF',
+      'pdf',
+      'url_pdf',
+      'urlPdf',
+      'documento.pdf_url',
+      'documento.pdf',
+      'dte.pdf_url',
+      'dte.pdf',
+    ]);
+    const timbre = this.pickString(result, [
+      'timbre_electronico',
+      'timbreElectronico',
+      'timbre',
+      'TIMBRE',
+      'ted',
+      'TED',
+      'xml_ted',
+      'xmlTed',
+      'timbre_pdf417',
+      'timbrePdf417',
+      'pdf417',
+      'codigo_barras',
+      'codigoBarras',
+      'codigo',
+      'barcode',
+      'documento.timbre_electronico',
+      'documento.timbre',
+      'documento.TED',
+      'dte.timbre_electronico',
+      'dte.timbre',
+      'dte.TED',
+    ]);
+
+    if (!timbre) {
+      throw new Error('API Gateway no retornó timbre electrónico de la boleta');
+    }
 
     return {
       folio: String(folio),
       pdf_url: typeof pdfUrl === 'string' && pdfUrl.startsWith('http') ? pdfUrl : null,
       timbre_electronico: String(timbre),
     };
+  }
+
+  private pickString(source: any, paths: string[]): string | null {
+    for (const path of paths) {
+      const value = this.getPath(source, path);
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim();
+      }
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return String(value);
+      }
+    }
+    return null;
+  }
+
+  private getPath(source: any, path: string): unknown {
+    return path.split('.').reduce((current, key) => {
+      if (current == null || typeof current !== 'object') {
+        return undefined;
+      }
+      return current[key];
+    }, source);
   }
 }

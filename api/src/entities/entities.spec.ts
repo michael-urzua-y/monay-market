@@ -11,6 +11,7 @@ import { Boleta } from './boleta.entity';
 import { Arqueo } from './arqueo.entity';
 import { Merma } from './merma.entity';
 import { LoginRateLimit } from './login-rate-limit.entity';
+import { ProductReception } from './product-reception.entity';
 import {
   SubscriptionPlan,
   SubscriptionStatus,
@@ -23,11 +24,11 @@ import {
 describe('TypeORM Entities', () => {
   const metadata = getMetadataArgsStorage();
 
-  it('should register all 12 entities', () => {
+  it('should register all 13 entities', () => {
     const entityNames = metadata.tables.map((t) => t.target);
     const expectedEntities = [
       Tenant, TenantConfig, Subscription, User,
-      Category, Product, Sale, SaleLine, Boleta, Arqueo, Merma, LoginRateLimit,
+      Category, Product, ProductReception, Sale, SaleLine, Boleta, Arqueo, Merma, LoginRateLimit,
     ];
     for (const entity of expectedEntities) {
       expect(entityNames).toContain(entity);
@@ -44,6 +45,7 @@ describe('TypeORM Entities', () => {
     expect(tableMap.get(User)).toBe('users');
     expect(tableMap.get(Category)).toBe('categories');
     expect(tableMap.get(Product)).toBe('products');
+    expect(tableMap.get(ProductReception)).toBe('product_receptions');
     expect(tableMap.get(Sale)).toBe('sales');
     expect(tableMap.get(SaleLine)).toBe('sale_lines');
     expect(tableMap.get(Boleta)).toBe('boletas');
@@ -78,6 +80,20 @@ describe('TypeORM Entities', () => {
     });
   });
 
+  describe('User entity', () => {
+    it('should have correct columns', () => {
+      const columns = metadata.columns
+        .filter((c) => c.target === User)
+        .map((c) => c.propertyName);
+      expect(columns).toEqual(
+        expect.arrayContaining([
+          'id', 'tenant_id', 'email', 'username', 'password_hash',
+          'role', 'active', 'created_at',
+        ]),
+      );
+    });
+  });
+
   describe('Product entity', () => {
     it('should have correct columns', () => {
       const columns = metadata.columns
@@ -86,7 +102,8 @@ describe('TypeORM Entities', () => {
       expect(columns).toEqual(
         expect.arrayContaining([
           'id', 'tenant_id', 'category_id', 'name', 'barcode',
-          'price', 'stock', 'critical_stock', 'active',
+          'price', 'stock', 'critical_stock', 'is_weighed',
+          'tracks_stock', 'allow_cashier_reception', 'active',
           'created_at', 'updated_at',
         ]),
       );

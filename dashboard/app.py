@@ -6,10 +6,12 @@ and tenant configuration via server-side rendered templates with HTMX.
 
 import json
 import os
+from datetime import datetime
 from functools import wraps
 from pathlib import Path
 from urllib.parse import quote, urljoin
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -30,6 +32,10 @@ ALLOWED_CERTIFICATE_EXTENSIONS = {".pfx", ".p12"}
 OWNER_ROLE = "dueno"
 POS_ROLES = {"cajero", "vendedor"}
 POS_AUTH_COOKIE_MAX_AGE = 60
+try:
+    DISPLAY_TIMEZONE = ZoneInfo("America/Santiago")
+except Exception:
+    DISPLAY_TIMEZONE = None
 
 
 def is_owner(user):
@@ -128,6 +134,31 @@ def save_certificate_upload(cert_file, tenant_id):
     return str(filepath)
 
 
+def parse_decimal_field(name, default=0.0):
+    raw_value = str(request.form.get(name, default) or default).replace(",", ".")
+    return float(raw_value)
+
+
+def parse_product_form():
+    is_weighed = request.form.get("is_weighed") == "on"
+    use_critical_stock = request.form.get("use_critical_stock") == "on"
+    critical_stock = (
+        parse_decimal_field("critical_stock", 0)
+        if (not is_weighed or use_critical_stock)
+        else 0
+    )
+    return {
+        "name": request.form.get("name", "").strip(),
+        "barcode": request.form.get("barcode", "").strip() or None,
+        "price": int(request.form.get("price", 0) or 0),
+        "stock": parse_decimal_field("stock", 0),
+        "critical_stock": critical_stock,
+        "is_weighed": is_weighed,
+        "tracks_stock": True,
+        "allow_cashier_reception": False,
+    }
+
+
 # --- Auth routes ---
 
 
@@ -141,10 +172,10 @@ def login():
         session.clear()
 
     if request.method == "POST":
-        email = request.form.get("email", "").strip()
+        username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
 
-        result = api.post("/auth/login", {"email": email, "password": password})
+        result = api.post("/auth/login", {"username": username, "password": password})
 
         if result.get("status_code") == 201 and result.get("accessToken"):
             user = result.get("user", {})
@@ -327,14 +358,7 @@ def htmx_products_search():
 def products_new():
     """Render product creation form (GET) or create product (POST)."""
     if request.method == "POST":
-        data = {
-            "name": request.form.get("name", "").strip(),
-            "barcode": request.form.get("barcode", "").strip() or None,
-            "price": int(request.form.get("price", 0) or 0),
-            "stock": float(str(request.form.get("stock", 0) or 0).replace(",", ".")),
-            "critical_stock": float(str(request.form.get("critical_stock", 0) or 0).replace(",", ".")),
-            "is_weighed": request.form.get("is_weighed") == "on",
-        }
+        data = parse_product_form()
         cat_id = request.form.get("category_id", "").strip()
         if cat_id:
             data["category_id"] = cat_id
@@ -369,14 +393,7 @@ def products_new():
 def products_edit(product_id):
     """Render product edit form (GET) or update product (POST)."""
     if request.method == "POST":
-        data = {
-            "name": request.form.get("name", "").strip(),
-            "barcode": request.form.get("barcode", "").strip() or None,
-            "price": int(request.form.get("price", 0) or 0),
-            "stock": float(str(request.form.get("stock", 0) or 0).replace(",", ".")),
-            "critical_stock": float(str(request.form.get("critical_stock", 0) or 0).replace(",", ".")),
-            "is_weighed": request.form.get("is_weighed") == "on",
-        }
+        data = parse_product_form()
         cat_id = request.form.get("category_id", "").strip()
         if cat_id:
             data["category_id"] = cat_id
@@ -556,9 +573,11 @@ def _extract_categories(products_data):
 @login_required
 def sales():
     """Render sales history page with date and boleta_status filters."""
+    current_user = session.get("user", {})
     date_from = request.args.get("date_from", "").strip()
     date_to = request.args.get("date_to", "").strip()
     boleta_status = request.args.get("boleta_status", "").strip()
+    user_id = request.args.get("user_id", "").strip()
     page = int(request.args.get("page", 1))
     per_page = 10
 
@@ -570,9 +589,15 @@ def sales():
         params["date_to"] = f"{date_to}T23:59:59Z"
     if boleta_status:
         params["boleta_status"] = boleta_status
+    if current_user.get("role") == "dueno" and user_id:
+        params["user_id"] = user_id
 
     sales_data = api.get("/sales", params=params)
     sales_list = sales_data if isinstance(sales_data, list) else []
+    users_list = []
+    if current_user.get("role") == "dueno":
+        users_data = api.get("/users")
+        users_list = users_data if isinstance(users_data, list) else []
 
     # Paginación idéntica a la vista de productos
     total = len(sales_list)
@@ -590,6 +615,9 @@ def sales():
         date_from=date_from,
         date_to=date_to,
         boleta_status=boleta_status,
+        user_id=user_id,
+        users=users_list,
+        current_role=current_user.get("role"),
     )
 
 
@@ -658,7 +686,7 @@ def sales_detail(sale_id):
     if isinstance(sale, dict) and sale.get("status_code", 200) >= 400:
         return redirect(url_for("sales"))
 
-    return render_template("sales_detail.html", sale=sale)
+    return render_template("sales_detail.html", sale=sale, receipt=None)
 
 
 @app.route("/sales/<sale_id>/retry-boleta", methods=["POST"])
@@ -724,9 +752,19 @@ def users_create():
     if user.get("role") != "dueno":
         return redirect(url_for("dashboard"))
 
+    username = request.form.get("username", "").strip()
+    password = request.form.get("password", "")
+    confirm_password = request.form.get("confirm_password", "")
+    if not username:
+        return redirect(url_for("users", error="El nombre de usuario es obligatorio"))
+    if len(password) < 6:
+        return redirect(url_for("users", error="La contraseña debe tener al menos 6 caracteres"))
+    if password != confirm_password:
+        return redirect(url_for("users", error="La confirmación de contraseña no coincide"))
+
     data = {
-        "email": request.form.get("email", "").strip(),
-        "password": request.form.get("password", ""),
+        "username": username,
+        "password": password,
     }
 
     result = api.post("/users", data=data)
@@ -769,8 +807,11 @@ def users_reset_password(user_id):
         return redirect(url_for("dashboard"))
 
     new_password = request.form.get("password", "").strip()
+    confirm_password = request.form.get("confirm_password", "").strip()
     if not new_password or len(new_password) < 6:
-        return redirect(url_for("users"))
+        return redirect(url_for("users", error="La nueva contraseña debe tener al menos 6 caracteres"))
+    if new_password != confirm_password:
+        return redirect(url_for("users", error="La confirmación de contraseña no coincide"))
 
     result = api.post(f"/users/{user_id}/reset-password", data={"password": new_password})
 
@@ -778,9 +819,9 @@ def users_reset_password(user_id):
         error_msg = result.get("message", "Error al resetear contraseña")
         if isinstance(error_msg, list):
             error_msg = ", ".join(error_msg)
-        return redirect(url_for("users"))
+        return redirect(url_for("users", error=error_msg))
 
-    return redirect(url_for("users"))
+    return redirect(url_for("users", success="Contraseña actualizada correctamente"))
 
 
 @app.route("/settings")
@@ -943,6 +984,51 @@ def format_clp(value):
 def clp_filter(value):
     """Jinja2 filter: {{ amount|clp }} → $1.490"""
     return format_clp(value)
+
+
+def parse_receipt_datetime(value):
+    """Parse API ISO datetime values and show them in Chilean local time."""
+    if not value:
+        return None
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        try:
+            dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    if dt.tzinfo is not None and DISPLAY_TIMEZONE is not None:
+        return dt.astimezone(DISPLAY_TIMEZONE)
+    return dt
+
+
+@app.template_filter("receipt_date")
+def receipt_date_filter(value):
+    dt = parse_receipt_datetime(value)
+    if not dt:
+        return "—"
+    return f"{dt.day:02d}-{dt.month:02d}-{dt.year}"
+
+
+@app.template_filter("receipt_datetime")
+def receipt_datetime_filter(value):
+    dt = parse_receipt_datetime(value)
+    if not dt:
+        return "—"
+    suffix = "p. m." if dt.hour >= 12 else "a. m."
+    hour = dt.hour % 12 or 12
+    return f"{dt.day:02d}-{dt.month:02d}-{dt.year} {hour}:{dt.minute:02d} {suffix}"
+
+
+@app.template_filter("receipt_quantity")
+def receipt_quantity_filter(value):
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return value or 0
+    if number.is_integer():
+        return str(int(number))
+    return f"{number:.3f}".rstrip("0").rstrip(".")
 
 
 # --- HTMX Dashboard endpoints ---
@@ -1120,8 +1206,15 @@ def htmx_dashboard_last_sale():
     method = sale.get("payment_method", "—")
     method_icon = "💵" if method == "efectivo" else "💳"
     created = sale.get("created_at", "")
-    time_str = created[11:16] if len(created) >= 16 else "—"
-    date_str = created[:10] if len(created) >= 10 else ""
+    created_dt = parse_receipt_datetime(created)
+    if created_dt:
+        suffix = "p. m." if created_dt.hour >= 12 else "a. m."
+        hour = created_dt.hour % 12 or 12
+        time_str = f"{hour}:{created_dt.minute:02d} {suffix}"
+        date_str = f"{created_dt.day:02d}-{created_dt.month:02d}-{created_dt.year}"
+    else:
+        time_str = "—"
+        date_str = ""
 
     return f'''<div class="card-header"><h3 class="card-title">Última venta</h3></div>
 <div class="card-body" style="display:flex; flex-direction:column; gap:8px;">

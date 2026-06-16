@@ -37,9 +37,20 @@
                         <option value="no_aplica" {% if boleta_status == 'no_aplica' %}selected{% endif %}>No aplica</option>
                     </select>
                 </div>
+                {% if current_role == 'dueno' %}
+                <div class="form-group" style="margin-bottom: 0; min-width: 220px;">
+                    <label for="user_id">Cajero</label>
+                    <select id="user_id" name="user_id">
+                        <option value="">Todos</option>
+                        {% for u in users %}
+                        <option value="{{ u.id }}" {% if user_id == u.id %}selected{% endif %}>{{ u.username or u.email }}{% if u.role == 'dueno' %} (Dueño){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% endif %}
                 <div style="display: flex; gap: 8px;">
                     <button type="submit" class="btn btn-primary" style="min-width: 100px;">Filtrar</button>
-                    {% if date_from or date_to or boleta_status %}
+                    {% if date_from or date_to or boleta_status or user_id %}
                     <a href="{{ url_for('sales') }}" class="btn btn-secondary" style="min-width: 100px; text-align: center;">Limpiar</a>
                     {% endif %}
                 </div>
@@ -52,12 +63,13 @@
             {% set pending_only = false %}
             {% set status_heading = 'Estado boleta' %}
             {% set empty_message = 'No se encontraron ventas.' %}
+            {% set show_cashier = current_role == 'dueno' %}
             {% include "partials/sales_table.html" %}
 
             <!-- Paginador -->
             {% set pagination_label = 'Página ' ~ page ~ ' de ' ~ total_pages %}
-            {% set previous_url = url_for('sales', page=page-1, date_from=date_from, date_to=date_to, boleta_status=boleta_status) %}
-            {% set next_url = url_for('sales', page=page+1, date_from=date_from, date_to=date_to, boleta_status=boleta_status) %}
+            {% set previous_url = url_for('sales', page=page-1, date_from=date_from, date_to=date_to, boleta_status=boleta_status, user_id=user_id) %}
+            {% set next_url = url_for('sales', page=page+1, date_from=date_from, date_to=date_to, boleta_status=boleta_status, user_id=user_id) %}
             {% set disable_previous = page <= 1 %}
             {% set disable_next = page >= total_pages %}
             {% include "partials/pagination_footer.html" %}

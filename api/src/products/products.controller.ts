@@ -24,6 +24,7 @@ import { ProductsService } from './products.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { FilterProductsDto } from './dto/filter-products.dto';
+import { CreateProductReceptionDto } from './dto/create-product-reception.dto';
 
 @Controller('products')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
@@ -43,6 +44,15 @@ export class ProductsController {
     @Body() dto: CreateProductDto,
   ) {
     return this.productsService.create(user.tenant_id, dto);
+  }
+
+  @Post('granel')
+  @Roles(UserRole.DUENO, UserRole.CAJERO)
+  createBulkProduct(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateProductDto,
+  ) {
+    return this.productsService.createBulkProduct(user.tenant_id, dto);
   }
 
   @Post('import-excel')
@@ -108,6 +118,16 @@ export class ProductsController {
     @Body() dto: UpdateProductDto,
   ) {
     return this.productsService.update(user.tenant_id, id, dto, user.user_id);
+  }
+
+  @Post(':id/receptions')
+  @Roles(UserRole.DUENO, UserRole.CAJERO)
+  createReception(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateProductReceptionDto,
+  ) {
+    return this.productsService.createReception(user.tenant_id, id, user.user_id, dto);
   }
 
   @Get(':id/price-history')

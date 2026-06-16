@@ -1,16 +1,30 @@
-<div class="form-group">
+<div class="form-group" style="margin-bottom: 18px;">
+    <label style="display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 800;">
+        <input type="checkbox" id="is_weighed" name="is_weighed" {% if form_values.get('is_weighed') %}checked{% endif %} style="width: 22px; height: 22px; accent-color: var(--color-primary);">
+        Producto a granel
+    </label>
+    <p style="margin-top: 6px; color: var(--color-text-muted); font-size: 0.92rem;">
+        Para productos vendidos por kilos o fracciones, como pan, palta, frutas o verduras.
+    </p>
+</div>
+
+<div id="bulk-code-note" class="alert alert-info" style="display: none; margin-bottom: 16px;">
+    El sistema asignará un código interno automático para este producto. No usará un código de barras real del mercado.
+</div>
+
+<div class="form-group" id="barcode-group">
     <label for="barcode">Código de barras</label>
     {% if show_barcode_tools %}
-    <div style="display: flex; gap: 8px;">
-        <input type="text" id="barcode" name="barcode" value="{{ form_values.get('barcode', '') or '' }}" placeholder="Ej: 7801234567890" style="flex: 1;">
-        <button type="button" class="btn btn-secondary" onclick="openScanner()" title="Escanear con cámara" style="padding: 0 12px; font-size: 1.2rem;">📷</button>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <input type="text" id="barcode" name="barcode" value="{{ form_values.get('barcode', '') or '' }}" placeholder="Ej: 7801234567890" style="flex: 1 1 220px; min-width: 0;">
+        <button type="button" class="btn btn-secondary" id="barcode-camera-btn" onclick="openScanner()" title="Escanear con cámara" style="padding: 0 12px; font-size: 1.2rem; min-height: 44px;">📷</button>
         <button type="button" class="btn btn-secondary"
                 hx-get=""
                 hx-target="#barcode-result"
                 hx-swap="innerHTML"
                 id="lookup-btn"
                 onclick="this.setAttribute('hx-get', '/htmx/products/lookup-barcode/' + document.getElementById('barcode').value); htmx.process(this); htmx.trigger(this, 'click');"
-                style="white-space: nowrap;">
+                style="white-space: nowrap; min-height: 44px;">
             🔍 Buscar
         </button>
     </div>
@@ -28,21 +42,26 @@
 <div class="form-group">
     <label for="price">Precio (CLP) *</label>
     <input type="number" id="price" name="price" value="{{ form_values.get('price', '') }}" required min="1" placeholder="Ej: 1490">
+    <p id="price-help" style="margin-top: 6px; color: var(--color-text-muted); font-size: 0.9rem;"></p>
 </div>
 
 <div class="form-group">
-    <label for="stock">{{ stock_label }} *</label>
-    <input type="number" id="stock" name="stock" value="{{ form_values.get('stock', 0) }}" required min="0" step="any" placeholder="0.000">
+    <label for="stock" id="stock-label">{{ stock_label }} *</label>
+    <input type="number" id="stock" name="stock" value="{{ form_values.get('stock', 0) }}" required min="0" step="any" placeholder="0">
+    <p id="stock-help" style="margin-top: 6px; color: var(--color-text-muted); font-size: 0.9rem;"></p>
 </div>
 
-<div class="form-group">
-    <label for="critical_stock">Stock crítico</label>
-    <input type="number" id="critical_stock" name="critical_stock" value="{{ form_values.get('critical_stock', 0) }}" min="0" step="any" placeholder="0.000">
+<div class="form-group" id="critical-toggle-group">
+    <label style="display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 700;">
+        <input type="checkbox" id="use_critical_stock" name="use_critical_stock" {% if form_values.get('critical_stock', 0) %}checked{% endif %} style="width: 20px; height: 20px; accent-color: var(--color-primary);">
+        Avisar con stock crítico
+    </label>
 </div>
 
-<div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 16px; margin-bottom: 16px;">
-    <input type="checkbox" id="is_weighed" name="is_weighed" {% if form_values.get('is_weighed') %}checked{% endif %} style="width: 20px; height: 20px; accent-color: var(--color-primary);">
-    <label for="is_weighed" style="margin: 0; font-weight: 600; cursor: pointer;">Se vende por peso / a granel</label>
+<div class="form-group" id="critical-stock-group">
+    <label for="critical_stock" id="critical-stock-label">Stock crítico</label>
+    <input type="number" id="critical_stock" name="critical_stock" value="{{ form_values.get('critical_stock', 0) }}" min="0" step="any" placeholder="0">
+    <p id="critical-stock-help" style="margin-top: 6px; color: var(--color-text-muted); font-size: 0.9rem;"></p>
 </div>
 
 <div class="form-group">
@@ -54,3 +73,81 @@
         {% endfor %}
     </select>
 </div>
+
+<script>
+    (function () {
+        var isWeighed = document.getElementById('is_weighed');
+        var barcodeGroup = document.getElementById('barcode-group');
+        var barcodeInput = document.getElementById('barcode');
+        var bulkCodeNote = document.getElementById('bulk-code-note');
+        var priceHelp = document.getElementById('price-help');
+        var stockLabel = document.getElementById('stock-label');
+        var stockInput = document.getElementById('stock');
+        var stockHelp = document.getElementById('stock-help');
+        var useCriticalStock = document.getElementById('use_critical_stock');
+        var criticalToggleGroup = document.getElementById('critical-toggle-group');
+        var criticalStockGroup = document.getElementById('critical-stock-group');
+        var criticalStockLabel = document.getElementById('critical-stock-label');
+        var criticalStockInput = document.getElementById('critical_stock');
+        var criticalStockHelp = document.getElementById('critical-stock-help');
+        var wasBulkMode = !!(isWeighed && isWeighed.checked);
+
+        function syncProductFormMode() {
+            var bulkEnabled = !!(isWeighed && isWeighed.checked);
+            if (bulkEnabled && !wasBulkMode && useCriticalStock) {
+                useCriticalStock.checked = false;
+            }
+            var criticalEnabled = !bulkEnabled || !!(useCriticalStock && useCriticalStock.checked);
+
+            if (barcodeGroup) barcodeGroup.style.display = bulkEnabled ? 'none' : '';
+            if (bulkCodeNote) bulkCodeNote.style.display = bulkEnabled ? '' : 'none';
+            if (barcodeInput && bulkEnabled) barcodeInput.value = '';
+            if (useCriticalStock && !bulkEnabled) useCriticalStock.checked = true;
+
+            if (stockInput) {
+                stockInput.step = bulkEnabled ? '0.001' : '1';
+                stockInput.placeholder = bulkEnabled ? 'Ej: 30.500' : '0';
+            }
+            if (stockLabel) {
+                stockLabel.textContent = bulkEnabled ? 'Stock inicial (kg) *' : 'Stock inicial *';
+            }
+            if (stockHelp) {
+                stockHelp.textContent = bulkEnabled
+                    ? 'Puedes ingresar decimales, por ejemplo 30.500 kg.'
+                    : 'Cantidad inicial disponible para vender.';
+            }
+            if (priceHelp) {
+                priceHelp.textContent = bulkEnabled
+                    ? 'Precio de venta por kilo.'
+                    : '';
+            }
+            if (criticalToggleGroup) {
+                criticalToggleGroup.style.display = bulkEnabled ? '' : 'none';
+            }
+            if (criticalStockGroup) {
+                criticalStockGroup.style.display = criticalEnabled ? '' : 'none';
+            }
+            if (criticalStockInput) {
+                criticalStockInput.disabled = !criticalEnabled;
+                criticalStockInput.required = !bulkEnabled;
+                criticalStockInput.min = bulkEnabled ? '0' : '1';
+                criticalStockInput.step = bulkEnabled ? '0.001' : '1';
+                criticalStockInput.placeholder = bulkEnabled ? 'Ej: 5.000' : 'Ej: 5';
+                if (!criticalEnabled) criticalStockInput.value = '0';
+            }
+            if (criticalStockLabel) {
+                criticalStockLabel.textContent = bulkEnabled ? 'Stock crítico (kg)' : 'Stock crítico';
+            }
+            if (criticalStockHelp) {
+                criticalStockHelp.textContent = bulkEnabled
+                    ? 'El dashboard avisará cuando queden estos kilos o menos.'
+                    : 'Obligatorio para productos por unidad. El dashboard avisará cuando quede esta cantidad o menos.';
+            }
+            wasBulkMode = bulkEnabled;
+        }
+
+        if (isWeighed) isWeighed.addEventListener('change', syncProductFormMode);
+        if (useCriticalStock) useCriticalStock.addEventListener('change', syncProductFormMode);
+        syncProductFormMode();
+    })();
+</script>

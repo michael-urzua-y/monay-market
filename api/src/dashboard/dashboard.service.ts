@@ -149,8 +149,10 @@ export class DashboardService {
       .createQueryBuilder('product')
       .where('product.tenant_id = :tenantId', { tenantId })
       .andWhere('product.active = :active', { active: true })
+      .andWhere('product.tracks_stock = true')
       .andWhere('product.stock > 0')
-      .andWhere('product.stock < product.critical_stock')
+      .andWhere('product.critical_stock > 0')
+      .andWhere('product.stock <= product.critical_stock')
       .orderBy('product.stock', 'ASC')
       .getMany();
   }
@@ -161,6 +163,7 @@ export class DashboardService {
       .select('COALESCE(SUM(product.price * product.stock), 0)', 'valor_total')
       .where('product.tenant_id = :tenantId', { tenantId })
       .andWhere('product.active = :active', { active: true })
+      .andWhere('product.tracks_stock = true')
       .getRawOne();
 
     return {

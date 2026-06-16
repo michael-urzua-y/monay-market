@@ -15,17 +15,17 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() loginDto: LoginDto, @Request() req: any) {
-    const throttleKey = this.getThrottleKey(req, loginDto.email);
+    const throttleKey = this.getThrottleKey(req, loginDto.username);
     await this.loginThrottle.consume(throttleKey);
 
     try {
       const result = await this.authService.login(loginDto);
       await this.loginThrottle.reset(throttleKey);
-      this.logger.log(`Login exitoso: ${loginDto.email} desde ${this.getClientIp(req)}`);
+      this.logger.log(`Login exitoso: ${loginDto.username} desde ${this.getClientIp(req)}`);
       return result;
     } catch (error) {
       this.logger.warn(
-        `Login fallido: ${loginDto.email} desde ${this.getClientIp(req)} — ${error.message || 'credenciales inválidas'}`,
+        `Login fallido: ${loginDto.username} desde ${this.getClientIp(req)} — ${error.message || 'credenciales inválidas'}`,
       );
       throw error;
     }
@@ -44,8 +44,8 @@ export class AuthController {
     return forwardedFor || req.ip || req.socket?.remoteAddress || 'unknown';
   }
 
-  private getThrottleKey(req: any, email: string): string {
+  private getThrottleKey(req: any, username: string): string {
     const ip = this.getClientIp(req);
-    return `${ip}:${email.trim().toLowerCase()}`;
+    return `${ip}:${username.trim().toLowerCase()}`;
   }
 }
