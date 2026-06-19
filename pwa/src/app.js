@@ -1004,7 +1004,9 @@ import { Cart } from './cart.js';
       resetPaymentForm();
 
       if (result.receipt) {
-        showReceipt(result.receipt, { autoPrint: true });
+        if (!handleSaleCompletion(result.receipt)) {
+          showReceipt(result.receipt, { autoPrint: false });
+        }
       } else {
         showToast('Venta registrada', 'success');
       }
@@ -1088,6 +1090,61 @@ import { Cart } from './cart.js';
   // ----------------------------------------------------------
   // Receipt Display
   // ----------------------------------------------------------
+  function handleSaleCompletion(receipt) {
+    if (!receipt) return false;
+
+    if (shouldAutoOpenOfficialPdf(receipt)) {
+      return openOfficialPdfAndReset(receipt);
+    }
+
+    if (shouldAutoPrintDetailedReceipt(receipt)) {
+      showReceipt(receipt, { autoPrint: true });
+      return true;
+    }
+
+    return false;
+  }
+
+  function shouldAutoOpenOfficialPdf(receipt) {
+    return !!(
+      receipt &&
+      receipt.printer_enabled &&
+      receipt.boleta_status === 'emitida' &&
+      receipt.boleta_pdf_url
+    );
+  }
+
+  function shouldAutoPrintDetailedReceipt(receipt) {
+    return !!(
+      receipt &&
+      receipt.printer_enabled &&
+      receipt.boleta_status === 'emitida'
+    );
+  }
+
+  function openOfficialPdfAndReset(receipt) {
+    var pdfUrl = receipt && receipt.boleta_pdf_url;
+    if (!pdfUrl) return false;
+
+    var openedWindow = null;
+    try {
+      openedWindow = window.open(pdfUrl, '_blank');
+    } catch (err) {
+      openedWindow = null;
+    }
+
+    if (!openedWindow) {
+      showToast('No se pudo abrir el PDF oficial. Mostrando comprobante detallado.', 'warning');
+      return false;
+    }
+
+    autoPrintState.lastSaleId = receipt.sale_id || null;
+    autoPrintState.inFlight = false;
+    router.navigate('sale');
+    showToast('Abriendo PDF oficial para imprimir...', 'success');
+    return true;
+  }
+
   function showReceipt(receipt, options) {
     options = options || {};
 
