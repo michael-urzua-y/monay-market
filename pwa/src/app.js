@@ -10,7 +10,9 @@ import { Cart } from './cart.js';
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
+  var APP_ASSET_VERSION = '29';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
+  var bwipJsLoadPromise = null;
 
   function formatCLP(amount) {
     if (amount == null) return '$0';
@@ -499,20 +501,53 @@ import { Cart } from './cart.js';
       return Promise.resolve(window.bwipjs);
     }
 
-    return new Promise(function (resolve, reject) {
-      var startedAt = Date.now();
-      var timer = window.setInterval(function () {
-        if (window.bwipjs && typeof window.bwipjs.toCanvas === 'function') {
-          window.clearInterval(timer);
-          resolve(window.bwipjs);
-          return;
-        }
+    if (!bwipJsLoadPromise) {
+      bwipJsLoadPromise = loadBwipJsScript();
+    }
 
-        if (Date.now() - startedAt >= timeoutMs) {
-          window.clearInterval(timer);
-          reject(new Error('Timeout esperando bwip-js'));
-        }
-      }, 100);
+    return bwipJsLoadPromise.then(function () {
+      return new Promise(function (resolve, reject) {
+        var startedAt = Date.now();
+        var timer = window.setInterval(function () {
+          if (window.bwipjs && typeof window.bwipjs.toCanvas === 'function') {
+            window.clearInterval(timer);
+            resolve(window.bwipjs);
+            return;
+          }
+
+          if (Date.now() - startedAt >= timeoutMs) {
+            window.clearInterval(timer);
+            reject(new Error('Timeout esperando bwip-js'));
+          }
+        }, 100);
+      });
+    });
+  }
+
+  function loadBwipJsScript() {
+    return new Promise(function (resolve, reject) {
+      var existing = document.querySelector('script[data-bwip-loader]');
+      if (existing) {
+        existing.addEventListener('load', function () { resolve(); }, { once: true });
+        existing.addEventListener('error', function () {
+          bwipJsLoadPromise = null;
+          reject(new Error('No se pudo cargar bwip-js'));
+        }, { once: true });
+        return;
+      }
+
+      var script = document.createElement('script');
+      script.src = 'src/vendor/bwip-js.min.js?v=' + APP_ASSET_VERSION;
+      script.async = true;
+      script.dataset.bwipLoader = 'true';
+      script.addEventListener('load', function () {
+        resolve();
+      }, { once: true });
+      script.addEventListener('error', function () {
+        bwipJsLoadPromise = null;
+        reject(new Error('No se pudo cargar bwip-js'));
+      }, { once: true });
+      document.head.appendChild(script);
     });
   }
 

@@ -4,6 +4,7 @@
 {% block page_title %}Dashboard{% endblock %}
 
 {% block head %}
+<script src="{{ url_for('static', filename='vendor/chart.umd.min.js', v=asset_version) }}"></script>
 <style>
     .dashboard-card-toolbar {
         display: flex;
