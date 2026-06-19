@@ -123,6 +123,7 @@
         <div x-show="selectedIds.length > 0" x-cloak style="padding: 14px 20px; background: linear-gradient(135deg, #fef2f2, #fff1f2); border-bottom: 1px solid #fecaca; display: flex; align-items: center; gap: 16px; border-radius: 8px 8px 0 0;">
             <form method="post" action="{{ url_for('products_bulk_delete') }}" style="width: 100%;"
                   @submit.prevent="if(confirm('¿Eliminar ' + selectedIds.length + ' productos seleccionados?')) $el.submit()">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                 <template x-for="id in selectedIds" :key="id">
                     <input type="hidden" name="ids" :value="id">
                 </template>
@@ -145,6 +146,7 @@
                 <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px;">
                     <button class="btn btn-secondary" @click="showDeleteModal = false">Cancelar</button>
                     <form :action="'/products/' + deleteId + '/delete'" method="post" style="display: inline;">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="btn btn-danger">Eliminar</button>
                     </form>
                 </div>

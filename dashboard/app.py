@@ -6,6 +6,7 @@ and tenant configuration via server-side rendered templates with HTMX.
 
 import json
 import os
+import secrets
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
@@ -15,7 +16,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, Response, abort, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 
@@ -97,6 +98,35 @@ def set_pos_auth_cookies(response, token, user):
     return response
 
 
+def clear_pos_auth_cookies(response):
+    response.delete_cookie("monay_pos_token", path="/", samesite="Lax")
+    response.delete_cookie("monay_pos_user", path="/", samesite="Lax")
+    response.delete_cookie("monay_login_url", path="/", samesite="Lax")
+    return response
+
+
+def get_csrf_token() -> str:
+    token = session.get("_csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["_csrf_token"] = token
+    return token
+
+
+def is_same_origin_request() -> bool:
+    expected_origin = request.host_url.rstrip("/")
+    origin = request.headers.get("Origin", "").rstrip("/")
+    referer = request.headers.get("Referer", "")
+
+    if origin:
+        return origin == expected_origin
+
+    if referer:
+        return referer.startswith(expected_origin + "/") or referer == expected_origin
+
+    return True
+
+
 def login_required(f):
     """Decorator that redirects to login if no JWT token in session."""
 
@@ -117,7 +147,48 @@ def inject_user():
     return {
         "current_user": session.get("user"),
         "asset_version": app.config.get("ASSET_VERSION", "1"),
+        "csrf_token": get_csrf_token(),
     }
+
+
+@app.before_request
+def enforce_csrf_protection():
+    if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return None
+
+    endpoint = request.endpoint or ""
+    if endpoint == "static":
+        return None
+
+    if not is_same_origin_request():
+        abort(403)
+
+    expected = session.get("_csrf_token")
+    provided = (
+        request.form.get("_csrf_token")
+        or request.headers.get("X-CSRF-Token")
+    )
+
+    if not expected or not provided or not secrets.compare_digest(expected, provided):
+        abort(403)
+
+    return None
+
+
+@app.after_request
+def apply_no_store_headers(response):
+    endpoint = request.endpoint or ""
+    if endpoint == "static":
+        return response
+
+    cacheable_prefixes = ("htmx_",)
+    if endpoint.startswith(cacheable_prefixes):
+        return response
+
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 
 def save_certificate_upload(cert_file, tenant_id):
@@ -211,7 +282,10 @@ def login():
 def logout():
     """Clear session and redirect to login."""
     session.clear()
-    return redirect(url_for("login"))
+    response = redirect(url_for("login"))
+    clear_pos_auth_cookies(response)
+    response.headers["Clear-Site-Data"] = '"cache", "cookies"'
+    return response
 
 
 @app.route("/pos")

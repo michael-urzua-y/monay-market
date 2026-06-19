@@ -53,6 +53,7 @@
                 Se actualizarán los productos existentes que coincidan por código de barras.
             </p>
             <form method="post" action="{{ url_for('products_import') }}" enctype="multipart/form-data">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                 <div class="form-group">
                     <label for="file">Archivo Excel (.xlsx)</label>
                     <input type="file" id="file" name="file" accept=".xlsx,.xls" required>

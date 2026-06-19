@@ -131,6 +131,7 @@ import { Cart } from './cart.js';
     inFlight: false,
     lastSaleId: null,
   };
+  var authRedirectInFlight = false;
 
   function showToast(message, type) {
     type = type || 'error';
@@ -1093,63 +1094,28 @@ import { Cart } from './cart.js';
   function handleSaleCompletion(receipt) {
     if (!receipt) return false;
 
-    if (shouldAutoOpenOfficialPdf(receipt)) {
-      return openOfficialPdfAndReset(receipt);
-    }
-
-    if (shouldAutoPrintDetailedReceipt(receipt)) {
-      showReceipt(receipt, { autoPrint: true });
+    if (shouldAutoPrintOfficialReceipt(receipt)) {
+      showReceipt(receipt, { autoPrint: true, autoReturn: true });
       return true;
     }
 
     return false;
   }
 
-  function shouldAutoOpenOfficialPdf(receipt) {
+  function shouldAutoPrintOfficialReceipt(receipt) {
     return !!(
       receipt &&
       receipt.printer_enabled &&
-      receipt.boleta_status === 'emitida' &&
-      receipt.boleta_pdf_url
-    );
-  }
-
-  function shouldAutoPrintDetailedReceipt(receipt) {
-    return !!(
-      receipt &&
-      receipt.printer_enabled &&
+      receipt.boleta_folio &&
       receipt.boleta_status === 'emitida'
     );
-  }
-
-  function openOfficialPdfAndReset(receipt) {
-    var pdfUrl = receipt && receipt.boleta_pdf_url;
-    if (!pdfUrl) return false;
-
-    var openedWindow = null;
-    try {
-      openedWindow = window.open(pdfUrl, '_blank');
-    } catch (err) {
-      openedWindow = null;
-    }
-
-    if (!openedWindow) {
-      showToast('No se pudo abrir el PDF oficial. Mostrando comprobante detallado.', 'warning');
-      return false;
-    }
-
-    autoPrintState.lastSaleId = receipt.sale_id || null;
-    autoPrintState.inFlight = false;
-    router.navigate('sale');
-    showToast('Abriendo PDF oficial para imprimir...', 'success');
-    return true;
   }
 
   function showReceipt(receipt, options) {
     options = options || {};
 
-    // API Gateway receives a consolidated line; this printable copy uses the
-    // official boleta metadata plus the real Monay sale lines.
+    // The printable layout prioritizes an official SII-style thermal format
+    // built from the emitted boleta metadata plus the real sale lines.
     var content = document.getElementById('receipt-content');
     if (!content) return;
 
@@ -1157,24 +1123,32 @@ import { Cart } from './cart.js';
     var methodLabel = receipt.payment_method === 'efectivo' ? 'Efectivo' : 'Tarjeta';
     var emittedAt = receipt.boleta_emitted_at || receipt.date;
     var html = '';
+    html += '<div class="receipt-brand">MONAY MARKET POS</div>';
+    html += '<div class="receipt-document-head">';
+    html += '<div class="receipt-document-title">BOLETA ELECTRONICA</div>';
+    if (receipt.boleta_folio) {
+      html += '<div class="receipt-document-folio">N. ' + escapeHtml(receipt.boleta_folio) + '</div>';
+    }
+    html += '</div>';
+
     html += '<div class="receipt-store-name">' + escapeHtml(receipt.store_name) + '</div>';
     if (receipt.store_rut) {
-      html += '<div class="receipt-store-line">' + escapeHtml(receipt.store_rut) + '</div>';
+      html += '<div class="receipt-store-line">R.U.T.: ' + escapeHtml(receipt.store_rut) + '</div>';
     }
     if (receipt.store_giro) {
-      html += '<div class="receipt-store-line">Giro: ' + escapeHtml(receipt.store_giro) + '</div>';
+      html += '<div class="receipt-store-line">GIRO: ' + escapeHtml(receipt.store_giro) + '</div>';
     }
-    if (receipt.boleta_folio) {
-      html += '<div class="receipt-doc-line">BOLETA ELECTRÓNICA NUMERO: ' + escapeHtml(receipt.boleta_folio) + '</div>';
-      if (receipt.store_rut) {
-        html += '<div class="receipt-doc-line">REF. VENDEDOR: ' + escapeHtml(receipt.store_rut) + '</div>';
-      }
-    }
-    html += '<div class="receipt-doc-line">Fecha: ' + formatReceiptDate(receipt.date) + '</div>';
-    html += '<div class="receipt-date">Emitida: ' + formatReceiptDateTime(emittedAt) + '</div>';
+    html += '<div class="receipt-document-city">S.I.I. - CHILE</div>';
     html += '<hr class="receipt-divider">';
 
-    html += '<div class="receipt-payment-info receipt-payment-official">Medio de pago: ' + methodLabel + '</div>';
+    html += '<div class="receipt-meta-row"><span>FECHA</span><strong>' + formatReceiptDate(receipt.date) + '</strong></div>';
+    html += '<div class="receipt-meta-row"><span>EMISION</span><strong>' + formatReceiptDateTime(emittedAt) + '</strong></div>';
+    html += '<div class="receipt-meta-row"><span>PAGO</span><strong>' + methodLabel.toUpperCase() + '</strong></div>';
+    if (receipt.store_rut) {
+      html += '<div class="receipt-meta-row"><span>REF. VENDEDOR</span><strong>' + escapeHtml(receipt.store_rut) + '</strong></div>';
+    }
+
+    html += '<div class="receipt-section-title">DETALLE</div>';
 
     html += '<div class="receipt-items">';
     for (var i = 0; i < items.length; i++) {
@@ -1196,13 +1170,13 @@ import { Cart } from './cart.js';
     html += '</div>';
 
     if (receipt.payment_method === 'efectivo' && receipt.amount_received != null) {
-      html += '<div class="receipt-payment-info">Recibido: ' + formatCLP(receipt.amount_received) + '</div>';
-      html += '<div class="receipt-payment-info">Vuelto: ' + formatCLP(receipt.change_amount) + '</div>';
+      html += '<div class="receipt-meta-row"><span>RECIBIDO</span><strong>' + formatCLP(receipt.amount_received) + '</strong></div>';
+      html += '<div class="receipt-meta-row"><span>VUELTO</span><strong>' + formatCLP(receipt.change_amount) + '</strong></div>';
     }
 
     html += '<div class="receipt-tax-note">';
-    html += '<div>El IVA incluido en esta boleta es de:</div>';
-    html += '<div>' + formatCLP(receipt.iva_included) + '</div>';
+    html += '<span>IVA incluido</span>';
+    html += '<strong>' + formatCLP(receipt.iva_included) + '</strong>';
     html += '</div>';
 
     if (receipt.boleta_folio) {
@@ -1217,7 +1191,7 @@ import { Cart } from './cart.js';
       html += '<div class="receipt-timbre-summary">Verifique documento en sii.cl</div>';
       html += '</div>';
       if (receipt.boleta_pdf_url) {
-        html += '<div class="receipt-pdf-link"><a href="' + escapeAttr(receipt.boleta_pdf_url) + '" target="_blank">Ver PDF oficial</a></div>';
+        html += '<div class="receipt-pdf-link"><a href="' + escapeAttr(receipt.boleta_pdf_url) + '" target="_blank" rel="noopener noreferrer">Ver PDF oficial</a></div>';
       }
     } else {
       var boletaStatus = getReceiptBoletaStatus(receipt.boleta_status);
@@ -1250,6 +1224,11 @@ import { Cart } from './cart.js';
       window.setTimeout(function () {
         try {
           window.print();
+          if (options.autoReturn) {
+            window.setTimeout(function () {
+              router.navigate('sale');
+            }, 450);
+          }
         } catch (err) {
           autoPrintState.lastSaleId = null;
           showToast('No se pudo iniciar la impresion automatica', 'error');
@@ -1819,11 +1798,58 @@ function initArqueo() {
   }
 
   function redirectToCentralLogin() {
+    if (authRedirectInFlight) return;
+    authRedirectInFlight = true;
     startActivity('Abriendo acceso del POS', {
       blocking: true,
       message: 'Redirigiendo al inicio de sesion central.',
     });
-    window.location.assign(getCentralLoginUrl());
+    window.location.replace(getCentralLoginUrl());
+  }
+
+  function clearPosClientState() {
+    api.clearToken();
+    Cart.clear();
+    sessionStorage.removeItem('monay_login_url');
+    clearCookie('monay_pos_token');
+    clearCookie('monay_pos_user');
+    clearCookie('monay_login_url');
+
+    var cacheClearPromise = Promise.resolve();
+    if ('caches' in window && typeof window.caches.keys === 'function') {
+      cacheClearPromise = window.caches.keys().then(function (keys) {
+        return Promise.all(
+          keys
+            .filter(function (key) {
+              return key.indexOf('monay-pos-') === 0;
+            })
+            .map(function (key) {
+              return window.caches.delete(key);
+            })
+        );
+      }).catch(function () {
+        return [];
+      });
+    }
+
+    var unregisterPromise = Promise.resolve();
+    if ('serviceWorker' in navigator && typeof navigator.serviceWorker.getRegistrations === 'function') {
+      unregisterPromise = navigator.serviceWorker.getRegistrations().then(function (registrations) {
+        return Promise.all(
+          registrations
+            .filter(function (registration) {
+              return registration.scope.indexOf('/pos/') !== -1;
+            })
+            .map(function (registration) {
+              return registration.unregister();
+            })
+        );
+      }).catch(function () {
+        return [];
+      });
+    }
+
+    return Promise.all([cacheClearPromise, unregisterPromise]);
   }
 
   function importRedirectSession() {
@@ -1865,9 +1891,10 @@ function initArqueo() {
     var btn = document.getElementById('btn-logout');
     if (btn) {
       btn.addEventListener('click', function () {
-        api.clearToken();
-        Cart.clear();
-        redirectToCentralLogin();
+        if (authRedirectInFlight) return;
+        clearPosClientState().finally(function () {
+          redirectToCentralLogin();
+        });
       });
     }
   }
@@ -1944,6 +1971,14 @@ function initArqueo() {
   }
 
   window.addEventListener('online', syncOfflineSales);
+
+  window.addEventListener('pageshow', function () {
+    if (!isCashierSession()) {
+      clearPosClientState().finally(function () {
+        redirectToCentralLogin();
+      });
+    }
+  });
 
   // ----------------------------------------------------------
   // App Init

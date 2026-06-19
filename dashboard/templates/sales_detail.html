@@ -278,6 +278,7 @@
                     </p>
                     {% if sale.boleta_status in ['pendiente', 'error'] %}
                     <form action="{{ url_for('sales_retry_boleta', sale_id=sale.id) }}" method="post" class="sales-detail-retry">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="btn btn-sm btn-primary">🔄 Reintentar Boleta</button>
                     </form>
                     {% endif %}

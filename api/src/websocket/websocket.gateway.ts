@@ -58,9 +58,7 @@ export class AppWebSocketGateway
   }
 
   private authenticateClient(client: Socket): JwtPayload {
-    const token =
-      client.handshake.auth?.token ??
-      client.handshake.query?.token;
+    const token = client.handshake.auth?.token;
 
     if (!token || typeof token !== 'string') {
       throw new Error('No token provided');

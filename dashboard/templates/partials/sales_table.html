@@ -37,6 +37,7 @@
             <td style="white-space: nowrap;">
                 {% if pending_only or s.boleta_status in ['pendiente', 'error'] %}
                 <form action="{{ url_for('sales_retry_boleta', sale_id=s.id) }}" method="post" style="display: inline;">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                     <button type="submit" class="btn btn-sm btn-primary">🔄 Reintentar</button>
                 </form>
                 {% endif %}

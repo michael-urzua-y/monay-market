@@ -13,6 +13,7 @@ function serializeConfig(config: RuntimeConfig): string {
 export class RuntimeConfigController {
   @Get('runtime-config.js')
   @Header('Content-Type', 'application/javascript; charset=utf-8')
+  @Header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0')
   getRuntimeConfig(): string {
     const config: RuntimeConfig = {
       MONAY_API_URL: process.env.PWA_API_URL || '',

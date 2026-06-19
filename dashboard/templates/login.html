@@ -108,6 +108,7 @@
                     {% endif %}
 
                     <form method="POST" action="{{ url_for('login') }}" class="login-form" data-loading-text="Validando acceso...">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                         <div class="form-group">
                             <label for="username">Nombre de usuario</label>
                             <div class="input-wrap">

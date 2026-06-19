@@ -159,6 +159,7 @@
                         <td>
                             {% if u.role == 'cajero' %}
                             <form method="post" action="{{ url_for('users_toggle', user_id=u.id) }}" style="display: inline;">
+                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                                 {% if u.active %}
                                 <input type="hidden" name="active" value="false">
                                 <button type="submit" class="btn btn-sm btn-danger">Desactivar</button>
@@ -188,6 +189,7 @@
             <div class="card-header"><h3 class="card-title">+ Crear cajero</h3></div>
             <div class="card-body">
                 <form method="post" action="{{ url_for('users_create') }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                     <div class="form-group">
                         <label for="create_username">Nombre de usuario</label>
                         <input type="text" id="create_username" name="username" required placeholder="sebastian.urzuay" autocomplete="username">
@@ -216,6 +218,7 @@
             <div class="card-header"><h3 class="card-title">🔑 Cambiar Contraseña</h3></div>
             <div class="card-body">
                 <form method="post" action="{{ url_for('settings_change_password') }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                     <div class="form-group">
                         <label for="current_password">Contraseña actual</label>
                         <input type="password" id="current_password" name="current_password" required placeholder="••••••••" minlength="6">
@@ -246,6 +249,7 @@
                     Vas a actualizar la contraseña de <strong x-text="resetUsername"></strong>.
                 </p>
                 <form :action="`/users/${resetUserId}/reset-password`" method="post">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                     <div class="form-group">
                         <label for="reset_password">Nueva contraseña</label>
                         <input type="password" id="reset_password" name="password" required minlength="6" placeholder="Mínimo 6 caracteres" autocomplete="new-password">

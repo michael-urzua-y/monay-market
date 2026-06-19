@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#c9952a">
     <meta name="description" content="Monay Market - Sistema de gestión para almacenes y minimarkets">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}Panel Admin{% endblock %} — Monay Market</title>
     
     <!-- Favicon para la pestaña del navegador -->
@@ -181,6 +182,7 @@
     <!-- Lógica global para validación de fechas (Bloquear futuro y cruces de fechas) -->
     <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
         const dateInputs = document.querySelectorAll('input[type="date"]');
         const today = new Date();
         const yyyy = today.getFullYear();
@@ -208,6 +210,34 @@
                     dateTo.value = this.value;
                 }
             });
+        }
+
+        if (csrfToken) {
+            document.querySelectorAll('form[method="post"], form[method="POST"]').forEach(function(form) {
+                if (form.querySelector('input[name="_csrf_token"]')) {
+                    return;
+                }
+
+                const tokenInput = document.createElement('input');
+                tokenInput.type = 'hidden';
+                tokenInput.name = '_csrf_token';
+                tokenInput.value = csrfToken;
+                form.prepend(tokenInput);
+            });
+        }
+    });
+    </script>
+
+    <script>
+    document.addEventListener('htmx:configRequest', function(event) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        if (!csrfToken) {
+            return;
+        }
+
+        event.detail.headers['X-CSRF-Token'] = csrfToken;
+        if (event.detail.parameters && !event.detail.parameters._csrf_token) {
+            event.detail.parameters._csrf_token = csrfToken;
         }
     });
     </script>
@@ -507,7 +537,7 @@
             });
         }
 
-        window.addEventListener('pageshow', () => {
+        window.addEventListener('pageshow', (event) => {
             Array.from(pendingOperations.keys()).forEach((token) => endOperation(token));
             htmxOperations.clear();
             overlay.classList.remove('is-visible');
@@ -516,6 +546,14 @@
             document.body.classList.remove('is-busy');
             document.body.setAttribute('aria-busy', 'false');
             stopTitleAnimation();
+
+            const navigationEntries = window.performance && typeof window.performance.getEntriesByType === 'function'
+                ? window.performance.getEntriesByType('navigation')
+                : [];
+            const navType = navigationEntries.length > 0 ? navigationEntries[0].type : '';
+            if (event.persisted || navType === 'back_forward') {
+                window.location.reload();
+            }
         });
     })();
     </script>

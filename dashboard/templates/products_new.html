@@ -24,6 +24,7 @@
         </div>
         <div class="card-body">
             <form method="post" action="{{ url_for('products_new') }}">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                 {% set form_values = form %}
                 {% set current_category_id = form.get('category_id') %}
                 {% set stock_label = 'Stock inicial' %}

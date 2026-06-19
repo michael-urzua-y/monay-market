@@ -1,5 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { extname, isAbsolute, normalize } from 'path';
 import { Repository } from 'typeorm';
 import { TenantConfig } from '../entities/tenant-config.entity';
 import { Subscription } from '../entities/subscription.entity';
@@ -47,7 +48,7 @@ export class TenantsService {
     if (dto.sii_clave_tributaria !== undefined) config.sii_clave_tributaria = this.normalizeOptionalString(dto.sii_clave_tributaria);
     if (dto.sii_razon_social !== undefined) config.sii_razon_social = this.normalizeOptionalString(dto.sii_razon_social);
     if (dto.sii_giro !== undefined) config.sii_giro = this.normalizeOptionalString(dto.sii_giro);
-    if (dto.sii_certificado_path !== undefined) config.sii_certificado_path = this.normalizeOptionalString(dto.sii_certificado_path);
+    if (dto.sii_certificado_path !== undefined) config.sii_certificado_path = this.normalizeCertificatePath(dto.sii_certificado_path);
     if (dto.sii_certificado_password !== undefined) config.sii_certificado_password = this.normalizeOptionalString(dto.sii_certificado_password);
     if (dto.sii_sandbox_mode !== undefined) config.sii_sandbox_mode = dto.sii_sandbox_mode;
 
@@ -91,5 +92,28 @@ export class TenantsService {
     if (value == null) return null;
     const normalized = value.trim();
     return normalized.length > 0 ? normalized : null;
+  }
+
+  private normalizeCertificatePath(value: string | null | undefined): string | null {
+    const normalized = this.normalizeOptionalString(value);
+    if (!normalized) {
+      return null;
+    }
+
+    if (normalized.includes('\0')) {
+      throw new BadRequestException('Ruta de certificado invalida');
+    }
+
+    const safePath = normalize(normalized);
+    if (!isAbsolute(safePath)) {
+      throw new BadRequestException('La ruta del certificado debe ser absoluta');
+    }
+
+    const extension = extname(safePath).toLowerCase();
+    if (!['.pfx', '.p12'].includes(extension)) {
+      throw new BadRequestException('El certificado debe ser .pfx o .p12');
+    }
+
+    return safePath;
   }
 }

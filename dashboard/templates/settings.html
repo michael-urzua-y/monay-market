@@ -599,6 +599,7 @@
                 {% endif %}
 
                 <form method="post" action="{{ url_for('settings_sii') }}" enctype="multipart/form-data" x-data="{ editBusiness: {{ 'false' if business_ready else 'true' }} }">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                     <div class="settings-block-grid">
                         <section class="settings-block-card full">
                             <div class="settings-block-header">
@@ -857,6 +858,7 @@
                 </div>
 
                 <form method="post" action="{{ url_for('settings_printer') }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                     <section class="settings-block-card full">
                         <div class="settings-block-header">
                             <div>

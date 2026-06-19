@@ -9,7 +9,7 @@ const JWT_SECRET = 'test-secret-key';
 function createMockSocket(overrides: Partial<Socket> = {}): Socket {
   return {
     id: 'socket-1',
-    handshake: { auth: {}, query: {} },
+    handshake: { auth: {} },
     join: jest.fn(),
     disconnect: jest.fn(),
     data: {},
@@ -54,7 +54,7 @@ describe('AppWebSocketGateway', () => {
         tenant_id: 't1',
       });
       const client = createMockSocket({
-        handshake: { auth: { token }, query: {} } as any,
+        handshake: { auth: { token } } as any,
       });
 
       gateway.handleConnection(client);
@@ -70,7 +70,7 @@ describe('AppWebSocketGateway', () => {
       expect(client.disconnect).not.toHaveBeenCalled();
     });
 
-    it('should authenticate when token is in handshake.query', () => {
+    it('should disconnect client when token is only in handshake.query', () => {
       const token = signToken({
         user_id: 'u2',
         role: 'cajero',
@@ -82,8 +82,8 @@ describe('AppWebSocketGateway', () => {
 
       gateway.handleConnection(client);
 
-      expect(client.join).toHaveBeenCalledWith('tenant:t2');
-      expect(client.disconnect).not.toHaveBeenCalled();
+      expect(client.disconnect).toHaveBeenCalledWith(true);
+      expect(client.join).not.toHaveBeenCalled();
     });
 
     it('should disconnect client when no token is provided', () => {
@@ -97,7 +97,7 @@ describe('AppWebSocketGateway', () => {
 
     it('should disconnect client when token is invalid', () => {
       const client = createMockSocket({
-        handshake: { auth: { token: 'bad-token' }, query: {} } as any,
+        handshake: { auth: { token: 'bad-token' } } as any,
       });
 
       gateway.handleConnection(client);
@@ -109,7 +109,7 @@ describe('AppWebSocketGateway', () => {
     it('should disconnect client when token payload is missing required fields', () => {
       const token = signToken({ user_id: 'u1' }); // missing tenant_id and role
       const client = createMockSocket({
-        handshake: { auth: { token }, query: {} } as any,
+        handshake: { auth: { token } } as any,
       });
 
       gateway.handleConnection(client);

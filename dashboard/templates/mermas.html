@@ -148,6 +148,7 @@
                 {% endif %}
 
                 <form method="post">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                     <div class="form-group" style="position: relative;">
                         <label for="search-input">Producto</label>
                         <div style="display: flex; gap: 8px;">
