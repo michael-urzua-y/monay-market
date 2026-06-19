@@ -127,6 +127,11 @@ import { Cart } from './cart.js';
   // Toast notifications
   // ----------------------------------------------------------
   let toastTimer = null;
+  var autoPrintState = {
+    inFlight: false,
+    lastSaleId: null,
+  };
+
   function showToast(message, type) {
     type = type || 'error';
     let toast = document.getElementById('app-toast');
@@ -999,7 +1004,7 @@ import { Cart } from './cart.js';
       resetPaymentForm();
 
       if (result.receipt) {
-        showReceipt(result.receipt);
+        showReceipt(result.receipt, { autoPrint: true });
       } else {
         showToast('Venta registrada', 'success');
       }
@@ -1083,7 +1088,9 @@ import { Cart } from './cart.js';
   // ----------------------------------------------------------
   // Receipt Display
   // ----------------------------------------------------------
-  function showReceipt(receipt) {
+  function showReceipt(receipt, options) {
+    options = options || {};
+
     // API Gateway receives a consolidated line; this printable copy uses the
     // official boleta metadata plus the real Monay sale lines.
     var content = document.getElementById('receipt-content');
@@ -1168,6 +1175,36 @@ import { Cart } from './cart.js';
     content.innerHTML = html;
     renderReceiptTimbres(content);
     router.navigate('receipt');
+    maybeAutoPrintReceipt(receipt, options);
+  }
+
+  function maybeAutoPrintReceipt(receipt, options) {
+    if (!options || !options.autoPrint) return;
+    if (!receipt || !receipt.printer_enabled) return;
+    if (!receipt.sale_id || autoPrintState.lastSaleId === receipt.sale_id) return;
+    if (receipt.boleta_status !== 'emitida') return;
+    if (autoPrintState.inFlight) return;
+
+    autoPrintState.inFlight = true;
+    autoPrintState.lastSaleId = receipt.sale_id;
+
+    waitForReceiptTimbres().then(function () {
+      var printDelayMs = 350;
+      window.setTimeout(function () {
+        try {
+          window.print();
+        } catch (err) {
+          autoPrintState.lastSaleId = null;
+          showToast('No se pudo iniciar la impresion automatica', 'error');
+        } finally {
+          autoPrintState.inFlight = false;
+        }
+      }, printDelayMs);
+    }).catch(function () {
+      autoPrintState.inFlight = false;
+      autoPrintState.lastSaleId = null;
+      showToast('No se pudo preparar el timbre para impresion', 'error');
+    });
   }
 
   function getReceiptBoletaStatus(status) {

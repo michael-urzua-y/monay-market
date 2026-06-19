@@ -97,6 +97,7 @@ export class ApiGatewayProvider implements ISiiProvider {
         throw new Error(errorMessage);
       }
 
+      this.logger.log(`API Gateway response OK: ${JSON.stringify(data).substring(0, 500)}`);
       return this.parseEmitResult(data);
     } catch (error) {
       if (error instanceof SiiCredentialError) throw error;
@@ -256,13 +257,15 @@ export class ApiGatewayProvider implements ISiiProvider {
     ]);
 
     if (!timbre) {
-      throw new Error('API Gateway no retornó timbre electrónico de la boleta');
+      this.logger.warn(`API Gateway no retornó timbre electrónico para folio ${folio}. Se usará placeholder.`);
     }
 
     return {
       folio: String(folio),
       pdf_url: typeof pdfUrl === 'string' && pdfUrl.startsWith('http') ? pdfUrl : null,
-      timbre_electronico: String(timbre),
+      timbre_electronico: timbre
+        ? String(timbre)
+        : `<EBOLETA><PROVEEDOR>api_gateway</PROVEEDOR><FOLIO>${folio}</FOLIO></EBOLETA>`,
     };
   }
 

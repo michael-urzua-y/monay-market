@@ -31,6 +31,7 @@ export interface ReceiptData {
   boleta_pdf_url: string | null;
   boleta_provider: string | null;
   boleta_emitted_at: string | null;
+  printer_enabled: boolean;
 }
 
 @Injectable()
@@ -109,6 +110,7 @@ export class ReceiptService {
       boleta_pdf_url: boletaPdfUrl,
       boleta_provider: boletaProvider,
       boleta_emitted_at: boletaEmittedAt,
+      printer_enabled: Boolean(config?.printer_enabled),
     };
   }
 }

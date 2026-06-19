@@ -90,6 +90,7 @@ describe('ReceiptService', () => {
       sii_razon_social: 'MINIMARKET JUAN PABLO FAUNDEZ ESPINOSA E.I.R.L.',
       sii_rut_emisor: '78.260.737-5',
       sii_giro: 'ALMACEN, MINIMARKE, VTA DE ABARROTES',
+      printer_enabled: true,
     });
 
     const receipt = await service.generateReceipt(tenantId, makeSale());
@@ -97,6 +98,7 @@ describe('ReceiptService', () => {
     expect(receipt.store_name).toBe('MINIMARKET JUAN PABLO FAUNDEZ ESPINOSA E.I.R.L.');
     expect(receipt.store_rut).toBe('78.260.737-5');
     expect(receipt.store_giro).toBe('ALMACEN, MINIMARKE, VTA DE ABARROTES');
+    expect(receipt.printer_enabled).toBe(true);
   });
 
   it('should fallback to "Tienda" when tenant not found', async () => {
@@ -106,6 +108,7 @@ describe('ReceiptService', () => {
     const receipt = await service.generateReceipt(tenantId, sale);
 
     expect(receipt.store_name).toBe('Tienda');
+    expect(receipt.printer_enabled).toBe(false);
   });
 
   it('should include formatted date from sale created_at', async () => {
