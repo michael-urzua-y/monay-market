@@ -765,7 +765,7 @@
                             <div class="settings-form-grid">
                                 <div class="form-group settings-standard-field">
                                     <label for="sii_razon_social">Razón social</label>
-                                    <input type="text" id="sii_razon_social" name="sii_razon_social" value="{{ config.get('sii_razon_social', '') }}" placeholder="Nombre de la empresa" :disabled="!editBusiness" autocomplete="organization">
+                                    <input type="text" id="sii_razon_social" name="sii_razon_social" value="{{ config.get('sii_razon_social') or '' }}" placeholder="Nombre de la empresa" :disabled="!editBusiness" autocomplete="organization">
                                     {% if config.get('sii_razon_social') %}
                                     <span class="badge badge-success" x-show="editBusiness" x-cloak>Configurado</span>
                                     <span class="badge badge-success" x-show="!editBusiness" x-cloak>Bloqueado</span>
@@ -775,7 +775,7 @@
 
                                 <div class="form-group settings-standard-field">
                                     <label for="sii_giro">Giro</label>
-                                    <input type="text" id="sii_giro" name="sii_giro" value="{{ config.get('sii_giro', '') }}" placeholder="Ej: Venta al por menor de alimentos" :disabled="!editBusiness" autocomplete="organization-title">
+                                    <input type="text" id="sii_giro" name="sii_giro" value="{{ config.get('sii_giro') or '' }}" placeholder="Ej: Venta al por menor de alimentos" :disabled="!editBusiness" autocomplete="organization-title">
                                     {% if config.get('sii_giro') %}
                                     <span class="badge badge-success" x-show="editBusiness" x-cloak>Configurado</span>
                                     <span class="badge badge-success" x-show="!editBusiness" x-cloak>Bloqueado</span>

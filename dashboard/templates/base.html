@@ -8,19 +8,19 @@
     <title>{% block title %}Panel Admin{% endblock %} — Monay Market</title>
     
     <!-- Favicon para la pestaña del navegador -->
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='monay-market-logo.png') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='monay-market-logo.png', v=asset_version) }}">
 
     <!-- HTMX for partial page updates -->
-    <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/htmx.min.js', v=asset_version) }}"></script>
 
     <!-- Alpine.js for local interactivity (modals, toggles) -->
-    <script defer src="{{ url_for('static', filename='vendor/alpine.min.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='vendor/alpine.min.js', v=asset_version) }}"></script>
 
     <!-- Chart.js for dashboard charts -->
-    <script src="{{ url_for('static', filename='vendor/chart.umd.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendor/chart.umd.min.js', v=asset_version) }}"></script>
 
     <!-- Custom styles -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v=asset_version) }}">
 
     {% block head %}{% endblock %}
 
@@ -91,7 +91,7 @@
                 </button>
                 <a href="{{ url_for('dashboard') }}" class="sidebar-logo" aria-label="Ir al dashboard de Monay Market">
                     <img
-                        src="{{ url_for('static', filename='monay-market-logo-horizontal.png') }}"
+                        src="{{ url_for('static', filename='monay-market-logo-horizontal.png', v=asset_version) }}"
                         alt="Monay Market"
                         class="sidebar-logo-image"
                     >

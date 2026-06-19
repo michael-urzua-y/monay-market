@@ -114,7 +114,10 @@ def login_required(f):
 @app.context_processor
 def inject_user():
     """Make user data available in all templates."""
-    return {"current_user": session.get("user")}
+    return {
+        "current_user": session.get("user"),
+        "asset_version": app.config.get("ASSET_VERSION", "1"),
+    }
 
 
 def save_certificate_upload(cert_file, tenant_id):

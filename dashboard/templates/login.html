@@ -6,8 +6,8 @@
     <meta name="theme-color" content="#06100d">
     <meta name="description" content="Monay Market - Acceso al panel de administración">
     <title>Iniciar Sesión - Monay Market</title>
-    <link rel="icon" type="image/png" href="{{ url_for('static', filename='monay-market-logo.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='monay-market-logo.png', v=asset_version) }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css', v=asset_version) }}">
 </head>
 <body class="login-page">
     <main class="login-shell">
@@ -15,7 +15,7 @@
             {% set whatsapp_message = "Hola Monay Market, les escribo desde la versión web y me gustaría conocer más sobre el servicio y sus costos." %}
             <a href="{{ url_for('login') }}" class="login-brand" aria-label="Monay Market">
                 <img
-                    src="{{ url_for('static', filename='monay-market-logo-horizontal.png') }}"
+                    src="{{ url_for('static', filename='monay-market-logo-horizontal.png', v=asset_version) }}"
                     alt="Monay Market"
                     class="login-brand-logo"
                 >
@@ -47,7 +47,7 @@
 
                 <div class="login-visual" aria-hidden="true">
                     <img
-                        src="{{ url_for('static', filename='login-market-visual.webp') }}"
+                        src="{{ url_for('static', filename='login-market-visual.webp', v=asset_version) }}"
                         alt=""
                         loading="eager"
                         decoding="async"

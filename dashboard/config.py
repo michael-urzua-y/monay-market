@@ -1,5 +1,6 @@
 import os
 from datetime import timedelta
+from datetime import datetime
 
 from dotenv import load_dotenv
 
@@ -7,6 +8,7 @@ load_dotenv()
 
 
 class Config:
+    ASSET_VERSION = os.environ.get("ASSET_VERSION", datetime.utcnow().strftime("%Y%m%d%H%M"))
     API_URL = os.environ.get("API_URL", "http://localhost:3000")
     PUBLIC_APP_URL = os.environ.get("PUBLIC_APP_URL", "http://localhost:8080")
     LOGIN_URL = os.environ.get("LOGIN_URL")
