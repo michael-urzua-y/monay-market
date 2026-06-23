@@ -1194,7 +1194,7 @@ import { Cart } from './cart.js';
     html += '<span>' + formatCLP(receipt.total) + '</span>';
     html += '</div>';
 
-    html += '<div class="receipt-tax-note">El IVA incluido en esta boleta es de:<strong>' + formatCLP(receipt.iva_included) + '</strong></div>';
+    html += '<div class="receipt-tax-note"><span>El IVA incluido en esta boleta es de:</span><strong>' + formatCLP(receipt.iva_included) + '</strong></div>';
 
     if (receipt.boleta_folio) {
       html += '<div class="receipt-timbre">';

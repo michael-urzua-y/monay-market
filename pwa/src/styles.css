@@ -1150,6 +1150,8 @@ body.app-booting .global-loading-panel {
 }
 
 .receipt-brand {
+  display: block;
+  width: 100%;
   text-align: center;
   font-size: 0.92rem;
   font-weight: 800;
@@ -1293,12 +1295,21 @@ body.app-booting .global-loading-panel {
   margin: 14px 0 10px;
   color: #111;
   font-size: 0.88rem;
-  line-height: 1.4;
+  line-height: 1.35;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.receipt-tax-note span {
+  flex: 1 1 auto;
 }
 
 .receipt-tax-note strong {
-  display: block;
-  margin-top: 2px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  margin-top: 0;
 }
 
 .receipt-timbre {
