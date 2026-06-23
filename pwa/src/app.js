@@ -86,6 +86,25 @@ import { Cart } from './cart.js';
     return Number.isInteger(n) ? String(n) : String(parseFloat(n.toFixed(3)));
   }
 
+  function parseIntegerInputValue(value) {
+    if (value == null) return 0;
+    var digits = String(value).replace(/[^\d]/g, '');
+    return digits ? parseInt(digits, 10) : 0;
+  }
+
+  function formatThousandsInputValue(value) {
+    var amount = parseIntegerInputValue(value);
+    return amount ? amount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '';
+  }
+
+  function bindThousandsFormatter(input) {
+    if (!input) return;
+    input.addEventListener('input', function () {
+      var formatted = formatThousandsInputValue(input.value);
+      input.value = formatted;
+    });
+  }
+
   // ----------------------------------------------------------
   // Critical stock notifications
   // ----------------------------------------------------------
@@ -699,11 +718,13 @@ import { Cart } from './cart.js';
     var btnConfirm = document.getElementById('btn-weigh-confirm');
 
     if(weightInput && amountInput) {
+      bindThousandsFormatter(amountInput);
+
       weightInput.addEventListener('input', function() {
         if (!weighProduct) return;
         var w = parseFloat(weightInput.value);
         if (w > 0) {
-          amountInput.value = Math.round(w * weighProduct.price);
+          amountInput.value = formatThousandsInputValue(Math.round(w * weighProduct.price));
           btnConfirm.disabled = false;
         } else {
           amountInput.value = '';
@@ -713,7 +734,7 @@ import { Cart } from './cart.js';
 
       amountInput.addEventListener('input', function() {
         if (!weighProduct) return;
-        var amt = parseInt(amountInput.value, 10);
+        var amt = parseIntegerInputValue(amountInput.value);
         if (amt > 0) {
           weightInput.value = (amt / weighProduct.price).toFixed(3);
           btnConfirm.disabled = false;
@@ -1519,10 +1540,12 @@ import { Cart } from './cart.js';
     var useCritical = document.getElementById('bulk-product-use-critical');
     var criticalGroup = document.getElementById('bulk-product-critical-group');
     var saveBtn = document.getElementById('btn-save-bulk-product');
+    var priceInput = document.getElementById('bulk-product-price');
 
     if (openBtn) openBtn.addEventListener('click', openBulkProductModal);
     if (closeBtn) closeBtn.addEventListener('click', closeBulkProductModal);
     if (cancelBtn) cancelBtn.addEventListener('click', closeBulkProductModal);
+    bindThousandsFormatter(priceInput);
 
     if (useCritical) {
       useCritical.addEventListener('change', function () {
@@ -1542,7 +1565,7 @@ import { Cart } from './cart.js';
       var stockInput = document.getElementById('bulk-product-stock');
       var criticalInput = document.getElementById('bulk-product-critical');
       var name = nameInput ? nameInput.value.trim() : '';
-      var price = priceInput ? parseInt(priceInput.value, 10) : 0;
+      var price = priceInput ? parseIntegerInputValue(priceInput.value) : 0;
       var stock = parseBulkDecimal(stockInput);
       var criticalStock = useCritical && useCritical.checked ? parseBulkDecimal(criticalInput) : 0;
 
@@ -1840,9 +1863,9 @@ function initArqueo() {
   function redirectToCentralLogin() {
     if (authRedirectInFlight) return;
     authRedirectInFlight = true;
-    startActivity('Abriendo acceso del POS', {
+    startActivity('Cerrando sesión', {
       blocking: true,
-      message: 'Redirigiendo al inicio de sesion central.',
+      message: 'Redirigiendo al inicio de sesion...',
     });
     window.location.replace(getCentralLoginUrl());
   }
