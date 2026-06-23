@@ -920,18 +920,6 @@ import { Cart } from './cart.js';
       });
     }
 
-    // Quick amount buttons
-    var quickAmountBtns = document.querySelectorAll('.quick-amount-btn');
-    quickAmountBtns.forEach(function(btn) {
-      btn.addEventListener('click', function() {
-        var amount = parseInt(btn.dataset.amount, 10);
-        if (amountInput) {
-          amountInput.value = amount;
-          updatePaymentState();
-        }
-      });
-    });
-
     // Clear amount button
     var btnClearAmount = document.getElementById('btn-clear-amount');
     if (btnClearAmount) {
@@ -978,8 +966,9 @@ import { Cart } from './cart.js';
     var amountInput = document.getElementById('amount-received');
     var received = parseInt(amountInput ? amountInput.value : '0', 10) || 0;
 
+    btnPay.disabled = false;
+
     if (received <= 0) {
-      btnPay.disabled = true;
       if (changeDisplay) changeDisplay.classList.add('hidden');
       return;
     }
@@ -991,13 +980,11 @@ import { Cart } from './cart.js';
       changeLabel.textContent = 'Vuelto:';
       changeAmountEl.textContent = formatCLP(change);
       changeDisplay.className = 'change-display positive';
-      btnPay.disabled = false;
     } else {
       var missing = total - received;
       changeLabel.textContent = 'Falta:';
       changeAmountEl.textContent = formatCLP(missing);
       changeDisplay.className = 'change-display negative';
-      btnPay.disabled = true;
     }
   }
 
@@ -1023,7 +1010,18 @@ import { Cart } from './cart.js';
 
     if (selectedPaymentMethod === 'efectivo') {
       var amountInput = document.getElementById('amount-received');
-      body.amount_received = parseInt(amountInput ? amountInput.value : '0', 10) || 0;
+      var enteredAmount = parseInt(amountInput ? amountInput.value : '0', 10) || 0;
+      var cartTotal = Cart.getTotal();
+
+      if (enteredAmount > 0 && enteredAmount < cartTotal) {
+        finishActivity(paymentActivity);
+        setButtonLoading(btnPay, false);
+        updatePaymentState();
+        showToast('⚠️ Monto recibido insuficiente', 'warning');
+        return;
+      }
+
+      body.amount_received = enteredAmount > 0 ? enteredAmount : cartTotal;
     }
 
     if (!navigator.onLine) {
@@ -1149,20 +1147,16 @@ import { Cart } from './cart.js';
   function showReceipt(receipt, options) {
     options = options || {};
 
-    // The printable layout prioritizes an official SII-style thermal format
-    // built from the emitted boleta metadata plus the real sale lines.
     var content = document.getElementById('receipt-content');
     if (!content) return;
 
     var items = Array.isArray(receipt.items) ? receipt.items : [];
-    var methodLabel = receipt.payment_method === 'efectivo' ? 'Efectivo' : 'Tarjeta';
     var emittedAt = receipt.boleta_emitted_at || receipt.date;
     var html = '';
-    html += '<div class="receipt-brand">MONAY MARKET POS</div>';
     html += '<div class="receipt-document-head">';
     html += '<div class="receipt-document-title">BOLETA ELECTRONICA</div>';
     if (receipt.boleta_folio) {
-      html += '<div class="receipt-document-folio">N. ' + escapeHtml(receipt.boleta_folio) + '</div>';
+      html += '<div class="receipt-document-folio">NUMERO: ' + escapeHtml(receipt.boleta_folio) + '</div>';
     }
     html += '</div>';
 
@@ -1176,12 +1170,7 @@ import { Cart } from './cart.js';
     html += '<div class="receipt-document-city">S.I.I. - CHILE</div>';
     html += '<hr class="receipt-divider">';
 
-    html += '<div class="receipt-meta-row"><span>FECHA</span><strong>' + formatReceiptDate(receipt.date) + '</strong></div>';
     html += '<div class="receipt-meta-row"><span>EMISION</span><strong>' + formatReceiptDateTime(emittedAt) + '</strong></div>';
-    html += '<div class="receipt-meta-row"><span>PAGO</span><strong>' + methodLabel.toUpperCase() + '</strong></div>';
-    if (receipt.store_rut) {
-      html += '<div class="receipt-meta-row"><span>REF. VENDEDOR</span><strong>' + escapeHtml(receipt.store_rut) + '</strong></div>';
-    }
 
     html += '<div class="receipt-section-title">DETALLE</div>';
 
@@ -1204,20 +1193,12 @@ import { Cart } from './cart.js';
     html += '<span>' + formatCLP(receipt.total) + '</span>';
     html += '</div>';
 
-    if (receipt.payment_method === 'efectivo' && receipt.amount_received != null) {
-      html += '<div class="receipt-meta-row"><span>RECIBIDO</span><strong>' + formatCLP(receipt.amount_received) + '</strong></div>';
-      html += '<div class="receipt-meta-row"><span>VUELTO</span><strong>' + formatCLP(receipt.change_amount) + '</strong></div>';
-    }
-
-    html += '<div class="receipt-tax-note">';
-    html += '<span>IVA incluido</span>';
-    html += '<strong>' + formatCLP(receipt.iva_included) + '</strong>';
-    html += '</div>';
+    html += '<div class="receipt-tax-note">El IVA incluido en esta boleta es de:<strong>' + formatCLP(receipt.iva_included) + '</strong></div>';
 
     if (receipt.boleta_folio) {
       html += '<div class="receipt-timbre">';
       if (receipt.boleta_timbre) {
-        html += '<canvas class="receipt-timbre-code" width="520" height="128" data-receipt-timbre="' + escapeAttr(receipt.boleta_timbre) + '" aria-label="Timbre electrónico SII"></canvas>';
+        html += '<canvas class="receipt-timbre-code" width="620" height="160" data-receipt-timbre="' + escapeAttr(receipt.boleta_timbre) + '" aria-label="Timbre electrónico SII"></canvas>';
       } else {
         html += '<div class="receipt-boleta-status error">Timbre electrónico no recibido desde API Gateway</div>';
       }
@@ -1234,9 +1215,6 @@ import { Cart } from './cart.js';
         html += '<div class="receipt-boleta-status ' + boletaStatus.type + '">' + boletaStatus.label + '</div>';
       }
     }
-
-    html += '<hr class="receipt-divider">';
-    html += '<div class="receipt-footer">¡Gracias por su compra!</div>';
 
     content.innerHTML = html;
     renderReceiptTimbres(content);

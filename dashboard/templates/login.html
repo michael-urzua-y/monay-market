@@ -7,6 +7,7 @@
     <meta name="description" content="Monay Market - Acceso al panel de administración">
     <title>Iniciar Sesión - Monay Market</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='monay-market-logo.png', v=asset_version) }}">
+    <link rel="preload" as="image" href="{{ url_for('static', filename='monay-market-logo-horizontal.png', v=asset_version) }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css', v=asset_version) }}">
 </head>
 <body class="login-page">
@@ -18,6 +19,10 @@
                     src="{{ url_for('static', filename='monay-market-logo-horizontal.png', v=asset_version) }}"
                     alt="Monay Market"
                     class="login-brand-logo"
+                    width="668"
+                    height="200"
+                    fetchpriority="high"
+                    decoding="sync"
                 >
             </a>
 
@@ -49,8 +54,11 @@
                     <img
                         src="{{ url_for('static', filename='login-market-visual.webp', v=asset_version) }}"
                         alt=""
-                        loading="eager"
+                        width="1448"
+                        height="1086"
+                        loading="lazy"
                         decoding="async"
+                        fetchpriority="low"
                     >
                 </div>
 

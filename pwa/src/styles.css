@@ -1141,56 +1141,48 @@ body.app-booting .global-loading-panel {
   background: #fff;
   border: 1px solid #d9d9d9;
   border-radius: 8px;
-  padding: 34px 28px;
+  padding: 28px 24px;
   box-shadow: var(--shadow);
   font-family: 'Courier New', Courier, monospace;
-  font-size: 1rem;
-  line-height: 1.55;
+  font-size: 0.96rem;
+  line-height: 1.45;
   color: #111;
-}
-
-.receipt-brand {
-  text-align: center;
-  font-size: 0.82rem;
-  letter-spacing: 0.18em;
-  color: #4b5563;
-  margin-bottom: 10px;
 }
 
 .receipt-document-head {
   border: 1px solid #111;
-  padding: 10px 12px 8px;
+  padding: 10px 10px 8px;
   text-align: center;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .receipt-document-title {
-  font-size: 1.2rem;
+  font-size: 1.08rem;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
 
 .receipt-document-folio {
   margin-top: 4px;
-  font-size: 1.18rem;
+  font-size: 1rem;
   font-weight: 800;
 }
 
 .receipt-store-name {
   text-align: center;
-  font-size: 1.1rem;
+  font-size: 1.04rem;
   font-weight: 800;
   line-height: 1.35;
   text-transform: uppercase;
-  margin: 2px auto 10px;
-  max-width: 34ch;
+  margin: 2px auto 8px;
+  max-width: 30ch;
 }
 
 .receipt-store-line,
 .receipt-store-rut,
 .receipt-doc-line {
   text-align: center;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   color: #111;
   margin-bottom: 4px;
 }
@@ -1220,8 +1212,8 @@ body.app-booting .global-loading-panel {
   justify-content: space-between;
   align-items: flex-start;
   gap: 8px;
-  padding: 2px 0;
-  font-size: 0.92rem;
+  padding: 1px 0;
+  font-size: 0.88rem;
 }
 
 .receipt-meta-row span {
@@ -1234,9 +1226,9 @@ body.app-booting .global-loading-panel {
 }
 
 .receipt-section-title {
-  margin: 14px 0 6px;
+  margin: 12px 0 6px;
   text-align: center;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 800;
   letter-spacing: 0.16em;
   color: #111;
@@ -1253,7 +1245,7 @@ body.app-booting .global-loading-panel {
   align-items: flex-start;
   gap: 8px;
   padding: 2px 0;
-  font-size: 0.96rem;
+  font-size: 0.9rem;
 }
 
 .receipt-item-name {
@@ -1267,8 +1259,8 @@ body.app-booting .global-loading-panel {
 }
 
 .receipt-item-detail {
-  font-size: 0.86rem;
-  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  color: #3f3f46;
   padding-left: 2px;
   margin-bottom: 3px;
 }
@@ -1277,7 +1269,7 @@ body.app-booting .global-loading-panel {
   display: flex;
   justify-content: space-between;
   font-weight: 800;
-  font-size: 1.12rem;
+  font-size: 1rem;
   padding: 4px 0;
 }
 
@@ -1288,17 +1280,20 @@ body.app-booting .global-loading-panel {
 }
 
 .receipt-tax-note {
-  margin: 16px 0 10px;
+  margin: 14px 0 10px;
   color: #111;
-  font-size: 0.94rem;
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.receipt-tax-note strong {
+  display: block;
+  margin-top: 2px;
 }
 
 .receipt-timbre {
   margin-top: 14px;
-  padding: 12px 8px 12px;
+  padding: 10px 6px 12px;
   background: #fff;
   border: 1px dashed #b8b8b8;
   text-align: center;
@@ -1313,8 +1308,8 @@ body.app-booting .global-loading-panel {
 
 .receipt-timbre-code {
   display: block;
-  width: 92%;
-  max-width: 360px;
+  width: 100%;
+  max-width: 392px;
   height: auto;
   margin: 0 auto 8px;
   background: #fff;
@@ -1390,6 +1385,7 @@ body.app-booting .global-loading-panel {
   .app-header,
   .bottom-nav,
   .receipt-actions,
+  .receipt-pdf-link,
   .toast,
   .confirm-overlay,
   .global-loading-overlay {
@@ -1418,26 +1414,26 @@ body.app-booting .global-loading-panel {
     box-shadow: none;
     color: #000;
     background: #fff;
-    padding: 3mm 2.5mm 3.5mm;
-    font-size: 9pt;
+    padding: 3mm 2mm 3.5mm;
+    font-size: 8.5pt;
   }
 
   .receipt-timbre-code {
-    width: 58mm;
+    width: 62mm;
   }
 
   .receipt-document-head {
-    padding: 2.5mm 2mm 2mm;
+    padding: 2.2mm 1.8mm 1.8mm;
     margin-bottom: 3mm;
   }
 
   .receipt-document-title {
-    font-size: 11pt;
+    font-size: 10pt;
   }
 
   .receipt-document-folio,
   .receipt-total-row {
-    font-size: 10pt;
+    font-size: 9.5pt;
   }
 }
 

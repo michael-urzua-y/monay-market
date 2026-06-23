@@ -156,7 +156,7 @@
                         <div class="user-name">{{ current_user.username or current_user.email }}</div>
                     </div>
                     {% endif %}
-                    <a href="{{ url_for('logout') }}" class="btn btn-secondary top-logout-link">
+                    <a href="{{ url_for('logout') }}" class="btn btn-secondary top-logout-link" data-no-loading>
                         <span>🚪</span>
                         <span class="hide-mobile">Salir</span>
                     </a>
