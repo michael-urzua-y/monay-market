@@ -10,7 +10,7 @@ import { Cart } from './cart.js';
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '29';
+  var APP_ASSET_VERSION = '30';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -1153,6 +1153,7 @@ import { Cart } from './cart.js';
     var items = Array.isArray(receipt.items) ? receipt.items : [];
     var emittedAt = receipt.boleta_emitted_at || receipt.date;
     var html = '';
+    html += '<div class="receipt-brand">Monay Market</div>';
     html += '<div class="receipt-document-head">';
     html += '<div class="receipt-document-title">BOLETA ELECTRONICA</div>';
     if (receipt.boleta_folio) {
@@ -1229,13 +1230,19 @@ import { Cart } from './cart.js';
     if (receipt.boleta_status !== 'emitida') return;
     if (autoPrintState.inFlight) return;
 
+    var printActivity = startActivity('Generando boleta oficial', {
+      message: 'Preparando timbre SII e iniciando impresion...',
+      blocking: true,
+    });
+
     autoPrintState.inFlight = true;
     autoPrintState.lastSaleId = receipt.sale_id;
 
     waitForReceiptTimbres().then(function () {
-      var printDelayMs = 350;
+      var printDelayMs = 80;
       window.setTimeout(function () {
         try {
+          finishActivity(printActivity);
           window.print();
           if (options.autoReturn) {
             window.setTimeout(function () {
@@ -1244,12 +1251,14 @@ import { Cart } from './cart.js';
           }
         } catch (err) {
           autoPrintState.lastSaleId = null;
+          finishActivity(printActivity);
           showToast('No se pudo iniciar la impresion automatica', 'error');
         } finally {
           autoPrintState.inFlight = false;
         }
       }, printDelayMs);
     }).catch(function () {
+      finishActivity(printActivity);
       autoPrintState.inFlight = false;
       autoPrintState.lastSaleId = null;
       showToast('No se pudo preparar el timbre para impresion', 'error');
@@ -1280,8 +1289,16 @@ import { Cart } from './cart.js';
     var btnPrint = document.getElementById('btn-print-receipt');
     if (btnPrint) {
       btnPrint.addEventListener('click', function () {
+        var printActivity = startActivity('Generando Boleta', {
+          message: 'Preparando timbre SII e iniciando impresion...',
+          blocking: true,
+        });
         waitForReceiptTimbres().then(function () {
+          finishActivity(printActivity);
           window.print();
+        }).catch(function () {
+          finishActivity(printActivity);
+          showToast('No se pudo preparar el timbre para impresion', 'error');
         });
       });
     }
@@ -2025,6 +2042,10 @@ function initArqueo() {
     if (navigator.onLine) {
       syncOfflineSales();
     }
+
+    waitForBwipJs(4000).catch(function () {
+      // The receipt flow retries if the script is not ready yet.
+    });
 
     // If we have a token, go to sale screen; otherwise login
     if (isCashierSession()) {

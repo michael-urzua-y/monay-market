@@ -1149,6 +1149,16 @@ body.app-booting .global-loading-panel {
   color: #111;
 }
 
+.receipt-brand {
+  text-align: center;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #111;
+  margin-bottom: 10px;
+}
+
 .receipt-document-head {
   border: 1px solid #111;
   padding: 10px 10px 8px;
