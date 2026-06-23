@@ -488,6 +488,13 @@
         }, true);
 
         if (window.htmx) {
+            const redirectToLogin = (xhr) => {
+                const target = xhr && typeof xhr.getResponseHeader === 'function'
+                    ? xhr.getResponseHeader('HX-Redirect')
+                    : null;
+                window.location.assign(target || '/login');
+            };
+
             document.body.addEventListener('htmx:beforeRequest', (event) => {
                 const source = event.detail && event.detail.elt;
                 const requestConfig = event.detail && event.detail.requestConfig;
@@ -520,12 +527,18 @@
             });
 
             const finishHtmxOperation = (event) => {
-                const token = htmxOperations.get(event.detail && event.detail.xhr);
+                const xhr = event.detail && event.detail.xhr;
+                if (xhr && xhr.status === 401) {
+                    redirectToLogin(xhr);
+                    return;
+                }
+
+                const token = htmxOperations.get(xhr);
                 if (!token) {
                     return;
                 }
 
-                htmxOperations.delete(event.detail.xhr);
+                htmxOperations.delete(xhr);
                 endOperation(token);
             };
 

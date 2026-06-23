@@ -153,10 +153,17 @@ export class ApiGatewayProvider implements ISiiProvider {
     // Si hay 1 ítem, lo enviamos detallado. Si hay más, consolidamos en 1 línea.
     if (saleData.items.length === 1) {
       const item = saleData.items[0];
+      const isIntegerQuantity = Number.isInteger(item.cantidad);
       return [{
-        NmbItem: this.sanitizeItemName(item.nombre),
-        QtyItem: Number(item.cantidad.toFixed(3)),
-        PrcItem: Math.round(item.precio_unitario),
+        NmbItem: this.sanitizeItemName(
+          isIntegerQuantity
+            ? item.nombre
+            : `${item.nombre} ${item.cantidad.toFixed(3)}kg`,
+        ),
+        QtyItem: isIntegerQuantity ? item.cantidad : 1,
+        PrcItem: isIntegerQuantity
+          ? Math.round(item.precio_unitario)
+          : Math.round(item.subtotal),
       }];
     }
 

@@ -135,7 +135,14 @@ def login_required(f):
         user = session.get("user") or {}
         if "jwt_token" not in session or not is_owner(user):
             session.clear()
-            return redirect(url_for("login"))
+            login_url = get_login_url()
+            if request.headers.get("HX-Request") == "true" or request.path.startswith("/htmx/"):
+                response = Response(status=401)
+                response.headers["HX-Redirect"] = login_url
+                response.headers["X-Monay-Auth-Expired"] = "1"
+                return clear_pos_auth_cookies(response)
+            response = redirect(login_url)
+            return clear_pos_auth_cookies(response)
         return f(*args, **kwargs)
 
     return decorated_function
