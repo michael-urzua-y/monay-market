@@ -1294,22 +1294,14 @@ body.app-booting .global-loading-panel {
 .receipt-tax-note {
   margin: 14px 0 10px;
   color: #111;
-  font-size: 0.88rem;
+  font-size: 0.84rem;
   line-height: 1.35;
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.receipt-tax-note span {
-  flex: 1 1 auto;
+  text-align: left;
 }
 
 .receipt-tax-note strong {
-  flex: 0 0 auto;
+  display: inline;
   white-space: nowrap;
-  margin-top: 0;
 }
 
 .receipt-timbre {
