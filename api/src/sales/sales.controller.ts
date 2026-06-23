@@ -20,7 +20,7 @@ import { CreateSaleDto } from './dto/create-sale.dto';
 import { FilterSalesDto } from './dto/filter-sales.dto';
 import { CloseRegisterDto } from './dto/close-register.dto';
 import { Sale } from '../entities/sale.entity';
-import { UserRole } from '../entities/enums';
+import { PaymentMethod, UserRole } from '../entities/enums';
 
 @Controller('sales')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
@@ -44,7 +44,10 @@ export class SalesController {
       dto,
     );
 
-    if (!result.idempotent_replay) {
+    if (
+      !result.idempotent_replay &&
+      dto.payment_method === PaymentMethod.EFECTIVO
+    ) {
       const boletaResult = await this.siiService.emitBoleta(
         user.tenant_id,
         result.sale.id,

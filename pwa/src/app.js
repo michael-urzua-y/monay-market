@@ -992,9 +992,13 @@ import { Cart } from './cart.js';
     var btnPay = document.getElementById('btn-pay');
     if (isButtonLoading(btnPay)) return;
     setButtonLoading(btnPay, true, { label: 'Procesando...' });
+    var processingMessage =
+      selectedPaymentMethod === 'tarjeta'
+        ? 'Registrando venta y actualizando stock...'
+        : 'Registrando venta y emitiendo boleta...';
 
     var paymentActivity = startActivity('Procesando pago', {
-      message: 'Registrando venta y emitiendo boleta...',
+      message: processingMessage,
       blocking: true,
     });
 
@@ -1126,6 +1130,12 @@ import { Cart } from './cart.js';
   // ----------------------------------------------------------
   function handleSaleCompletion(receipt) {
     if (!receipt) return false;
+
+    if (receipt.payment_method === 'tarjeta') {
+      showToast('Venta con tarjeta registrada', 'success');
+      router.navigate('sale');
+      return true;
+    }
 
     if (shouldAutoPrintOfficialReceipt(receipt)) {
       showReceipt(receipt, { autoPrint: true, autoReturn: true });
