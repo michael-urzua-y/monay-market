@@ -10,7 +10,7 @@ import { Cart } from './cart.js';
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '30';
+  var APP_ASSET_VERSION = '31';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -812,7 +812,11 @@ import { Cart } from './cart.js';
     });
 
     navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+      video: {
+        facingMode: { ideal: 'environment' },
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+      }
     }).then(function (stream) {
       scannerStream = stream;
       video.srcObject = stream;
@@ -2075,10 +2079,6 @@ function initArqueo() {
     if (navigator.onLine) {
       syncOfflineSales();
     }
-
-    waitForBwipJs(4000).catch(function () {
-      // The receipt flow retries if the script is not ready yet.
-    });
 
     // If we have a token, go to sale screen; otherwise login
     if (isCashierSession()) {

@@ -291,7 +291,6 @@ def logout():
     session.clear()
     response = redirect(url_for("login"))
     clear_pos_auth_cookies(response)
-    response.headers["Clear-Site-Data"] = '"cache", "cookies"'
     return response
 
 

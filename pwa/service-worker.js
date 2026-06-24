@@ -1,4 +1,5 @@
-const CACHE_NAME = 'monay-pos-v29';
+const APP_ASSET_VERSION = '31';
+const CACHE_NAME = `monay-pos-v${APP_ASSET_VERSION}`;
 const scopePath = new URL(self.registration.scope).pathname;
 const basePath = scopePath.endsWith('/') ? scopePath : scopePath + '/';
 const appPath = (path) => basePath + path.replace(/^\//, '');
@@ -6,10 +7,10 @@ const APP_SHELL = [
   basePath,
   appPath('index.html'),
   appPath('src/api.js'),
-  appPath('src/app.js'),
+  appPath(`src/app.js?v=${APP_ASSET_VERSION}`),
   appPath('src/cart.js'),
   appPath('src/offline.js'),
-  appPath('src/styles.css'),
+  appPath(`src/styles.css?v=${APP_ASSET_VERSION}`),
   appPath('manifest.json'),
   '/runtime-config.js',
 ];
