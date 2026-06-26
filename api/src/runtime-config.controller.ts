@@ -1,4 +1,5 @@
 import { Controller, Get, Header } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 
 type RuntimeConfig = Record<string, string>;
 
@@ -9,6 +10,7 @@ function serializeConfig(config: RuntimeConfig): string {
     .replace(/\u2029/g, '\\u2029');
 }
 
+@SkipThrottle()
 @Controller()
 export class RuntimeConfigController {
   @Get('runtime-config.js')

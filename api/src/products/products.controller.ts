@@ -25,6 +25,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { FilterProductsDto } from './dto/filter-products.dto';
 import { CreateProductReceptionDto } from './dto/create-product-reception.dto';
+import { BulkDeleteProductsDto } from './dto/bulk-delete-products.dto';
 
 @Controller('products')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
@@ -152,8 +153,8 @@ export class ProductsController {
   @Roles(UserRole.DUENO)
   bulkDelete(
     @CurrentUser() user: JwtPayload,
-    @Body() body: { ids: string[] },
+    @Body() dto: BulkDeleteProductsDto,
   ) {
-    return this.productsService.bulkSoftDelete(user.tenant_id, body.ids || []);
+    return this.productsService.bulkSoftDelete(user.tenant_id, dto.ids);
   }
 }

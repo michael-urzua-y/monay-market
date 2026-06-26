@@ -327,21 +327,24 @@ def products():
     page = int(request.args.get("page", 1))
     per_page = 10
 
-    params = {}
+    params = {"page": page, "limit": per_page}
     if search:
         params["name"] = search
     if category_id:
         params["category_id"] = category_id
 
     products_data = api.get("/products", params=params)
-    product_list = products_data if isinstance(products_data, list) else []
 
-    # Pagination
-    total = len(product_list)
+    # Handle paginated response from API
+    if isinstance(products_data, dict) and "data" in products_data:
+        product_list = products_data["data"]
+        total = products_data.get("total", len(product_list))
+    else:
+        product_list = products_data if isinstance(products_data, list) else []
+        total = len(product_list)
+
     total_pages = max(1, (total + per_page - 1) // per_page)
     page = max(1, min(page, total_pages))
-    start = (page - 1) * per_page
-    paginated = product_list[start:start + per_page]
 
     # Get categories from dedicated endpoint
     categories_data = api.get("/products/categories")
@@ -353,7 +356,7 @@ def products():
 
     return render_template(
         "products.html",
-        products=paginated,
+        products=product_list,
         categories=categories,
         search=search,
         category_id=category_id,
@@ -410,24 +413,28 @@ def htmx_products_search():
     page = int(request.args.get("page", 1))
     per_page = 10
 
-    params = {}
+    params = {"page": page, "limit": per_page}
     if search:
         params["name"] = search
     if category_id:
         params["category_id"] = category_id
 
     products_data = api.get("/products", params=params)
-    product_list = products_data if isinstance(products_data, list) else []
 
-    total = len(product_list)
+    # Handle paginated response from API
+    if isinstance(products_data, dict) and "data" in products_data:
+        product_list = products_data["data"]
+        total = products_data.get("total", len(product_list))
+    else:
+        product_list = products_data if isinstance(products_data, list) else []
+        total = len(product_list)
+
     total_pages = max(1, (total + per_page - 1) // per_page)
     page = max(1, min(page, total_pages))
-    start = (page - 1) * per_page
-    paginated = product_list[start:start + per_page]
 
     return render_template(
         "htmx/products_table.html",
-        products=paginated,
+        products=product_list,
         page=page,
         total_pages=total_pages,
         total=total,
@@ -664,7 +671,7 @@ def sales():
     page = int(request.args.get("page", 1))
     per_page = 10
 
-    params = {}
+    params = {"page": page, "limit": per_page}
     if date_from:
         params["date_from"] = date_from
     if date_to:
@@ -676,22 +683,26 @@ def sales():
         params["user_id"] = user_id
 
     sales_data = api.get("/sales", params=params)
-    sales_list = sales_data if isinstance(sales_data, list) else []
+
+    # Handle paginated response from API
+    if isinstance(sales_data, dict) and "data" in sales_data:
+        sales_list = sales_data["data"]
+        total = sales_data.get("total", len(sales_list))
+    else:
+        sales_list = sales_data if isinstance(sales_data, list) else []
+        total = len(sales_list)
+
     users_list = []
     if current_user.get("role") == "dueno":
         users_data = api.get("/users")
         users_list = users_data if isinstance(users_data, list) else []
 
-    # Paginación idéntica a la vista de productos
-    total = len(sales_list)
     total_pages = max(1, (total + per_page - 1) // per_page)
     page = max(1, min(page, total_pages))
-    start = (page - 1) * per_page
-    paginated = sales_list[start:start + per_page]
 
     return render_template(
         "sales.html",
-        sales=paginated,
+        sales=sales_list,
         page=page,
         total_pages=total_pages,
         total=total,
@@ -840,8 +851,8 @@ def users_create():
     confirm_password = request.form.get("confirm_password", "")
     if not username:
         return redirect(url_for("users", error="El nombre de usuario es obligatorio"))
-    if len(password) < 6:
-        return redirect(url_for("users", error="La contraseña debe tener al menos 6 caracteres"))
+    if len(password) < 8:
+        return redirect(url_for("users", error="La contraseña debe tener al menos 8 caracteres"))
     if password != confirm_password:
         return redirect(url_for("users", error="La confirmación de contraseña no coincide"))
 
@@ -891,8 +902,8 @@ def users_reset_password(user_id):
 
     new_password = request.form.get("password", "").strip()
     confirm_password = request.form.get("confirm_password", "").strip()
-    if not new_password or len(new_password) < 6:
-        return redirect(url_for("users", error="La nueva contraseña debe tener al menos 6 caracteres"))
+    if not new_password or len(new_password) < 8:
+        return redirect(url_for("users", error="La nueva contraseña debe tener al menos 8 caracteres"))
     if new_password != confirm_password:
         return redirect(url_for("users", error="La confirmación de contraseña no coincide"))
 
@@ -1036,8 +1047,8 @@ def settings_change_password():
     if new_password != confirm_password:
         return redirect(url_for("users", error="Las contraseñas nuevas no coinciden"))
 
-    if len(new_password) < 6:
-        return redirect(url_for("users", error="La contraseña debe tener al menos 6 caracteres"))
+    if len(new_password) < 8:
+        return redirect(url_for("users", error="La contraseña debe tener al menos 8 caracteres"))
 
     result = api.post("/users/me/change-password", data={
         "current_password": current_password,

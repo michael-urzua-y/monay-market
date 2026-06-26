@@ -318,7 +318,7 @@ export class SalesService {
     filters: FilterSalesDto,
     role: UserRole,
     userId: string,
-  ): Promise<Sale[]> {
+  ): Promise<Sale[] | { data: Sale[]; total: number; page: number; limit: number }> {
     const qb = this.saleRepository
       .createQueryBuilder('sale')
       .leftJoinAndSelect('sale.lines', 'lines')
@@ -351,6 +351,22 @@ export class SalesService {
       qb.andWhere('sale.boleta_status = :boletaStatus', {
         boletaStatus: filters.boleta_status,
       });
+    }
+
+    // If pagination params are provided, return paginated response
+    if (filters.page || filters.limit) {
+      const page = filters.page || 1;
+      const limit = filters.limit || 50;
+      const skip = (page - 1) * limit;
+
+      qb.skip(skip).take(limit);
+      const [sales, total] = await qb.getManyAndCount();
+      return {
+        data: sales.map((sale) => this.sanitizeSaleUser(sale)),
+        total,
+        page,
+        limit,
+      };
     }
 
     const sales = await qb.getMany();

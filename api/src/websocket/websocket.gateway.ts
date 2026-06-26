@@ -6,6 +6,7 @@ import {
 } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Server, Socket } from 'socket.io';
 import * as jwt from 'jsonwebtoken';
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
@@ -19,6 +20,7 @@ function parseAllowedOrigins(value?: string): string[] | boolean {
   return origins.length > 0 ? origins : true;
 }
 
+@SkipThrottle()
 @WebSocketGateway({
   cors: {
     origin: parseAllowedOrigins(process.env.WS_CORS_ORIGIN || process.env.CORS_ORIGIN),
@@ -31,6 +33,7 @@ export class AppWebSocketGateway
   server: Server;
 
   private readonly logger = new Logger(AppWebSocketGateway.name);
+  private readonly tokenExpiryTimers = new Map<string, NodeJS.Timeout>();
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -40,6 +43,10 @@ export class AppWebSocketGateway
       const tenantRoom = `tenant:${payload.tenant_id}`;
       client.join(tenantRoom);
       client.data = { ...payload };
+
+      // Schedule disconnection when JWT expires
+      this.scheduleTokenExpiry(client);
+
       this.logger.log(
         `Client connected: ${client.id} | tenant: ${payload.tenant_id}`,
       );
@@ -50,6 +57,11 @@ export class AppWebSocketGateway
   }
 
   handleDisconnect(client: Socket): void {
+    const timer = this.tokenExpiryTimers.get(client.id);
+    if (timer) {
+      clearTimeout(timer);
+      this.tokenExpiryTimers.delete(client.id);
+    }
     this.logger.log(`Client disconnected: ${client.id}`);
   }
 
@@ -72,5 +84,34 @@ export class AppWebSocketGateway
     }
 
     return decoded;
+  }
+
+  private scheduleTokenExpiry(client: Socket): void {
+    const token = client.handshake.auth?.token;
+    if (!token) return;
+
+    try {
+      const decoded = jwt.decode(token) as { exp?: number } | null;
+      if (!decoded?.exp) return;
+
+      const now = Math.floor(Date.now() / 1000);
+      const ttlMs = (decoded.exp - now) * 1000;
+
+      if (ttlMs <= 0) {
+        client.emit('token_expired');
+        client.disconnect(true);
+        return;
+      }
+
+      const timer = setTimeout(() => {
+        client.emit('token_expired');
+        client.disconnect(true);
+        this.tokenExpiryTimers.delete(client.id);
+      }, ttlMs);
+
+      this.tokenExpiryTimers.set(client.id, timer);
+    } catch {
+      // If decode fails, connection is already rejected by authenticateClient
+    }
   }
 }

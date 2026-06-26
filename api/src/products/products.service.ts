@@ -90,7 +90,7 @@ export class ProductsService {
   async findAll(
     tenantId: string,
     filters: FilterProductsDto,
-  ): Promise<Product[]> {
+  ): Promise<{ data: Product[]; total: number; page: number; limit: number } | Product[]> {
     const where: any = { tenant_id: tenantId, active: true };
 
     if (filters.name) {
@@ -109,6 +109,24 @@ export class ProductsService {
       where.allow_cashier_reception = filters.allow_cashier_reception;
     }
 
+    // If pagination params are provided, return paginated response
+    if (filters.page || filters.limit) {
+      const page = filters.page || 1;
+      const limit = filters.limit || 50;
+      const skip = (page - 1) * limit;
+
+      const [data, total] = await this.productRepository.findAndCount({
+        where,
+        relations: ['category'],
+        order: { name: 'ASC' },
+        skip,
+        take: limit,
+      });
+
+      return { data, total, page, limit };
+    }
+
+    // Legacy: return full list for backward compatibility
     return this.productRepository.find({
       where,
       relations: ['category'],

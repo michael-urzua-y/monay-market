@@ -1,5 +1,5 @@
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
 function toBoolean(value: unknown): boolean | undefined {
   if (value === undefined || value === null || value === '') return undefined;
@@ -34,4 +34,17 @@ export class FilterProductsDto {
   @Transform(({ value }) => toBoolean(value))
   @IsBoolean()
   allow_cashier_reception?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => value != null ? Number(value) : undefined)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Transform(({ value }) => value != null ? Number(value) : undefined)
+  @IsInt()
+  @Min(1)
+  @Max(200)
+  limit?: number;
 }

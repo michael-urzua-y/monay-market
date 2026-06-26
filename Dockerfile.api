@@ -1,21 +1,30 @@
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 
 WORKDIR /app
-
-ENV PWA_PATH=/app/pwa
 
 COPY api/package*.json ./
 RUN npm ci --include=dev
 
 COPY api/nest-cli.json api/tsconfig*.json ./
 COPY api/src ./src
+
+RUN npm run build
+
+FROM node:20-alpine
+
+WORKDIR /app
+
+ENV PWA_PATH=/app/pwa
+ENV NODE_ENV=production
+
+COPY api/package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+COPY --from=builder /app/dist ./dist
 COPY pwa ./pwa
 COPY docker/api-entrypoint.sh /usr/local/bin/api-entrypoint
 
-RUN npm run build \
-  && chmod +x /usr/local/bin/api-entrypoint
-
-ENV NODE_ENV=production
+RUN chmod +x /usr/local/bin/api-entrypoint
 
 EXPOSE 3000
 

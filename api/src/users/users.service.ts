@@ -104,8 +104,12 @@ export class UsersService {
       throw new ForbiddenException('Solo se pueden resetear cuentas de cajero');
     }
 
-    if (!newPassword || newPassword.length < 6) {
-      throw new ConflictException('La contraseña debe tener al menos 6 caracteres');
+    if (!newPassword || newPassword.length < 8) {
+      throw new ConflictException('La contraseña debe tener al menos 8 caracteres');
+    }
+
+    if (!/(?=.*[a-z])(?=.*[A-Z0-9])/.test(newPassword)) {
+      throw new ConflictException('La contraseña debe contener al menos una minúscula y un número o mayúscula');
     }
 
     const saltRounds = 10;
@@ -137,8 +141,12 @@ export class UsersService {
       throw new ConflictException('La contraseña actual es incorrecta');
     }
 
-    if (!newPassword || newPassword.length < 6) {
-      throw new ConflictException('La nueva contraseña debe tener al menos 6 caracteres');
+    if (!newPassword || newPassword.length < 8) {
+      throw new ConflictException('La nueva contraseña debe tener al menos 8 caracteres');
+    }
+
+    if (!/(?=.*[a-z])(?=.*[A-Z0-9])/.test(newPassword)) {
+      throw new ConflictException('La contraseña debe contener al menos una minúscula y un número o mayúscula');
     }
 
     const saltRounds = 10;

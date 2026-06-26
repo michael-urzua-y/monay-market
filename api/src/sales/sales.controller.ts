@@ -73,7 +73,7 @@ export class SalesController {
   async findAll(
     @CurrentUser() user: JwtPayload,
     @Query() filters: FilterSalesDto,
-  ): Promise<Sale[]> {
+  ): Promise<Sale[] | { data: Sale[]; total: number; page: number; limit: number }> {
     return this.salesService.findAll(
       user.tenant_id,
       filters,
