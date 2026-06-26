@@ -11,6 +11,8 @@ function requireEnv(key: string): string {
   return value;
 }
 
+const isCompiled = __filename.endsWith('.js');
+
 export default new DataSource({
   type: 'postgres',
   host: requireEnv('DB_HOST'),
@@ -18,7 +20,7 @@ export default new DataSource({
   username: requireEnv('DB_USERNAME'),
   password: process.env.DB_PASSWORD || '',
   database: requireEnv('DB_DATABASE'),
-  entities: ['src/**/*.entity{.ts,.js}'],
-  migrations: ['src/migrations/*{.ts,.js}'],
+  entities: [isCompiled ? 'dist/**/*.entity.js' : 'src/**/*.entity{.ts,.js}'],
+  migrations: [isCompiled ? 'dist/migrations/*.js' : 'src/migrations/*{.ts,.js}'],
   synchronize: false,
 });
