@@ -238,16 +238,6 @@ export class ProductsService {
 
   async softDelete(tenantId: string, id: string): Promise<void> {
     const product = await this.findOne(tenantId, id);
-
-    const hasRecentSales = await this.hasRecentSales(product.id);
-    if (hasRecentSales) {
-      throw new BadRequestException({
-        error: 'PRODUCT_HAS_RECENT_SALES',
-        message:
-          'No se puede eliminar un producto con ventas en los últimos 7 días',
-      });
-    }
-
     product.active = false;
     await this.productRepository.save(product);
   }
@@ -269,12 +259,6 @@ export class ProductsService {
           where: { id, tenant_id: tenantId, active: true },
         });
         if (!product) continue;
-
-        const hasRecentSales = await this.hasRecentSales(product.id);
-        if (hasRecentSales) {
-          skippedNames.push(product.name);
-          continue;
-        }
 
         product.active = false;
         await this.productRepository.save(product);
