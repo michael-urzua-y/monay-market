@@ -244,7 +244,7 @@ export class ProductsService {
       throw new BadRequestException({
         error: 'PRODUCT_HAS_RECENT_SALES',
         message:
-          'No se puede eliminar un producto con ventas en los últimos 30 días',
+          'No se puede eliminar un producto con ventas en los últimos 7 días',
       });
     }
 
@@ -434,14 +434,14 @@ export class ProductsService {
   }
 
   private async hasRecentSales(productId: string): Promise<boolean> {
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const count = await this.saleLineRepository
       .createQueryBuilder('sl')
       .innerJoin('sl.sale', 'sale')
       .where('sl.product_id = :productId', { productId })
-      .andWhere('sale.created_at >= :since', { since: thirtyDaysAgo })
+      .andWhere('sale.created_at >= :since', { since: sevenDaysAgo })
       .getCount();
 
     return count > 0;

@@ -127,6 +127,9 @@ body.app-loading-blocking {
 }
 
 .btn-logout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 6px 12px;
   border: 1px solid rgba(240, 185, 11, 0.36);
   background: transparent;
@@ -134,6 +137,10 @@ body.app-loading-blocking {
   font-size: 0.8rem;
   border-radius: var(--radius);
   cursor: pointer;
+}
+
+.btn-logout svg {
+  flex-shrink: 0;
 }
 
 .btn-logout:hover {
