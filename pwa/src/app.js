@@ -10,7 +10,7 @@ import { Cart } from './cart.js';
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '31';
+  var APP_ASSET_VERSION = '32';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -785,6 +785,7 @@ import { Cart } from './cart.js';
   var scannerStream = null;
   var scannerActive = false;
   var codeReader = null;
+  var zxingLoadPromise = null;
   var scannerLoadingToken = null;
 
   function initScanner() {
@@ -853,23 +854,53 @@ import { Cart } from './cart.js';
       };
       detectFrame();
     } else {
-      // Fallback: canvas-based polling with manual decode attempt
-      statusEl.textContent = 'Escáner activo (ingrese código manualmente si no detecta)';
-      var canvas = document.createElement('canvas');
-      var ctx = canvas.getContext('2d');
-      var pollFrame = function () {
+      // Fallback para navegadores sin BarcodeDetector (ej: Safari iOS):
+      // se decodifica con ZXing sobre el mismo elemento de video.
+      statusEl.textContent = 'Preparando lector...';
+      loadZxingScript().then(function () {
         if (!scannerActive) return;
-        if (video.readyState === video.HAVE_ENOUGH_DATA) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          ctx.drawImage(video, 0, 0);
-          // Without a full decoder library loaded, we rely on BarcodeDetector
-          // If not available, the user can type the barcode manually
+        if (!window.ZXing || !window.ZXing.BrowserMultiFormatReader) {
+          throw new Error('ZXing no disponible');
         }
-        setTimeout(pollFrame, 500);
-      };
-      pollFrame();
+        statusEl.textContent = 'Apunte la cámara al código de barras';
+        codeReader = new window.ZXing.BrowserMultiFormatReader();
+        codeReader.decodeFromVideoElement(video, function (result, err) {
+          if (!scannerActive) return;
+          if (result) {
+            handleBarcodeDetected(result.getText());
+          }
+          // err en cada frame sin código es normal; se ignora.
+        }).catch(function () {
+          if (scannerActive) {
+            statusEl.textContent = 'Escáner activo (ingrese el código manualmente si no detecta)';
+          }
+        });
+      }).catch(function () {
+        if (scannerActive) {
+          statusEl.textContent = 'Escáner no disponible. Ingrese el código manualmente en el buscador.';
+        }
+      });
     }
+  }
+
+  function loadZxingScript() {
+    if (window.ZXing && window.ZXing.BrowserMultiFormatReader) {
+      return Promise.resolve();
+    }
+    if (zxingLoadPromise) return zxingLoadPromise;
+    zxingLoadPromise = new Promise(function (resolve, reject) {
+      var script = document.createElement('script');
+      script.src = 'src/vendor/zxing.min.js?v=' + APP_ASSET_VERSION;
+      script.async = true;
+      script.dataset.zxingLoader = 'true';
+      script.addEventListener('load', function () { resolve(); }, { once: true });
+      script.addEventListener('error', function () {
+        zxingLoadPromise = null;
+        reject(new Error('No se pudo cargar ZXing'));
+      }, { once: true });
+      document.head.appendChild(script);
+    });
+    return zxingLoadPromise;
   }
 
   function handleBarcodeDetected(code) {
@@ -903,6 +934,11 @@ import { Cart } from './cart.js';
     var overlay = document.getElementById('scanner-overlay');
     if (overlay) overlay.classList.add('hidden');
     setButtonLoading(document.getElementById('btn-scan'), false);
+    // Detener el lector ZXing (fallback) si estuvo activo.
+    if (codeReader) {
+      try { codeReader.reset(); } catch (e) { /* noop */ }
+      codeReader = null;
+    }
     if (scannerStream) {
       scannerStream.getTracks().forEach(function (track) { track.stop(); });
       scannerStream = null;

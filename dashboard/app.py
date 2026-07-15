@@ -513,10 +513,6 @@ def products_edit(product_id):
     if isinstance(product, dict) and product.get("status_code", 200) >= 400:
         return redirect(url_for("products"))
 
-    all_products = api.get("/products", params={})
-    if isinstance(product, dict) and product.get("status_code", 200) >= 400:
-        return redirect(url_for("products"))
-
     categories_data = api.get("/products/categories", params={})
     categories = {c.get("id"): c.get("name") for c in (categories_data if isinstance(categories_data, list) else [])}
     return render_template(

@@ -26,6 +26,23 @@ services:
       timeout: 5s
       retries: 5
 
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ./postgres/.env
+    environment:
+      PGHOST: postgres
+      BACKUP_INTERVAL_SECONDS: "${BACKUP_INTERVAL_SECONDS:-86400}"
+    entrypoint: ["/bin/sh", "/scripts/backup-loop.sh"]
+    volumes:
+      - ./docker/backup-db.sh:/scripts/backup-db.sh:ro
+      - ./docker/backup-loop.sh:/scripts/backup-loop.sh:ro
+      - postgres-backups:/backups
+
   api:
     build:
       context: .

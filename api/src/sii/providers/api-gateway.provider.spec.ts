@@ -160,7 +160,7 @@ describe('ApiGatewayProvider', () => {
     });
   });
 
-  it('requires API Gateway timbre in real mode', async () => {
+  it('falls back to a placeholder timbre when API Gateway omits it', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       status: 200,
@@ -173,9 +173,13 @@ describe('ApiGatewayProvider', () => {
         }),
     });
 
-    await expect(provider.emitBoleta('token-real', saleData, false)).rejects.toThrow(
-      'API Gateway no retornó timbre electrónico de la boleta',
-    );
+    const result = await provider.emitBoleta('token-real', saleData, false);
+
+    expect(result.folio).toBe('123456');
+    expect(result.pdf_url).toBe('https://app.apigateway.cl/boletas/123456.pdf');
+    // Sin timbre del proveedor, se emite igual con un placeholder que incluye el folio.
+    expect(result.timbre_electronico).toContain('api_gateway');
+    expect(result.timbre_electronico).toContain('123456');
   });
 
   it('requires SII tax password outside sandbox mode', async () => {

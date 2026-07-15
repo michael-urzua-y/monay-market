@@ -1,4 +1,4 @@
-const APP_ASSET_VERSION = '31';
+const APP_ASSET_VERSION = '32';
 const CACHE_NAME = `monay-pos-v${APP_ASSET_VERSION}`;
 const scopePath = new URL(self.registration.scope).pathname;
 const basePath = scopePath.endsWith('/') ? scopePath : scopePath + '/';

@@ -4,6 +4,9 @@
 # Kilo Code
 .kilo/
 
+# Claude
+.cloude/
+
 # Dependencies
 node_modules/
 

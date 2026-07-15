@@ -27,11 +27,6 @@ function assertSecureEnv(): void {
     throw new Error('JWT_SECRET debe tener al menos 32 caracteres y no puede ser un placeholder');
   }
 
-  const corsOrigin = process.env.CORS_ORIGIN;
-  if (!corsOrigin || corsOrigin === '*') {
-    throw new Error('CORS_ORIGIN debe configurarse explícitamente en producción');
-  }
-
   const dataEncryptionKey = process.env.APP_DATA_ENCRYPTION_KEY || '';
   if (
     !dataEncryptionKey ||
@@ -68,7 +63,8 @@ async function bootstrap() {
 
   const corsOrigin = process.env.CORS_ORIGIN;
   assertSecureEnv();
-  if (isProduction && (!corsOrigin || corsOrigin === '*')) {
+  // Exigir CORS explícito en producción o cuando se pide validación estricta.
+  if ((isProduction || isStrictEnvValidationEnabled()) && (!corsOrigin || corsOrigin === '*')) {
     throw new Error('CORS_ORIGIN debe configurarse explícitamente en producción');
   }
 
@@ -79,6 +75,17 @@ async function bootstrap() {
   // Serve the POS PWA only under /pos/. The unified Flask login owns /login and /.
   const pwaPath = process.env.PWA_PATH || join(__dirname, '..', '..', 'pwa');
   app.useStaticAssets(pwaPath, { prefix: '/pos/' });
+
+  // WebSocket multi-réplica: solo si WS_REDIS_URL está configurada.
+  // Sin ella, se usa el adapter en memoria por defecto (una sola instancia).
+  const wsRedisUrl = process.env.WS_REDIS_URL;
+  if (wsRedisUrl) {
+    const { RedisIoAdapter } = await import('./websocket/redis-io.adapter');
+    const redisAdapter = new RedisIoAdapter(app, wsRedisUrl);
+    await redisAdapter.connectToRedis();
+    app.useWebSocketAdapter(redisAdapter);
+    logger.log('WebSocket adapter: Redis (multi-réplica)');
+  }
 
   const port = process.env.PORT || 3000;
   await app.listen(port);

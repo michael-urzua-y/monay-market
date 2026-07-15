@@ -184,6 +184,33 @@ docker compose down -v
 
 Para VPS, publicar solo el servicio `web` detrás de HTTPS y configurar `CORS_ORIGIN`, `WS_CORS_ORIGIN`, `PWA_LOGIN_URL`, `POS_URL`, `SESSION_COOKIE_SECURE=true`, `POS_AUTH_COOKIE_SECURE=true` y `STRICT_ENV_VALIDATION=true` según el dominio real. Mantener `postgres/.env`, `api/.env` y `dashboard/.env` fuera de git.
 
+### Backups automáticos de PostgreSQL
+
+El stack incluye un servicio `backup` que ejecuta `docker/backup-db.sh` de forma periódica y deja dumps comprimidos en el volumen `postgres-backups` (conserva los últimos 7). El intervalo se controla con `BACKUP_INTERVAL_SECONDS` (default `86400`, es decir 24h).
+
+```bash
+# Cambiar frecuencia (ej: cada 6h) al levantar el stack
+BACKUP_INTERVAL_SECONDS=21600 docker compose up -d
+
+# Backup manual on-demand
+docker compose exec postgres /scripts/backup-db.sh
+
+# Restaurar el backup más reciente (o pasar un nombre de archivo)
+docker compose exec postgres /scripts/restore-db.sh
+```
+
+### Versionado de assets de la PWA
+
+La versión de assets (cache-busting del Service Worker) vive en un único lugar: `pwa/VERSION`. En cada release, editar ese número y sincronizarlo a `service-worker.js`, `src/app.js` e `index.html`:
+
+```bash
+node pwa/sync-version.mjs
+```
+
+### Escáner de código de barras en la PWA
+
+El POS usa la API nativa `BarcodeDetector` cuando está disponible (Chrome/Edge). En navegadores sin soporte (ej: Safari en iOS) cae automáticamente a un decodificador ZXing (`pwa/src/vendor/zxing.min.js`) que se carga bajo demanda; si tampoco es posible, el cajero puede ingresar el código manualmente desde el buscador.
+
 ## Endurecimiento y seguridad
 
 - El API valida secrets críticos cuando `STRICT_ENV_VALIDATION=true`.
@@ -259,6 +286,7 @@ Esto no reemplaza al stack principal de Monay Market; es un componente opcional 
 | `RUN_MIGRATIONS` | Ejecuta migraciones al iniciar el contenedor (default: `true`) |
 | `CORS_ORIGIN` | Orígenes permitidos para HTTP API |
 | `WS_CORS_ORIGIN` | Orígenes permitidos para WebSocket |
+| `WS_REDIS_URL` | Opcional. URL de Redis para escalar WebSocket a múltiples réplicas (ej: `redis://redis:6379`). Vacío = adapter en memoria (una sola instancia) |
 | `PWA_API_URL` | Override opcional expuesto a la PWA por `/runtime-config.js` |
 | `PWA_LOGIN_URL` | Override opcional para logout/login central de la PWA |
 | `LOGIN_RATE_LIMIT_*` | Ventana, intentos máximos y bloqueo del login |

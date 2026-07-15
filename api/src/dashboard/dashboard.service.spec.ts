@@ -9,19 +9,9 @@ describe('DashboardService', () => {
 
   const tenantId = '11111111-1111-1111-1111-111111111111';
 
-  // Sale query builder mock
-  const saleQb = {
-    select: jest.fn().mockReturnThis(),
-    addSelect: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    andWhere: jest.fn().mockReturnThis(),
-    groupBy: jest.fn().mockReturnThis(),
-    getRawOne: jest.fn(),
-    getRawMany: jest.fn(),
-  };
-
+  // getToday/getMonthly/getDailyChart use raw SQL via repository.query(sql, params)
   const mockSaleRepository = {
-    createQueryBuilder: jest.fn(() => saleQb),
+    query: jest.fn(),
   };
 
   // Product query builder mock
@@ -55,10 +45,9 @@ describe('DashboardService', () => {
 
   describe('getToday', () => {
     it('should return total and count of sales for today', async () => {
-      saleQb.getRawOne.mockResolvedValue({
-        total_ventas: '15000',
-        cantidad_ventas: '3',
-      });
+      mockSaleRepository.query.mockResolvedValue([
+        { total_ventas: '15000', cantidad_ventas: '3' },
+      ]);
 
       const result = await service.getToday(tenantId);
 
@@ -66,17 +55,16 @@ describe('DashboardService', () => {
         total_ventas: 15000,
         cantidad_ventas: 3,
       });
-      expect(saleQb.where).toHaveBeenCalledWith(
-        'sale.tenant_id = :tenantId',
-        { tenantId },
+      expect(mockSaleRepository.query).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.arrayContaining([tenantId]),
       );
     });
 
     it('should return zeros when no sales today', async () => {
-      saleQb.getRawOne.mockResolvedValue({
-        total_ventas: '0',
-        cantidad_ventas: '0',
-      });
+      mockSaleRepository.query.mockResolvedValue([
+        { total_ventas: '0', cantidad_ventas: '0' },
+      ]);
 
       const result = await service.getToday(tenantId);
 
@@ -89,9 +77,9 @@ describe('DashboardService', () => {
 
   describe('getMonthly', () => {
     it('should return current and previous month totals with variation', async () => {
-      saleQb.getRawOne
-        .mockResolvedValueOnce({ total: '200000' })  // current month
-        .mockResolvedValueOnce({ total: '150000' }); // previous month
+      mockSaleRepository.query
+        .mockResolvedValueOnce([{ total: '200000' }])  // current month
+        .mockResolvedValueOnce([{ total: '150000' }]); // previous month
 
       const result = await service.getMonthly(tenantId);
 
@@ -101,9 +89,9 @@ describe('DashboardService', () => {
     });
 
     it('should return null variation when previous month is 0', async () => {
-      saleQb.getRawOne
-        .mockResolvedValueOnce({ total: '100000' })
-        .mockResolvedValueOnce({ total: '0' });
+      mockSaleRepository.query
+        .mockResolvedValueOnce([{ total: '100000' }])
+        .mockResolvedValueOnce([{ total: '0' }]);
 
       const result = await service.getMonthly(tenantId);
 
@@ -113,9 +101,9 @@ describe('DashboardService', () => {
     });
 
     it('should return negative variation when current < previous', async () => {
-      saleQb.getRawOne
-        .mockResolvedValueOnce({ total: '80000' })
-        .mockResolvedValueOnce({ total: '100000' });
+      mockSaleRepository.query
+        .mockResolvedValueOnce([{ total: '80000' }])
+        .mockResolvedValueOnce([{ total: '100000' }]);
 
       const result = await service.getMonthly(tenantId);
 
@@ -123,9 +111,9 @@ describe('DashboardService', () => {
     });
 
     it('should return 0 variation when both months are equal', async () => {
-      saleQb.getRawOne
-        .mockResolvedValueOnce({ total: '50000' })
-        .mockResolvedValueOnce({ total: '50000' });
+      mockSaleRepository.query
+        .mockResolvedValueOnce([{ total: '50000' }])
+        .mockResolvedValueOnce([{ total: '50000' }]);
 
       const result = await service.getMonthly(tenantId);
 
@@ -133,9 +121,9 @@ describe('DashboardService', () => {
     });
 
     it('should return null variation when both months are 0', async () => {
-      saleQb.getRawOne
-        .mockResolvedValueOnce({ total: '0' })
-        .mockResolvedValueOnce({ total: '0' });
+      mockSaleRepository.query
+        .mockResolvedValueOnce([{ total: '0' }])
+        .mockResolvedValueOnce([{ total: '0' }]);
 
       const result = await service.getMonthly(tenantId);
 
@@ -145,7 +133,7 @@ describe('DashboardService', () => {
 
   describe('getDailyChart', () => {
     it('should return one entry per day of current month', async () => {
-      saleQb.getRawMany.mockResolvedValue([]);
+      mockSaleRepository.query.mockResolvedValue([]);
 
       const result = await service.getDailyChart(tenantId);
 
@@ -155,7 +143,7 @@ describe('DashboardService', () => {
     });
 
     it('should fill days with 0 when no sales', async () => {
-      saleQb.getRawMany.mockResolvedValue([]);
+      mockSaleRepository.query.mockResolvedValue([]);
 
       const result = await service.getDailyChart(tenantId);
 
@@ -171,7 +159,7 @@ describe('DashboardService', () => {
       const month = String(now.getMonth() + 1).padStart(2, '0');
       const dateStr = `${year}-${month}-05`;
 
-      saleQb.getRawMany.mockResolvedValue([
+      mockSaleRepository.query.mockResolvedValue([
         { fecha: dateStr, total: '25000' },
       ]);
 
@@ -189,13 +177,13 @@ describe('DashboardService', () => {
     });
 
     it('should filter by tenant_id', async () => {
-      saleQb.getRawMany.mockResolvedValue([]);
+      mockSaleRepository.query.mockResolvedValue([]);
 
       await service.getDailyChart(tenantId);
 
-      expect(saleQb.where).toHaveBeenCalledWith(
-        'sale.tenant_id = :tenantId',
-        { tenantId },
+      expect(mockSaleRepository.query).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.arrayContaining([tenantId]),
       );
     });
   });
