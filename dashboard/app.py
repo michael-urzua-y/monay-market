@@ -364,6 +364,7 @@ def products():
         total_pages=total_pages,
         total=total,
         success=request.args.get("success"),
+        error=request.args.get("error"),
     )
 
 
@@ -531,28 +532,11 @@ def products_delete(product_id):
 
     if isinstance(result, dict) and result.get("status_code", 200) >= 400:
         error_msg = result.get("message", "Error al eliminar producto")
+        if isinstance(error_msg, dict):
+            error_msg = error_msg.get("message", "Error al eliminar producto")
         if isinstance(error_msg, list):
-            error_msg = ", ".join(error_msg)
-        # Re-render products page with error
-        search = request.args.get("search", "").strip()
-        category_id = request.args.get("category_id", "").strip()
-        params = {}
-        if search:
-            params["name"] = search
-        if category_id:
-            params["category_id"] = category_id
-        products_data = api.get("/products", params=params)
-        product_list = products_data if isinstance(products_data, list) else []
-        categories_data = api.get("/products/categories", params={})
-        categories = {c.get("id"): c.get("name") for c in (categories_data if isinstance(categories_data, list) else [])}
-        return render_template(
-            "products.html",
-            products=product_list,
-            categories=categories,
-            search=search,
-            category_id=category_id,
-            error=error_msg,
-        )
+            error_msg = ", ".join(str(m) for m in error_msg)
+        return redirect(url_for("products", error=str(error_msg)))
 
     return redirect(url_for("products"))
 
