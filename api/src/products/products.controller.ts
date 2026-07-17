@@ -38,6 +38,24 @@ export class ProductsController {
     return this.productsService.getCategories(user.tenant_id);
   }
 
+  @Post('categories')
+  @Roles(UserRole.DUENO)
+  createCategory(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: { name: string },
+  ) {
+    return this.productsService.createCategory(user.tenant_id, body.name);
+  }
+
+  @Delete('categories/:id')
+  @Roles(UserRole.DUENO)
+  deleteCategory(
+    @CurrentUser() user: JwtPayload,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.productsService.deleteCategory(user.tenant_id, id);
+  }
+
   @Post()
   @Roles(UserRole.DUENO)
   create(

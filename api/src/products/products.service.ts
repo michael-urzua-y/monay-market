@@ -52,6 +52,43 @@ export class ProductsService {
     });
   }
 
+  async createCategory(tenantId: string, name: string): Promise<Category> {
+    const trimmed = (name || '').trim();
+    if (!trimmed) {
+      throw new BadRequestException('El nombre de la categoría es obligatorio');
+    }
+
+    const existing = await this.categoryRepository.findOne({
+      where: { tenant_id: tenantId, name: ILike(trimmed) },
+    });
+    if (existing) {
+      throw new BadRequestException('Ya existe una categoría con ese nombre');
+    }
+
+    const category = this.categoryRepository.create({
+      tenant_id: tenantId,
+      name: trimmed,
+    });
+    return this.categoryRepository.save(category);
+  }
+
+  async deleteCategory(tenantId: string, categoryId: string): Promise<void> {
+    const category = await this.categoryRepository.findOne({
+      where: { id: categoryId, tenant_id: tenantId },
+    });
+    if (!category) {
+      throw new NotFoundException('Categoría no encontrada');
+    }
+
+    // Unlink products from this category before deleting
+    await this.productRepository.update(
+      { tenant_id: tenantId, category_id: categoryId },
+      { category_id: null as any },
+    );
+
+    await this.categoryRepository.remove(category);
+  }
+
   async create(tenantId: string, dto: CreateProductDto): Promise<Product> {
     const payload = this.normalizeProductInput(dto);
     if (payload.is_weighed && !payload.barcode) {

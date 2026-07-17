@@ -66,12 +66,23 @@
 
 <div class="form-group">
     <label for="category_id">Categoría</label>
-    <select id="category_id" name="category_id">
-        <option value="">Sin categoría</option>
-        {% for cat_id, cat_name in categories.items() %}
-        <option value="{{ cat_id }}" {% if current_category_id == cat_id %}selected{% endif %}>{{ cat_name }}</option>
-        {% endfor %}
-    </select>
+    <div style="display: flex; gap: 8px; align-items: center;">
+        <select id="category_id" name="category_id" style="flex: 1;">
+            <option value="">Sin categoría</option>
+            {% for cat_id, cat_name in categories.items() %}
+            <option value="{{ cat_id }}" {% if current_category_id == cat_id %}selected{% endif %}>{{ cat_name }}</option>
+            {% endfor %}
+        </select>
+        <button type="button" id="btn-add-category" class="btn btn-secondary" style="padding: 8px 12px; font-size: 1.1rem; min-height: 42px;" title="Crear categoría">+</button>
+        <button type="button" id="btn-delete-category" class="btn btn-secondary" style="padding: 8px 12px; font-size: 1.1rem; min-height: 42px; color: var(--color-error);" title="Eliminar categoría seleccionada">−</button>
+    </div>
+    <div id="new-category-inline" style="display: none; margin-top: 8px;">
+        <div style="display: flex; gap: 8px;">
+            <input type="text" id="new-category-name" placeholder="Nombre de la categoría" style="flex: 1;" maxlength="50">
+            <button type="button" id="btn-save-category" class="btn btn-primary" style="padding: 8px 14px; white-space: nowrap;">Crear</button>
+            <button type="button" id="btn-cancel-category" class="btn btn-secondary" style="padding: 8px 12px;">✕</button>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -150,4 +161,92 @@
         if (useCriticalStock) useCriticalStock.addEventListener('change', syncProductFormMode);
         syncProductFormMode();
     })();
+</script>
+
+<script>
+(function () {
+    var csrfToken = document.querySelector('input[name="_csrf_token"]');
+    var categorySelect = document.getElementById('category_id');
+    var btnAdd = document.getElementById('btn-add-category');
+    var btnDelete = document.getElementById('btn-delete-category');
+    var inlineForm = document.getElementById('new-category-inline');
+    var nameInput = document.getElementById('new-category-name');
+    var btnSave = document.getElementById('btn-save-category');
+    var btnCancel = document.getElementById('btn-cancel-category');
+
+    if (btnAdd) btnAdd.addEventListener('click', function () {
+        inlineForm.style.display = '';
+        nameInput.value = '';
+        nameInput.focus();
+    });
+
+    if (btnCancel) btnCancel.addEventListener('click', function () {
+        inlineForm.style.display = 'none';
+    });
+
+    if (btnSave) btnSave.addEventListener('click', function () {
+        var name = (nameInput.value || '').trim();
+        if (!name) { nameInput.focus(); return; }
+
+        btnSave.disabled = true;
+        btnSave.textContent = '...';
+
+        fetch('/htmx/categories/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken ? csrfToken.value : ''
+            },
+            body: JSON.stringify({ name: name })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.id && data.name) {
+                var opt = document.createElement('option');
+                opt.value = data.id;
+                opt.textContent = data.name;
+                opt.selected = true;
+                categorySelect.appendChild(opt);
+                inlineForm.style.display = 'none';
+            } else {
+                alert(data.error || 'Error al crear categoría');
+            }
+        })
+        .catch(function () { alert('Error de conexión'); })
+        .finally(function () {
+            btnSave.disabled = false;
+            btnSave.textContent = 'Crear';
+        });
+    });
+
+    if (nameInput) nameInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); btnSave.click(); }
+    });
+
+    if (btnDelete) btnDelete.addEventListener('click', function () {
+        var selected = categorySelect.options[categorySelect.selectedIndex];
+        if (!selected || !selected.value) {
+            alert('Selecciona una categoría para eliminar');
+            return;
+        }
+        if (!confirm('¿Eliminar la categoría "' + selected.textContent + '"?')) return;
+
+        fetch('/htmx/categories/' + selected.value + '/delete', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-Token': csrfToken ? csrfToken.value : ''
+            }
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (data.ok) {
+                categorySelect.removeChild(selected);
+                categorySelect.selectedIndex = 0;
+            } else {
+                alert(data.error || 'Error al eliminar categoría');
+            }
+        })
+        .catch(function () { alert('Error de conexión'); });
+    });
+})();
 </script>

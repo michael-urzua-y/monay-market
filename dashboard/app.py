@@ -627,6 +627,52 @@ def htmx_lookup_barcode(code):
     return render_template("htmx/barcode_lookup_result.html", name="")
 
 
+# --- Category management (inline from product form) ---
+
+
+@app.route("/htmx/categories/create", methods=["POST"])
+@login_required
+def htmx_category_create():
+    """Create a new category via API and return JSON with id/name."""
+    user = session.get("user", {})
+    if user.get("role") != "dueno":
+        return jsonify({"error": "No autorizado"}), 403
+
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error": "El nombre es obligatorio"})
+
+    result = api.post("/products/categories", data={"name": name})
+    if isinstance(result, dict) and result.get("id"):
+        return jsonify({"id": result["id"], "name": result.get("name", name)})
+
+    error_msg = "Error al crear categoría"
+    if isinstance(result, dict):
+        error_msg = result.get("message", error_msg)
+        if isinstance(error_msg, list):
+            error_msg = ", ".join(str(m) for m in error_msg)
+    return jsonify({"error": str(error_msg)})
+
+
+@app.route("/htmx/categories/<category_id>/delete", methods=["POST"])
+@login_required
+def htmx_category_delete(category_id):
+    """Delete a category via API."""
+    user = session.get("user", {})
+    if user.get("role") != "dueno":
+        return jsonify({"error": "No autorizado"}), 403
+
+    result = api.delete(f"/products/categories/{category_id}")
+    if isinstance(result, dict) and result.get("status_code", 200) >= 400:
+        error_msg = result.get("message", "Error al eliminar categoría")
+        if isinstance(error_msg, list):
+            error_msg = ", ".join(str(m) for m in error_msg)
+        return jsonify({"error": str(error_msg)})
+
+    return jsonify({"ok": True})
+
+
 def _extract_categories(products_data):
     """Extract unique categories dict {id: name} from products list."""
     categories = {}
