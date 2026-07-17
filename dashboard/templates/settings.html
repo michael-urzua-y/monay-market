@@ -634,7 +634,7 @@
                                     </select>
                                 </div>
 
-                                <label class="settings-check full">
+                                <label class="settings-check full" style="display: none;">
                                     <input type="checkbox" name="sii_sandbox_mode" {% if config.get('sii_sandbox_mode') %}checked{% endif %}>
                                     <span>Modo sandbox o pruebas</span>
                                 </label>
@@ -786,7 +786,8 @@
                             </div>
                         </section>
 
-                        <section class="settings-block-card">
+                        <!-- Firma digital: oculta para usuarios, disponible para futuro uso -->
+                        <section class="settings-block-card" style="display: none;">
                             <div class="settings-block-header">
                                 <div>
                                     <h4>Firma digital</h4>

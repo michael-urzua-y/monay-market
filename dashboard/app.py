@@ -460,7 +460,7 @@ def products_new():
             error_msg = result.get("message", "Error al crear producto")
             if isinstance(error_msg, list):
                 error_msg = ", ".join(error_msg)
-            categories_data = api.get("/products/categories", params={})
+            categories_data = api.get("/products/categories")
             categories = {c.get("id"): c.get("name") for c in (categories_data if isinstance(categories_data, list) else [])}
             return render_template(
                 "products_new.html",
@@ -474,7 +474,7 @@ def products_new():
 
     # GET: render empty form
     created_name = request.args.get("created")
-    categories_data = api.get("/products/categories", params={})
+    categories_data = api.get("/products/categories")
     categories = {c.get("id"): c.get("name") for c in (categories_data if isinstance(categories_data, list) else [])}
     return render_template("products_new.html", categories=categories, form={}, created=created_name)
 
@@ -497,7 +497,7 @@ def products_edit(product_id):
             error_msg = result.get("message", "Error al actualizar producto")
             if isinstance(error_msg, list):
                 error_msg = ", ".join(error_msg)
-            categories_data = api.get("/products/categories", params={})
+            categories_data = api.get("/products/categories")
             categories = {c.get("id"): c.get("name") for c in (categories_data if isinstance(categories_data, list) else [])}
             return render_template(
                 "products_edit.html",
@@ -514,7 +514,7 @@ def products_edit(product_id):
     if isinstance(product, dict) and product.get("status_code", 200) >= 400:
         return redirect(url_for("products"))
 
-    categories_data = api.get("/products/categories", params={})
+    categories_data = api.get("/products/categories")
     categories = {c.get("id"): c.get("name") for c in (categories_data if isinstance(categories_data, list) else [])}
     return render_template(
         "products_edit.html",

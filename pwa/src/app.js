@@ -1232,12 +1232,17 @@ import { Cart } from './cart.js';
     }
     html += '</div>';
 
-    html += '<div class="receipt-store-name">' + escapeHtml(receipt.store_name) + '</div>';
+    if (receipt.store_name && receipt.store_name.toUpperCase() !== 'MONAY MARKET') {
+      html += '<div class="receipt-store-name">' + escapeHtml(receipt.store_name) + '</div>';
+    }
     if (receipt.store_rut) {
       html += '<div class="receipt-store-line">R.U.T.: ' + escapeHtml(receipt.store_rut) + '</div>';
     }
     if (receipt.store_giro) {
       html += '<div class="receipt-store-line">GIRO: ' + escapeHtml(receipt.store_giro) + '</div>';
+    }
+    if (receipt.store_address) {
+      html += '<div class="receipt-store-line">' + escapeHtml(receipt.store_address) + '</div>';
     }
     html += '<div class="receipt-document-city">S.I.I. - CHILE</div>';
     html += '<hr class="receipt-divider">';

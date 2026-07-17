@@ -47,7 +47,7 @@
 
 <div class="form-group">
     <label for="stock" id="stock-label">{{ stock_label }} *</label>
-    <input type="number" id="stock" name="stock" value="{{ form_values.get('stock', 0) }}" required min="0" step="any" placeholder="0">
+    <input type="number" id="stock" name="stock" value="{{ form_values.get('stock', '') }}" required min="0" step="any" placeholder="Ej: 50">
     <p id="stock-help" style="margin-top: 6px; color: var(--color-text-muted); font-size: 0.9rem;"></p>
 </div>
 
@@ -60,7 +60,7 @@
 
 <div class="form-group" id="critical-stock-group">
     <label for="critical_stock" id="critical-stock-label">Stock crítico</label>
-    <input type="number" id="critical_stock" name="critical_stock" value="{{ form_values.get('critical_stock', 0) }}" min="0" step="any" placeholder="0">
+    <input type="number" id="critical_stock" name="critical_stock" value="{{ form_values.get('critical_stock', '') }}" min="0" step="any" placeholder="Ej: 5">
     <p id="critical-stock-help" style="margin-top: 6px; color: var(--color-text-muted); font-size: 0.9rem;"></p>
 </div>
 

@@ -18,6 +18,7 @@ export interface ReceiptData {
   store_name: string;
   store_rut: string;
   store_giro: string;
+  store_address: string;
   date: string;
   items: ReceiptItem[];
   total: number;
@@ -91,6 +92,7 @@ export class ReceiptService {
       store_name: storeName,
       store_rut: storeRut,
       store_giro: storeGiro,
+      store_address: '',
       date: sale.created_at.toISOString(),
       items,
       total: sale.total,
