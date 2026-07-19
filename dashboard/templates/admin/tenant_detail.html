@@ -1,0 +1,170 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}{{ tenant.name }} — Admin{% endblock %}
+{% block page_title %}{{ tenant.name }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.85rem;">← Volver</a>
+</div>
+
+<div class="admin-stats">
+    <div class="admin-stat">
+        <div class="admin-stat-label">RUT</div>
+        <div class="admin-stat-value" style="font-size: 1.2rem;">{{ tenant.rut }}</div>
+    </div>
+    <div class="admin-stat">
+        <div class="admin-stat-label">Productos activos</div>
+        <div class="admin-stat-value">{{ tenant.metrics.active_products }}</div>
+    </div>
+    <div class="admin-stat">
+        <div class="admin-stat-label">Ventas (30 días)</div>
+        <div class="admin-stat-value">{{ tenant.metrics.sales_last_30_days }}</div>
+    </div>
+    <div class="admin-stat">
+        <div class="admin-stat-label">Ingresos (30 días)</div>
+        <div class="admin-stat-value" style="font-size: 1.2rem;">${{ "{:,.0f}".format(tenant.metrics.revenue_last_30_days).replace(",", ".") }}</div>
+    </div>
+</div>
+
+<!-- Subscription -->
+<div class="card" style="margin-bottom: 16px;">
+    <div class="card-header">
+        <h3 class="card-title">Suscripción</h3>
+    </div>
+    <div class="card-body">
+        {% if tenant.subscription %}
+        <p style="margin-bottom: 14px;">
+            Plan: <strong>{{ tenant.subscription.plan|capitalize }}</strong> |
+            Estado: <span class="badge {% if tenant.subscription.status == 'activa' %}badge-success{% elif tenant.subscription.status == 'cancelada' %}badge-error{% else %}badge-warning{% endif %}">{{ tenant.subscription.status|capitalize }}</span> |
+            Vence: <strong>{{ tenant.subscription.end_date[:10] if tenant.subscription.end_date else '—' }}</strong>
+        </p>
+        {% else %}
+        <p style="color: var(--color-text-muted); margin-bottom: 14px;">Sin suscripción configurada.</p>
+        {% endif %}
+        <form method="post" action="{{ url_for('admin_tenant_subscription', tenant_id=tenant.id) }}" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <div style="display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size:0.8rem; color:var(--color-text-muted); font-weight:600;">Plan</label>
+                <select name="plan" style="padding:8px 10px; border:1px solid var(--color-border); border-radius:var(--radius);">
+                    <option value="basico" {% if tenant.subscription and tenant.subscription.plan == 'basico' %}selected{% endif %}>Básico</option>
+                    <option value="pro" {% if tenant.subscription and tenant.subscription.plan == 'pro' %}selected{% endif %}>Pro</option>
+                </select>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size:0.8rem; color:var(--color-text-muted); font-weight:600;">Estado</label>
+                <select name="status" style="padding:8px 10px; border:1px solid var(--color-border); border-radius:var(--radius);">
+                    <option value="activa" {% if tenant.subscription and tenant.subscription.status == 'activa' %}selected{% endif %}>Activa</option>
+                    <option value="expirada" {% if tenant.subscription and tenant.subscription.status == 'expirada' %}selected{% endif %}>Expirada</option>
+                    <option value="cancelada" {% if tenant.subscription and tenant.subscription.status == 'cancelada' %}selected{% endif %}>Cancelada</option>
+                </select>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size:0.8rem; color:var(--color-text-muted); font-weight:600;">Vencimiento</label>
+                <input type="date" name="end_date" value="{{ tenant.subscription.end_date[:10] if tenant.subscription and tenant.subscription.end_date else '' }}" style="padding:8px 10px; border:1px solid var(--color-border); border-radius:var(--radius);">
+            </div>
+            <button type="submit" class="btn btn-primary" style="padding:8px 16px;">Guardar</button>
+        </form>
+    </div>
+</div>
+
+<!-- Users -->
+<div class="card" style="margin-bottom: 16px;">
+    <div class="card-header">
+        <h3 class="card-title">Usuarios ({{ tenant.users|length }})</h3>
+    </div>
+    <div class="card-body">
+        <table class="data-table">
+            <thead>
+                <tr><th>Username</th><th>Rol</th><th>Estado</th><th>Creado</th><th>Acciones</th></tr>
+            </thead>
+            <tbody>
+                {% for u in tenant.users %}
+                <tr>
+                    <td>{{ u.username }}</td>
+                    <td>{{ u.role }}</td>
+                    <td>
+                        {% if u.active %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-error">Inactivo</span>{% endif %}
+                    </td>
+                    <td>{{ u.created_at[:10] if u.created_at else '—' }}</td>
+                    <td class="user-actions">
+                        {% if u.active %}
+                        <form method="post" action="{{ url_for('admin_user_update', tenant_id=tenant.id, user_id=u.id) }}" style="display:inline;">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="active" value="false">
+                            <button type="submit" class="btn btn-danger" style="padding:5px 10px; font-size:0.8rem;" onclick="return confirm('¿Bloquear a {{ u.username }}?')">Bloquear</button>
+                        </form>
+                        {% else %}
+                        <form method="post" action="{{ url_for('admin_user_update', tenant_id=tenant.id, user_id=u.id) }}" style="display:inline;">
+                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="active" value="true">
+                            <button type="submit" class="btn btn-primary" style="padding:5px 10px; font-size:0.8rem;">Activar</button>
+                        </form>
+                        {% endif %}
+                        <button type="button" class="btn btn-secondary" style="padding:5px 10px; font-size:0.8rem;" onclick="openUserEdit('{{ u.id }}', '{{ u.username }}')">Editar</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Actions -->
+<div class="card">
+    <div class="card-body" style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <form method="post" action="{{ url_for('admin_tenant_block', tenant_id=tenant.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="blocked" value="true">
+            <button type="submit" class="btn btn-danger" style="padding:8px 16px;" onclick="return confirm('¿Bloquear este negocio? Todos sus usuarios serán desactivados.')">🚫 Bloquear todo</button>
+        </form>
+        <form method="post" action="{{ url_for('admin_tenant_block', tenant_id=tenant.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="blocked" value="false">
+            <button type="submit" class="btn btn-primary" style="padding:8px 16px;">✅ Desbloquear todo</button>
+        </form>
+        <form method="post" action="{{ url_for('admin_tenant_delete', tenant_id=tenant.id) }}" style="margin-left: auto;">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-danger" style="padding:8px 16px;" onclick="return confirm('¿Eliminar este negocio? Se cancelará su suscripción y se bloquearán todos los usuarios.')">🗑️ Eliminar</button>
+        </form>
+    </div>
+</div>
+
+<!-- Edit user modal -->
+<div id="user-edit-modal" class="admin-modal-overlay">
+    <div class="card" style="width:100%; max-width:400px; margin:auto;">
+        <div class="card-header">
+            <h3 class="card-title">Editar usuario</h3>
+        </div>
+        <div class="card-body">
+            <form method="post" id="user-edit-form">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <div class="form-group">
+                    <label for="edit-username">Username</label>
+                    <input type="text" name="username" id="edit-username" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit-password">Nueva contraseña (vacío = no cambiar)</label>
+                    <input type="password" name="password" id="edit-password" placeholder="Mínimo 8 caracteres">
+                </div>
+                <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeUserEdit()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function openUserEdit(userId, username) {
+    document.getElementById('edit-username').value = username;
+    document.getElementById('edit-password').value = '';
+    var form = document.getElementById('user-edit-form');
+    form.action = '/admin/tenants/{{ tenant.id }}/users/' + userId;
+    document.getElementById('user-edit-modal').classList.add('visible');
+}
+function closeUserEdit() {
+    document.getElementById('user-edit-modal').classList.remove('visible');
+}
+</script>
+{% endblock %}

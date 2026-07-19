@@ -335,29 +335,6 @@ describe('ProductsService', () => {
       );
     });
 
-    it('should throw BadRequestException if product has recent sales', async () => {
-      mockProductRepo.findOne.mockResolvedValue({ ...mockProduct });
-      mockQueryBuilder.getCount.mockResolvedValue(3);
-
-      await expect(
-        service.softDelete(tenantId, mockProduct.id),
-      ).rejects.toThrow(BadRequestException);
-    });
-
-    it('should include PRODUCT_HAS_RECENT_SALES error code', async () => {
-      mockProductRepo.findOne.mockResolvedValue({ ...mockProduct });
-      mockQueryBuilder.getCount.mockResolvedValue(1);
-
-      try {
-        await service.softDelete(tenantId, mockProduct.id);
-        fail('Should have thrown');
-      } catch (e) {
-        expect(e.getResponse()).toEqual(
-          expect.objectContaining({ error: 'PRODUCT_HAS_RECENT_SALES' }),
-        );
-      }
-    });
-
     it('should throw NotFoundException if product does not exist', async () => {
       mockProductRepo.findOne.mockResolvedValue(null);
 

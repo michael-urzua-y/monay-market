@@ -22,13 +22,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload) {
+    const where: any = {
+      id: payload.user_id,
+      role: payload.role,
+      active: true,
+    };
+
+    // superadmin may not have a tenant_id
+    if (payload.tenant_id) {
+      where.tenant_id = payload.tenant_id;
+    }
+
     const user = await this.usersRepository.findOne({
-      where: {
-        id: payload.user_id,
-        tenant_id: payload.tenant_id,
-        role: payload.role,
-        active: true,
-      },
+      where,
       select: ['id', 'tenant_id', 'role', 'active'],
     });
 

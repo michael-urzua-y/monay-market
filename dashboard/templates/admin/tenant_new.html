@@ -1,0 +1,41 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Nuevo Negocio — Admin{% endblock %}
+{% block page_title %}Crear nuevo negocio{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px;">
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.85rem;">← Volver</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error">{{ error }}</div>
+{% endif %}
+
+<div class="card" style="max-width: 500px;">
+    <div class="card-header">
+        <h3 class="card-title">Datos del negocio</h3>
+    </div>
+    <div class="card-body">
+        <form method="post" action="{{ url_for('admin_tenant_create') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <div class="form-group">
+                <label for="name">Nombre del negocio</label>
+                <input type="text" id="name" name="name" value="{{ form.get('name', '') }}" required placeholder="Ej: Almacén Don Pedro">
+            </div>
+            <div class="form-group">
+                <label for="rut">RUT</label>
+                <input type="text" id="rut" name="rut" value="{{ form.get('rut', '') }}" required placeholder="Ej: 76.123.456-7">
+            </div>
+            <div class="form-group">
+                <label for="owner_username">Username del dueño</label>
+                <input type="text" id="owner_username" name="owner_username" value="{{ form.get('owner_username', '') }}" required placeholder="Ej: pedro">
+            </div>
+            <div class="form-group">
+                <label for="owner_password">Contraseña del dueño</label>
+                <input type="password" id="owner_password" name="owner_password" required placeholder="Mínimo 8 caracteres">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px;">Crear negocio</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

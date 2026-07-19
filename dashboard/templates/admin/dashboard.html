@@ -1,0 +1,68 @@
+{% extends "admin/base_admin.html" %}
+{% block title %}Panel Admin{% endblock %}
+{% block page_title %}Panel de Administración{% endblock %}
+
+{% block content %}
+<div class="admin-stats">
+    <div class="admin-stat">
+        <div class="admin-stat-label">Total negocios</div>
+        <div class="admin-stat-value">{{ stats.get('total_tenants', 0) }}</div>
+    </div>
+    <div class="admin-stat">
+        <div class="admin-stat-label">Suscripciones activas</div>
+        <div class="admin-stat-value">{{ stats.get('active_subscriptions', 0) }}</div>
+    </div>
+    <div class="admin-stat">
+        <div class="admin-stat-label">Total usuarios</div>
+        <div class="admin-stat-value">{{ stats.get('total_users', 0) }}</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Negocios registrados</h3>
+    </div>
+    <div class="card-body">
+        {% if tenants %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Negocio</th>
+                    <th>RUT</th>
+                    <th>Plan</th>
+                    <th>Estado</th>
+                    <th>Usuarios</th>
+                    <th>Creado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in tenants %}
+                <tr>
+                    <td><strong>{{ t.name }}</strong></td>
+                    <td>{{ t.rut }}</td>
+                    <td>{{ (t.plan or '—')|capitalize }}</td>
+                    <td>
+                        {% if t.subscription_status == 'activa' %}
+                        <span class="badge badge-success">Activa</span>
+                        {% elif t.subscription_status == 'cancelada' %}
+                        <span class="badge badge-error">Cancelada</span>
+                        {% elif t.subscription_status %}
+                        <span class="badge badge-warning">{{ t.subscription_status|capitalize }}</span>
+                        {% else %}
+                        <span class="badge badge-neutral">Sin datos</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ t.user_count }}</td>
+                    <td>{{ t.created_at[:10] if t.created_at else '—' }}</td>
+                    <td><a href="{{ url_for('admin_tenant_detail', tenant_id=t.id) }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.8rem;">Ver</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="color: var(--color-text-muted);">No hay negocios registrados.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

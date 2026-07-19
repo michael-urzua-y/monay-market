@@ -72,6 +72,8 @@ def get_login_url():
 def redirect_for_authenticated_session():
     token = session.get("jwt_token")
     user = session.get("user") or {}
+    if user.get("role") == "superadmin":
+        return redirect(url_for("admin_dashboard"))
     if is_owner(user):
         return redirect(url_for("dashboard"))
     if token and is_pos_operator(user):
@@ -260,6 +262,11 @@ def login():
 
         if result.get("status_code") == 201 and result.get("accessToken"):
             user = result.get("user", {})
+            if user.get("role") == "superadmin":
+                session.permanent = True
+                session["jwt_token"] = result["accessToken"]
+                session["user"] = user
+                return redirect(url_for("admin_dashboard"))
             if is_owner(user):
                 session.permanent = True
                 session["jwt_token"] = result["accessToken"]
@@ -1401,6 +1408,108 @@ def mermas():
     mermas_list = api.get("/mermas") or []
     page = int(request.args.get("page", 1))
     return render_template("mermas.html", products=product_list, mermas=mermas_list, stats=stats, page=page)
+
+
+# --- Super Admin routes ---
+
+SUPERADMIN_ROLE = "superadmin"
+
+
+def superadmin_required(f):
+    """Decorator that restricts access to superadmin role."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        user = session.get("user") or {}
+        if "jwt_token" not in session or user.get("role") != SUPERADMIN_ROLE:
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+@app.route("/admin")
+@app.route("/admin/")
+@superadmin_required
+def admin_dashboard():
+    """Super admin dashboard with platform stats."""
+    stats = api.get("/admin/stats")
+    tenants = api.get("/admin/tenants")
+    tenant_list = tenants if isinstance(tenants, list) else []
+    return render_template("admin/dashboard.html", stats=stats if isinstance(stats, dict) else {}, tenants=tenant_list)
+
+
+@app.route("/admin/tenants/<tenant_id>")
+@superadmin_required
+def admin_tenant_detail(tenant_id):
+    """Detail view for a specific tenant."""
+    tenant = api.get(f"/admin/tenants/{tenant_id}")
+    if not isinstance(tenant, dict) or tenant.get("status_code", 200) >= 400 or not tenant.get("id"):
+        return redirect(url_for("admin_dashboard"))
+    return render_template("admin/tenant_detail.html", tenant=tenant)
+
+
+@app.route("/admin/tenants/<tenant_id>/block", methods=["POST"])
+@superadmin_required
+def admin_tenant_block(tenant_id):
+    """Block or unblock a tenant."""
+    blocked = request.form.get("blocked") == "true"
+    api.patch(f"/admin/tenants/{tenant_id}", data={"blocked": blocked})
+    return redirect(url_for("admin_tenant_detail", tenant_id=tenant_id))
+
+
+@app.route("/admin/tenants/<tenant_id>/delete", methods=["POST"])
+@superadmin_required
+def admin_tenant_delete(tenant_id):
+    """Soft-delete a tenant."""
+    api.delete(f"/admin/tenants/{tenant_id}")
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/tenants/<tenant_id>/subscription", methods=["POST"])
+@superadmin_required
+def admin_tenant_subscription(tenant_id):
+    """Update tenant subscription."""
+    data = {
+        "plan": request.form.get("plan"),
+        "status": request.form.get("status"),
+        "end_date": request.form.get("end_date") or None,
+    }
+    api.patch(f"/admin/tenants/{tenant_id}/subscription", data=data)
+    return redirect(url_for("admin_tenant_detail", tenant_id=tenant_id))
+
+
+@app.route("/admin/tenants/<tenant_id>/users/<user_id>", methods=["POST"])
+@superadmin_required
+def admin_user_update(tenant_id, user_id):
+    """Update a user from admin panel (block/unblock, rename, reset password)."""
+    data = {}
+    if "active" in request.form:
+        data["active"] = request.form.get("active") == "true"
+    if request.form.get("username"):
+        data["username"] = request.form.get("username", "").strip()
+    if request.form.get("password"):
+        data["password"] = request.form.get("password")
+    
+    api.patch(f"/admin/tenants/{tenant_id}/users/{user_id}", data=data)
+    return redirect(url_for("admin_tenant_detail", tenant_id=tenant_id))
+
+
+@app.route("/admin/tenants/new", methods=["GET", "POST"])
+@superadmin_required
+def admin_tenant_create():
+    """Create a new tenant."""
+    if request.method == "POST":
+        data = {
+            "name": request.form.get("name", "").strip(),
+            "rut": request.form.get("rut", "").strip(),
+            "owner_username": request.form.get("owner_username", "").strip(),
+            "owner_password": request.form.get("owner_password", ""),
+        }
+        result = api.post("/admin/tenants", data=data)
+        if isinstance(result, dict) and result.get("id"):
+            return redirect(url_for("admin_dashboard"))
+        error = result.get("message", "Error al crear tenant") if isinstance(result, dict) else "Error"
+        return render_template("admin/tenant_new.html", error=error, form=data)
+    return render_template("admin/tenant_new.html", form={})
 
 
 if __name__ == "__main__":

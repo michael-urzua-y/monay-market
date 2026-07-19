@@ -13,6 +13,7 @@ import { SiiModule } from './sii/sii.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { WebSocketModule } from './websocket/websocket.module';
 import { MermasModule } from './mermas/mermas.module';
+import { AdminModule } from './admin/admin.module';
 import { RuntimeConfigController } from './runtime-config.controller';
 import { HealthController } from './health.controller';
 
@@ -75,6 +76,7 @@ import { HealthController } from './health.controller';
     DashboardModule,
     WebSocketModule,
     MermasModule,
+    AdminModule,
   ],
   controllers: [RuntimeConfigController, HealthController],
   providers: [

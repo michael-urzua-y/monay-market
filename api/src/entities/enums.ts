@@ -10,6 +10,7 @@ export enum SubscriptionStatus {
 }
 
 export enum UserRole {
+  SUPERADMIN = 'superadmin',
   DUENO = 'dueno',
   CAJERO = 'cajero',
 }
