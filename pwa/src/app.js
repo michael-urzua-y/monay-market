@@ -381,7 +381,7 @@ import { Cart } from './cart.js';
   // ----------------------------------------------------------
   var router = {
     currentScreen: null,
-    screens: ['sale', 'history', 'receipt', 'arqueo'],
+    screens: ['sale', 'history', 'receipt'],
     navigate: function (screenId) {
       this.screens.forEach(function (id) {
         var el = document.getElementById('screen-' + id);
@@ -2109,7 +2109,8 @@ function initArqueo() {
     initReceipt();
     initBulkProductModal();
     initHistory();
-    initArqueo();
+    // Cuadratura oculta temporalmente en la UI.
+    // initArqueo();
 
     // Global auth expiration listener
     window.addEventListener('monay-auth-expired', function () {

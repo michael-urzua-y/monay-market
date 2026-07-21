@@ -144,17 +144,22 @@
           <button id="btn-refresh-history" class="btn-icon" aria-label="Actualizar">🔄</button>
         </div>
         
-        <div style="padding: 16px 20px 0 20px;">
-          <button id="btn-arqueo" class="btn btn-primary btn-block" style="display: flex; justify-content: center; align-items: center; gap: 8px; padding: 14px; font-size: 1.05rem; border-radius: 10px; box-shadow: 0 4px 10px rgba(240, 185, 11, 0.22);">
-            <span style="font-size: 1.3rem;">💵</span> Realizar Cuadratura de Caja
-          </button>
-        </div>
+        <!-- Cuadratura oculta temporalmente en POS. -->
+        <template id="disabled-arqueo-button">
+          <div style="padding: 16px 20px 0 20px;">
+            <button id="btn-arqueo" class="btn btn-primary btn-block" style="display: flex; justify-content: center; align-items: center; gap: 8px; padding: 14px; font-size: 1.05rem; border-radius: 10px; box-shadow: 0 4px 10px rgba(240, 185, 11, 0.22);">
+              <span style="font-size: 1.3rem;">💵</span> Realizar Cuadratura de Caja
+            </button>
+          </div>
+        </template>
 
         <div id="history-list" class="history-list">
           <p class="history-empty">Cargando ventas...</p>
         </div>
       </section>
 
+<!-- Cuadratura oculta temporalmente en POS. -->
+      <template id="disabled-arqueo-screen">
       <!-- Arqueo Screen -->
       <section id="screen-arqueo" class="screen hidden">
         <div class="arqueo-header" style="display: flex; align-items: center; padding: 16px; background: var(--color-surface); border-bottom: 1px solid var(--color-border); position: sticky; top: 0; z-index: 10;">
@@ -232,6 +237,7 @@
         </div>
       </section>
 
+      </template>
       <!-- Receipt Screen -->
       <section id="screen-receipt" class="screen hidden">
         <div class="receipt-container">
