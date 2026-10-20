@@ -1679,3 +1679,68 @@ body.app-booting .global-loading-panel {
   .screen-content { padding: 8px; }
   .product-card { min-height: 80px; }
 }
+
+/* ---------- Impresora térmica (modal) ---------- */
+.printer-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  background: var(--color-primary-soft);
+  color: var(--color-text);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.printer-status small {
+  display: block;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
+.printer-status-dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-text-secondary);
+}
+
+.printer-status.is-connected .printer-status-dot {
+  background: var(--color-success);
+}
+
+.printer-status.is-error {
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.printer-status.is-error .printer-status-dot {
+  background: var(--color-error);
+}
+
+.printer-paper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.printer-paper .btn[aria-checked='true'] {
+  background: var(--color-primary);
+  color: var(--color-on-gold);
+  border-color: var(--color-primary);
+}
+
+.printer-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.printer-help {
+  margin: 16px 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}

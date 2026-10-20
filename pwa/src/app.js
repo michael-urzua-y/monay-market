@@ -6,11 +6,13 @@
 import { api, CONFIG } from './api.js';
 import { OfflineDB } from './offline.js';
 import { Cart } from './cart.js';
+import { ThermalPrinter } from './printer.js';
+import { fitPdf417, toMonochrome } from './receipt-escpos.js';
 
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '32';
+  var APP_ASSET_VERSION = '33';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -152,6 +154,7 @@ import { Cart } from './cart.js';
     inFlight: false,
     lastSaleId: null,
   };
+  var lastRenderedReceipt = null;
   var authRedirectInFlight = false;
 
   function showToast(message, type) {
@@ -1296,6 +1299,7 @@ import { Cart } from './cart.js';
     content.innerHTML = html;
     renderReceiptTimbres(content);
     router.navigate('receipt');
+    lastRenderedReceipt = receipt;
     maybeAutoPrintReceipt(receipt, options);
   }
 
@@ -1306,39 +1310,118 @@ import { Cart } from './cart.js';
     if (receipt.boleta_status !== 'emitida') return;
     if (autoPrintState.inFlight) return;
 
-    var printActivity = startActivity('Generando boleta oficial', {
-      message: 'Preparando timbre SII e iniciando impresion...',
+    var printActivity = startActivity('Imprimiendo boleta', {
+      message: 'Preparando timbre SII e imprimiendo...',
       blocking: true,
     });
 
     autoPrintState.inFlight = true;
     autoPrintState.lastSaleId = receipt.sale_id;
 
-    waitForReceiptTimbres().then(function () {
-      var printDelayMs = 80;
-      window.setTimeout(function () {
-        try {
-          finishActivity(printActivity);
-          window.print();
-          if (options.autoReturn) {
-            window.setTimeout(function () {
-              router.navigate('sale');
-            }, 450);
-          }
-        } catch (err) {
-          autoPrintState.lastSaleId = null;
-          finishActivity(printActivity);
-          showToast('No se pudo iniciar la impresion automatica', 'error');
-        } finally {
-          autoPrintState.inFlight = false;
+    waitForReceiptTimbres()
+      .then(function () {
+        return printReceipt(receipt);
+      })
+      .then(function () {
+        finishActivity(printActivity);
+        if (options.autoReturn) {
+          window.setTimeout(function () {
+            router.navigate('sale');
+          }, 450);
         }
-      }, printDelayMs);
-    }).catch(function () {
-      finishActivity(printActivity);
-      autoPrintState.inFlight = false;
-      autoPrintState.lastSaleId = null;
-      showToast('No se pudo preparar el timbre para impresion', 'error');
+      })
+      .catch(function (err) {
+        autoPrintState.lastSaleId = null;
+        finishActivity(printActivity);
+        showToast(printErrorMessage(err), 'error');
+      })
+      .then(function () {
+        autoPrintState.inFlight = false;
+      });
+  }
+
+  // ----------------------------------------------------------
+  // Impresión: Bluetooth directo (ESC/POS, sin diálogo ni apps intermedias) si hay
+  // una impresora vinculada; si no, window.print() como siempre (RawBT u otro driver).
+  // ----------------------------------------------------------
+  function printReceipt(receipt) {
+    if (!ThermalPrinter.isSupported() || !ThermalPrinter.isPaired()) {
+      return printWithSystemDialog();
+    }
+    return buildTimbreRaster(receipt.boleta_timbre, ThermalPrinter.paperDots())
+      .then(function (timbre) {
+        return ThermalPrinter.printReceipt(mapReceiptForThermalPrinter(receipt), timbre);
+      })
+      .catch(function (err) {
+        // Si no alcanzó a salir nada, se usa la impresión de siempre. Si se cortó a
+        // mitad de camino no se reintenta solo, para no imprimir la boleta dos veces.
+        if (err && err.started) throw err;
+        console.warn('Impresión Bluetooth no disponible, se usa la del sistema', err);
+        return printWithSystemDialog();
+      });
+  }
+
+  function printWithSystemDialog() {
+    return new Promise(function (resolve) {
+      // Pequeña pausa para que el navegador termine de pintar el timbre en pantalla
+      window.setTimeout(function () {
+        window.print();
+        resolve();
+      }, 80);
     });
+  }
+
+  function printErrorMessage(err) {
+    if (err && err.started) return 'La impresión se cortó. Revise la impresora y toque "Imprimir" de nuevo.';
+    return 'No se pudo imprimir la boleta';
+  }
+
+  /**
+   * Timbre PDF417 listo para la térmica, generado del mismo dato que se dibuja en pantalla
+   * con el tamaño más legible que cabe en el papel (ver fitPdf417).
+   * Nivel de corrección 5, como exige el SII para el timbre electrónico.
+   */
+  function buildTimbreRaster(value, maxDots) {
+    if (!value) return Promise.resolve(null);
+    return waitForBwipJs(4000).then(function (bwipjs) {
+      var canvas = document.createElement('canvas');
+      var fitted = fitPdf417(function (columns) {
+        bwipjs.toCanvas(canvas, {
+          bcid: 'pdf417',
+          text: value,
+          columns: columns,
+          eclevel: 5,
+          scale: 1,
+          includetext: false,
+          paddingwidth: 0,
+          paddingheight: 0,
+        });
+        return canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+      }, maxDots);
+      return toMonochrome(fitted.image, maxDots);
+    });
+  }
+
+  function mapReceiptForThermalPrinter(receipt) {
+    var items = Array.isArray(receipt.items) ? receipt.items : [];
+    return {
+      boleta_folio: receipt.boleta_folio,
+      store_name: receipt.store_name,
+      store_rut: receipt.store_rut,
+      store_giro: receipt.store_giro,
+      store_address: receipt.store_address,
+      emitted_at_label: formatReceiptDateTime(receipt.boleta_emitted_at || receipt.date),
+      items: items.map(function (item) {
+        return {
+          name: item.name,
+          quantity_label: formatReceiptQuantity(item.quantity),
+          unit_price_label: formatCLP(item.unit_price),
+          subtotal_label: formatCLP(item.subtotal),
+        };
+      }),
+      total_label: formatCLP(receipt.total),
+      iva_label: formatCLP(receipt.iva_included),
+    };
   }
 
   function getReceiptBoletaStatus(status) {
@@ -1365,19 +1448,134 @@ import { Cart } from './cart.js';
     var btnPrint = document.getElementById('btn-print-receipt');
     if (btnPrint) {
       btnPrint.addEventListener('click', function () {
-        var printActivity = startActivity('Generando Boleta', {
-          message: 'Preparando timbre SII e iniciando impresion...',
+        var receipt = lastRenderedReceipt;
+        if (!receipt) return;
+        var printActivity = startActivity('Imprimiendo boleta', {
+          message: 'Preparando timbre SII e imprimiendo...',
           blocking: true,
         });
-        waitForReceiptTimbres().then(function () {
-          finishActivity(printActivity);
-          window.print();
-        }).catch(function () {
-          finishActivity(printActivity);
-          showToast('No se pudo preparar el timbre para impresion', 'error');
-        });
+        waitForReceiptTimbres()
+          .then(function () {
+            return printReceipt(receipt);
+          })
+          .then(function () {
+            finishActivity(printActivity);
+          })
+          .catch(function (err) {
+            finishActivity(printActivity);
+            showToast(printErrorMessage(err), 'error');
+          });
       });
     }
+
+    initPrinterModal();
+  }
+
+  // ----------------------------------------------------------
+  // Panel de impresora (vincular, papel, prueba)
+  // ----------------------------------------------------------
+  function initPrinterModal() {
+    var modal = document.getElementById('printer-modal');
+    if (!modal) return;
+    var open = function () {
+      renderPrinterModal();
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+    };
+    var close = function () {
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    };
+
+    document.getElementById('btn-open-printer').addEventListener('click', open);
+    document.getElementById('btn-close-printer').addEventListener('click', close);
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) close();
+    });
+
+    modal.querySelectorAll('[data-paper]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        ThermalPrinter.setPaper(Number(btn.getAttribute('data-paper')));
+        renderPrinterModal();
+      });
+    });
+
+    document.getElementById('btn-printer-pair').addEventListener('click', function () {
+      ThermalPrinter.pair()
+        .then(function () {
+          renderPrinterModal();
+          showToast('Impresora vinculada. Imprimiendo prueba...', 'success');
+          return ThermalPrinter.printTest();
+        })
+        .catch(function (err) {
+          renderPrinterModal(err);
+          // Cerrar el selector de Chrome sin elegir no es un error
+          if (err && err.name !== 'NotFoundError') showToast(err.message || 'No se pudo vincular', 'error');
+        });
+    });
+
+    document.getElementById('btn-printer-test').addEventListener('click', function () {
+      var activity = startActivity('Imprimiendo prueba', { message: 'Conectando con la impresora...', blocking: true });
+      ThermalPrinter.printTest()
+        .then(function () {
+          finishActivity(activity);
+          renderPrinterModal();
+        })
+        .catch(function (err) {
+          finishActivity(activity);
+          renderPrinterModal(err);
+          showToast(err.message || 'No se pudo imprimir', 'error');
+        });
+    });
+
+    document.getElementById('btn-printer-forget').addEventListener('click', function () {
+      if (!window.confirm('¿Desvincular la impresora? Se volverá a imprimir con el diálogo del sistema (RawBT).')) return;
+      ThermalPrinter.forget();
+      renderPrinterModal();
+      showToast('Impresora desvinculada', 'success');
+    });
+
+    // Deja la conexión lista para que la primera boleta salga sin esperar
+    ThermalPrinter.warmUp();
+  }
+
+  function renderPrinterModal(error) {
+    var status = document.getElementById('printer-status');
+    var supported = ThermalPrinter.isSupported();
+    var paired = ThermalPrinter.isPaired();
+    var connected = ThermalPrinter.isConnected();
+    var name = ThermalPrinter.deviceName();
+
+    var title;
+    var detail;
+    if (!supported) {
+      title = 'Bluetooth directo no disponible';
+      detail = 'Use Chrome en Android. Mientras tanto se imprime con el diálogo del sistema (RawBT).';
+    } else if (error && paired) {
+      title = 'No se pudo conectar';
+      detail = error.message || 'Revise que la impresora esté encendida y cerca.';
+    } else if (paired) {
+      title = 'Impresora vinculada' + (name ? ': ' + name : '');
+      detail = connected ? 'Conectada y lista para imprimir.' : 'Se conectará sola al imprimir.';
+    } else {
+      title = 'Sin impresora vinculada';
+      detail = 'Hoy se imprime con el diálogo del sistema (RawBT).';
+    }
+    status.className = 'printer-status' + (connected ? ' is-connected' : '') + (error && paired ? ' is-error' : '');
+    status.innerHTML =
+      '<span class="printer-status-dot" aria-hidden="true"></span><span>' +
+      escapeHtml(title) + '<small>' + escapeHtml(detail) + '</small></span>';
+
+    var paper = ThermalPrinter.getPaper();
+    document.querySelectorAll('#printer-modal [data-paper]').forEach(function (btn) {
+      btn.setAttribute('aria-checked', String(Number(btn.getAttribute('data-paper')) === paper));
+    });
+
+    var pairBtn = document.getElementById('btn-printer-pair');
+    pairBtn.textContent = paired ? 'Cambiar impresora' : 'Vincular impresora';
+    pairBtn.disabled = !supported;
+    document.getElementById('btn-printer-test').disabled = !supported || !paired;
+    document.getElementById('btn-printer-forget').classList.toggle('hidden', !paired);
   }
 
   function waitForReceiptTimbres() {
