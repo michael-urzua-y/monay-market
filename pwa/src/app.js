@@ -6,8 +6,10 @@
 import { api, CONFIG } from './api.js';
 import { OfflineDB } from './offline.js';
 import { Cart } from './cart.js';
-import { ThermalPrinter } from './printer.js';
-import { fitPdf417, toMonochrome } from './receipt-escpos.js';
+// Módulos de impresión con versión en la URL: nginx los cachea 7 días como inmutables.
+// Al cambiarlos, subir este número junto con APP_ASSET_VERSION (y en printer.js / service-worker.js).
+import { ThermalPrinter } from './printer.js?v=33';
+import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=33';
 
   // ----------------------------------------------------------
   // Helpers

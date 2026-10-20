@@ -25,8 +25,13 @@ export class AddSuperAdminRole1782200000000 implements MigrationInterface {
             ALTER TABLE "market"."users" ALTER COLUMN "tenant_id" DROP NOT NULL
         `);
 
-        // Create the superadmin user (password from env or dev fallback)
-        const password = process.env.SUPERADMIN_PASSWORD || 'a1234567890';
+        // Create the superadmin user. En producción la clave es obligatoria: el repositorio es
+        // público y una clave por defecto daría acceso de superadmin a cualquiera.
+        const isProduction = process.env.NODE_ENV === 'production';
+        if (isProduction && !process.env.SUPERADMIN_PASSWORD) {
+            throw new Error('SUPERADMIN_PASSWORD es obligatoria en producción para crear el superadmin');
+        }
+        const password = process.env.SUPERADMIN_PASSWORD || 'a1234567890'; // solo desarrollo local
         const passwordHash = await bcrypt.hash(password, 10);
         await queryRunner.query(`
             INSERT INTO "market"."users" (id, tenant_id, email, username, password_hash, role, active)
