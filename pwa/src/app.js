@@ -8,13 +8,13 @@ import { OfflineDB } from './offline.js';
 import { Cart } from './cart.js';
 // Módulos de impresión con versión en la URL: nginx los cachea 7 días como inmutables.
 // Al cambiarlos, subir este número junto con APP_ASSET_VERSION (y en printer.js / service-worker.js).
-import { ThermalPrinter } from './printer.js?v=37';
-import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=37';
+import { ThermalPrinter } from './printer.js?v=38';
+import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=38';
 
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '37';
+  var APP_ASSET_VERSION = '38';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 

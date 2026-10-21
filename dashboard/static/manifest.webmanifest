@@ -1,7 +1,7 @@
 {
   "id": "/",
   "name": "Monay Market",
-  "short_name": "Monay",
+  "short_name": "Monay Market",
   "description": "Punto de venta y administración para almacenes y minimarkets",
   "start_url": "/login",
   "scope": "/",
@@ -11,9 +11,9 @@
   "theme_color": "#f0b90b",
   "lang": "es-CL",
   "icons": [
-    { "src": "/static/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/static/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/static/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/static/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/static/icons/icon-192x192.png?v=2", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-512x512.png?v=2", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-maskable-192x192.png?v=2", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/static/icons/icon-maskable-512x512.png?v=2", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
