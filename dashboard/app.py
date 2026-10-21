@@ -1010,7 +1010,6 @@ def settings_sii():
 
     data = {
         "sii_enabled": request.form.get("sii_enabled") == "on",
-        "sii_provider": request.form.get("sii_provider") or None,
         "sii_razon_social": request.form.get("sii_razon_social", "").strip() or None,
         "sii_giro": request.form.get("sii_giro", "").strip() or None,
         "sii_sandbox_mode": request.form.get("sii_sandbox_mode") == "on",
@@ -1041,29 +1040,6 @@ def settings_sii():
         return redirect(url_for("settings", error=error_msg))
 
     return redirect(url_for("settings", success="Configuración SII actualizada"))
-
-
-@app.route("/settings/printer", methods=["POST"])
-@login_required
-def settings_printer():
-    """Update printer configuration via API."""
-    user = session.get("user", {})
-    if user.get("role") != "dueno":
-        return redirect(url_for("dashboard"))
-
-    data = {
-        "printer_enabled": request.form.get("printer_enabled") == "on",
-    }
-
-    result = api.patch("/tenant/config/printer", data=data)
-
-    if isinstance(result, dict) and result.get("status_code", 200) >= 400:
-        error_msg = result.get("message", "Error al actualizar configuración de impresora")
-        if isinstance(error_msg, list):
-            error_msg = ", ".join(error_msg)
-        return redirect(url_for("settings", error=error_msg))
-
-    return redirect(url_for("settings", success="Configuración de impresora actualizada"))
 
 
 @app.route("/settings/change-password", methods=["POST"])

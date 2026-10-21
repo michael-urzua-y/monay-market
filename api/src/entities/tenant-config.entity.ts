@@ -77,7 +77,8 @@ export class TenantConfig {
   @Column({ name: 'sii_sandbox_mode', type: 'boolean', default: true })
   sii_sandbox_mode: boolean;
 
-  @Column({ name: 'printer_enabled', type: 'boolean', default: false })
+  /** La boleta se imprime siempre al cobrar: se mantiene la columna por compatibilidad. */
+  @Column({ name: 'printer_enabled', type: 'boolean', default: true })
   printer_enabled: boolean;
 
   @UpdateDateColumn({ name: 'updated_at' })

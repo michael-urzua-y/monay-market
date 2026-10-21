@@ -59,7 +59,7 @@ class TestLoginRoute:
         """GET /login should redirect POS operators to the POS URL."""
         with client.session_transaction() as sess:
             sess["jwt_token"] = "some-token"
-            sess["user"] = {"username": "sebastian.urzuay", "email": "cajero@example.com", "role": "cajero"}
+            sess["user"] = {"username": "juan.perez", "email": "cajero@example.com", "role": "cajero"}
         resp = client.get("/login", base_url="http://localhost:5000")
         assert resp.status_code == 302
         assert resp.headers["Location"].endswith("/pos/")
@@ -103,12 +103,12 @@ class TestLoginRoute:
         mock_api.post.return_value = {
             "status_code": 201,
             "accessToken": "jwt-cajero-123",
-            "user": {"username": "sebastian.urzuay", "email": "cajero@example.com", "role": "cajero"},
+            "user": {"username": "juan.perez", "email": "cajero@example.com", "role": "cajero"},
         }
         seed_csrf(client)
         resp = client.post(
             "/login",
-            data={"username": "sebastian.urzuay", "password": "secret123", "_csrf_token": CSRF_TOKEN},
+            data={"username": "juan.perez", "password": "secret123", "_csrf_token": CSRF_TOKEN},
             base_url="http://localhost:5000",
         )
         assert resp.status_code == 302
@@ -244,7 +244,7 @@ class TestLoginRequired:
         """Protected routes should redirect non-owner sessions."""
         with client.session_transaction() as sess:
             sess["jwt_token"] = "valid-token"
-            sess["user"] = {"username": "sebastian.urzuay", "email": "cajero@example.com", "role": "cajero"}
+            sess["user"] = {"username": "juan.perez", "email": "cajero@example.com", "role": "cajero"}
         resp = client.get("/dashboard")
         assert resp.status_code == 302
         assert "/login" in resp.headers["Location"]

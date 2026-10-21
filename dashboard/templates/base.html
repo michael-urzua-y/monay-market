@@ -17,6 +17,9 @@
     <!-- Alpine.js for local interactivity (modals, toggles) -->
     <script defer src="{{ url_for('static', filename='vendor/alpine.min.js', v=asset_version) }}"></script>
 
+    <!-- Formato y validación de RUT (input[data-rut]) -->
+    <script defer src="{{ url_for('static', filename='js/rut.js', v=asset_version) }}"></script>
+
     <!-- Custom styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v=asset_version) }}">
 

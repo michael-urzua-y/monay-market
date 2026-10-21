@@ -8,6 +8,7 @@
     <title>{% block title %}Admin{% endblock %} — Monay Market</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='monay-market-logo.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script defer src="{{ url_for('static', filename='js/rut.js') }}"></script>
     <style>
         /* Admin-specific overrides using the same design tokens as main dashboard */
         .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }

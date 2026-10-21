@@ -88,7 +88,7 @@ describe('ReceiptService', () => {
     mockTenantConfigRepository.findOne.mockResolvedValue({
       tenant_id: tenantId,
       sii_razon_social: 'MINIMARKET JUAN PABLO FAUNDEZ ESPINOSA E.I.R.L.',
-      sii_rut_emisor: '78.260.737-5',
+      sii_rut_emisor: '12.345.678-5',
       sii_giro: 'ALMACEN, MINIMARKE, VTA DE ABARROTES',
       printer_enabled: true,
     });
@@ -96,7 +96,7 @@ describe('ReceiptService', () => {
     const receipt = await service.generateReceipt(tenantId, makeSale());
 
     expect(receipt.store_name).toBe('MINIMARKET JUAN PABLO FAUNDEZ ESPINOSA E.I.R.L.');
-    expect(receipt.store_rut).toBe('78.260.737-5');
+    expect(receipt.store_rut).toBe('12.345.678-5');
     expect(receipt.store_giro).toBe('ALMACEN, MINIMARKE, VTA DE ABARROTES');
     expect(receipt.printer_enabled).toBe(true);
   });

@@ -8,13 +8,13 @@ import { OfflineDB } from './offline.js';
 import { Cart } from './cart.js';
 // Módulos de impresión con versión en la URL: nginx los cachea 7 días como inmutables.
 // Al cambiarlos, subir este número junto con APP_ASSET_VERSION (y en printer.js / service-worker.js).
-import { ThermalPrinter } from './printer.js?v=33';
-import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=33';
+import { ThermalPrinter } from './printer.js?v=34';
+import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=34';
 
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '33';
+  var APP_ASSET_VERSION = '34';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -1212,9 +1212,9 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=33';
   }
 
   function shouldAutoPrintOfficialReceipt(receipt) {
+    // La boleta se imprime siempre al cobrar (ya no es configurable desde el panel)
     return !!(
       receipt &&
-      receipt.printer_enabled &&
       receipt.boleta_folio &&
       receipt.boleta_status === 'emitida'
     );
@@ -1307,7 +1307,7 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=33';
 
   function maybeAutoPrintReceipt(receipt, options) {
     if (!options || !options.autoPrint) return;
-    if (!receipt || !receipt.printer_enabled) return;
+    if (!receipt) return;
     if (!receipt.sale_id || autoPrintState.lastSaleId === receipt.sale_id) return;
     if (receipt.boleta_status !== 'emitida') return;
     if (autoPrintState.inFlight) return;

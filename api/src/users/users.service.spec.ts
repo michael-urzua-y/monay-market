@@ -82,7 +82,7 @@ describe('UsersService', () => {
 
   describe('create', () => {
     const createDto = {
-      username: 'sebastian.urzuay',
+      username: 'juan.perez',
       password: 'password123',
     };
 

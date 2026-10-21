@@ -22,7 +22,7 @@ describe('ApiGatewayProvider', () => {
   const saleData: SiiSaleData = {
     sale_id: 'sale-1',
     rut_emisor: '76.123.456-7',
-    rut_autenticador: '18.673.997-3',
+    rut_autenticador: '11.111.111-1',
     items: [
       {
         nombre: 'Pan amasado',
@@ -100,7 +100,7 @@ describe('ApiGatewayProvider', () => {
     const body = JSON.parse(requestOptions.body);
 
     expect(body.auth.pass).toEqual({
-      rut: '18673997-3',
+      rut: '11111111-1',
       clave: 'clave-sii',
     });
     expect(body.dte.vendedor).toBe('76123456-7');

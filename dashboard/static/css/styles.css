@@ -1069,3 +1069,25 @@ input:focus, select:focus, textarea:focus {
         opacity: 0.7;
     }
 }
+
+/* ---------- Campos de RUT (static/js/rut.js) ---------- */
+.rut-feedback {
+    display: block;
+    min-height: 1.2em;
+    margin-top: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.rut-feedback.is-valid {
+    color: var(--color-success, #257a3e);
+}
+
+.rut-feedback.is-error {
+    color: var(--color-error);
+}
+
+input.rut-invalid {
+    border-color: var(--color-error) !important;
+    background: var(--color-error-bg);
+}

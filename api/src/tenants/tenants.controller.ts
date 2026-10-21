@@ -11,7 +11,6 @@ import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { UserRole } from '../entities/enums';
 import { TenantsService } from './tenants.service';
 import { UpdateSiiConfigDto } from './dto/update-sii-config.dto';
-import { UpdatePrinterConfigDto } from './dto/update-printer-config.dto';
 
 @Controller('tenant')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
@@ -31,15 +30,6 @@ export class TenantsController {
     @Body() dto: UpdateSiiConfigDto,
   ) {
     return this.tenantsService.updateSiiConfig(user.tenant_id, dto);
-  }
-
-  @Patch('config/printer')
-  @Roles(UserRole.DUENO)
-  updatePrinterConfig(
-    @CurrentUser() user: JwtPayload,
-    @Body() dto: UpdatePrinterConfigDto,
-  ) {
-    return this.tenantsService.updatePrinterConfig(user.tenant_id, dto);
   }
 
   @Get('/subscription')
