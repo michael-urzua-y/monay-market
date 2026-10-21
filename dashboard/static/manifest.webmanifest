@@ -1,0 +1,19 @@
+{
+  "id": "/",
+  "name": "Monay Market",
+  "short_name": "Monay",
+  "description": "Punto de venta y administración para almacenes y minimarkets",
+  "start_url": "/login",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#020a0a",
+  "theme_color": "#f0b90b",
+  "lang": "es-CL",
+  "icons": [
+    { "src": "/static/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/static/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/static/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -16,7 +16,7 @@ from zoneinfo import ZoneInfo
 
 import requests
 
-from flask import Flask, Response, abort, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, Response, abort, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 
@@ -240,6 +240,20 @@ def parse_product_form():
         "tracks_stock": True,
         "allow_cashier_reception": False,
     }
+
+
+# --- App instalable (PWA) ---
+# Se sirven desde la raíz para que la app abarque todo el sitio (login, panel y caja).
+
+
+@app.route("/manifest.webmanifest")
+def web_manifest():
+    return send_from_directory(app.static_folder, "manifest.webmanifest", mimetype="application/manifest+json")
+
+
+@app.route("/sw.js")
+def service_worker():
+    return send_from_directory(app.static_folder, "js/sw.js", mimetype="text/javascript")
 
 
 # --- Auth routes ---
