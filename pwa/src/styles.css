@@ -148,6 +148,91 @@ body.app-loading-blocking {
   color: #ffd257;
 }
 
+.header-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-menu {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid rgba(240, 185, 11, 0.36);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+
+/* Celular: logo + botón ☰; la navegación y "Salir" se despliegan como menú */
+@media (max-width: 640px) {
+  .app-header {
+    position: relative;
+  }
+
+  .app-header .btn-menu {
+    display: inline-flex;
+  }
+
+  .app-header.menu-open .btn-menu {
+    background: rgba(240, 185, 11, 0.14);
+  }
+
+  .app-header .header-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 8px 10px 12px;
+    background: #020a0a;
+    border-bottom: 1px solid rgba(240, 185, 11, 0.25);
+    box-shadow: 0 14px 24px rgba(0, 0, 0, 0.35);
+  }
+
+  .app-header.menu-open .header-menu {
+    display: flex;
+  }
+
+  .app-header .header-nav {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .app-header .nav-btn {
+    flex-direction: row;
+    gap: 14px;
+    min-height: 48px;
+    padding: 0 14px;
+    font-size: 1rem;
+    border-radius: var(--radius);
+  }
+
+  .app-header .nav-btn .nav-label {
+    font-size: 1rem;
+  }
+
+  .app-header .nav-btn.active {
+    border-bottom: none;
+    background: rgba(240, 185, 11, 0.12);
+  }
+
+  .app-header .btn-logout {
+    justify-content: center;
+    min-height: 48px;
+    margin-top: 6px;
+    font-size: 1rem;
+  }
+}
+
 /* ---- Screens ---- */
 .screen {
   flex: 1;
@@ -1594,18 +1679,6 @@ body.app-booting .global-loading-panel {
   }
 
   .header-logo { width: 118px; }
-
-  .nav-btn {
-    padding: 4px 8px;
-  }
-
-  .nav-btn .nav-label {
-    font-size: 0.58rem;
-  }
-
-  .btn-logout {
-    padding: 6px 8px;
-  }
 
   .bulk-product-modal {
     align-items: flex-end;

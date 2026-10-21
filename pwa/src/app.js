@@ -8,13 +8,13 @@ import { OfflineDB } from './offline.js';
 import { Cart } from './cart.js';
 // Módulos de impresión con versión en la URL: nginx los cachea 7 días como inmutables.
 // Al cambiarlos, subir este número junto con APP_ASSET_VERSION (y en printer.js / service-worker.js).
-import { ThermalPrinter } from './printer.js?v=35';
-import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=35';
+import { ThermalPrinter } from './printer.js?v=36';
+import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=36';
 
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '35';
+  var APP_ASSET_VERSION = '36';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -2218,6 +2218,36 @@ function initArqueo() {
           router.navigate(screen);
         }
       });
+    });
+    initHeaderMenu();
+  }
+
+  // Menú ☰ del celular: agrupa la navegación y "Salir" (en pantallas grandes van en el encabezado)
+  function initHeaderMenu() {
+    var header = document.getElementById('app-header');
+    var toggle = document.getElementById('btn-menu');
+    var menu = document.getElementById('header-menu');
+    if (!header || !toggle || !menu) return;
+
+    function setOpen(open) {
+      header.classList.toggle('menu-open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      toggle.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+    }
+
+    toggle.addEventListener('click', function (event) {
+      event.stopPropagation();
+      setOpen(!header.classList.contains('menu-open'));
+    });
+    // Elegir una opción cierra el menú
+    menu.addEventListener('click', function (event) {
+      if (event.target.closest('button')) setOpen(false);
+    });
+    document.addEventListener('click', function (event) {
+      if (header.classList.contains('menu-open') && !header.contains(event.target)) setOpen(false);
+    });
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape') setOpen(false);
     });
   }
 
