@@ -1,4 +1,5 @@
 {% extends "admin/base_admin.html" %}
+{% from "partials/icons.html" import icon %}
 {% block title %}{{ tenant.name }} — Admin{% endblock %}
 {% block page_title %}{{ tenant.name }}{% endblock %}
 
@@ -115,16 +116,16 @@
         <form method="post" action="{{ url_for('admin_tenant_block', tenant_id=tenant.id) }}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="blocked" value="true">
-            <button type="submit" class="btn btn-danger" style="padding:8px 16px;" onclick="return confirm('¿Bloquear este negocio? Todos sus usuarios serán desactivados.')">🚫 Bloquear todo</button>
+            <button type="submit" class="btn btn-danger" style="padding:8px 16px;" onclick="return confirm('¿Bloquear este negocio? Todos sus usuarios serán desactivados.')">{{ icon('bloquear', 18) }} Bloquear todo</button>
         </form>
         <form method="post" action="{{ url_for('admin_tenant_block', tenant_id=tenant.id) }}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
             <input type="hidden" name="blocked" value="false">
-            <button type="submit" class="btn btn-primary" style="padding:8px 16px;">✅ Desbloquear todo</button>
+            <button type="submit" class="btn btn-primary" style="padding:8px 16px;">{{ icon('check', 18) }} Desbloquear todo</button>
         </form>
         <form method="post" action="{{ url_for('admin_tenant_delete', tenant_id=tenant.id) }}" style="margin-left: auto;">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="btn btn-danger" style="padding:8px 16px;" onclick="return confirm('¿Eliminar este negocio? Se cancelará su suscripción y se bloquearán todos los usuarios.')">🗑️ Eliminar</button>
+            <button type="submit" class="btn btn-danger" style="padding:8px 16px;" onclick="return confirm('¿Eliminar este negocio? Se cancelará su suscripción y se bloquearán todos los usuarios.')">{{ icon('eliminar', 18) }} Eliminar</button>
         </form>
     </div>
 </div>

@@ -9,7 +9,7 @@
 // la app sigue usando window.print() + RawBT.
 // ============================================================
 
-import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=38'; // misma versión que en app.js
+import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=39'; // misma versión que en app.js
 
 // Servicios BLE "serial" de las térmicas chinas más comunes (Xprinter, Goojprt, Zjiang, MTP…)
 var SERVICES = [
@@ -56,6 +56,15 @@ function storage(key, value) {
     // Almacenamiento bloqueado: se mantiene solo en memoria durante la sesión
   }
   return null;
+}
+
+/** Avisa a la app que cambió el estado de la impresora (para el indicador del encabezado). */
+function notifyChange() {
+  try {
+    window.dispatchEvent(new Event('monay-printer-change'));
+  } catch (e) {
+    // Sin soporte de eventos: el indicador se actualiza al abrir el panel
+  }
 }
 
 function delay(ms) {
@@ -118,6 +127,7 @@ function forget() {
   state.device = null;
   state.lost = false;
   storage(STORAGE_DEVICE, null);
+  notifyChange();
 }
 
 // ----------------------------------------------------------
@@ -146,6 +156,7 @@ function connect(device) {
   if (!device.__monayListener) {
     device.addEventListener('gattserverdisconnected', function () {
       state.characteristic = null;
+      notifyChange();
     });
     device.__monayListener = true;
   }
@@ -153,6 +164,7 @@ function connect(device) {
     .then(findWritable)
     .then(function (characteristic) {
       state.characteristic = characteristic;
+      notifyChange();
       return characteristic;
     });
 }

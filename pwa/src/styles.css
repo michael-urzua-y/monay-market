@@ -10,16 +10,22 @@
 }
 
 :root {
+  --color-ink: #06100d;
+  --color-ink-soft: #0e1c18;
   --color-primary: #f0b90b;
-  --color-primary-dark: #d7a72a;
-  --color-primary-soft: rgba(240, 185, 11, 0.12);
-  --color-bg: #f4f6ee;
-  --color-surface: #fffef9;
-  --color-text: #172016;
-  --color-text-secondary: #66715f;
-  --color-border: #dfe6d4;
-  --color-error: #dc2626;
-  --color-success: #257a3e;
+  --color-primary-dark: #e0a800;
+  --color-primary-soft: #fff4cc;
+  --color-primary-ink: #5a4300;
+  --color-bg: #f6f5ef;
+  --color-surface: #ffffff;
+  --color-surface-2: #fafaf6;
+  --color-surface-3: #f1f0e8;
+  --color-text: #14181a;
+  --color-text-secondary: #5f6862;
+  --color-border: #e3e2d9;
+  --color-border-soft: #ecebe3;
+  --color-error: #b42318;
+  --color-success: #05603a;
   --color-info: #5c7f2f;
   --color-warning: #b45309;
   --color-on-dark: #f6faed;
@@ -30,20 +36,20 @@
   --denomination-5000: #C0392B;
   --denomination-10000: #2980B9;
   --denomination-20000: #D35400;
-  --radius: 8px;
-  --shadow: 0 2px 8px rgba(23, 32, 22, 0.08);
-  --header-height: 56px;
+  --radius: 12px;
+  --radius-lg: 18px;
+  --shadow: 0 2px 8px rgba(6, 16, 13, 0.06);
+  --header-height: 64px;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
 html, body {
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-sans);
   font-size: 16px;
   line-height: 1.5;
   color: var(--color-text);
-  background:
-    linear-gradient(180deg, rgba(240, 185, 11, 0.03), transparent 220px),
-    var(--color-bg);
+  background: var(--color-bg);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 }
@@ -105,6 +111,7 @@ body.app-loading-blocking {
   border: none;
   background: transparent;
   color: var(--color-on-dark-muted);
+  font-family: inherit;
   font-size: 0.65rem;
   cursor: pointer;
   border-radius: var(--radius);
@@ -112,6 +119,7 @@ body.app-loading-blocking {
 }
 
 .nav-btn .nav-icon {
+  display: inline-flex;
   font-size: 1.2rem;
 }
 
@@ -127,6 +135,7 @@ body.app-loading-blocking {
 }
 
 .btn-logout {
+  font-family: inherit;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -234,8 +243,18 @@ body.app-loading-blocking {
 }
 
 /* ---- Screens ---- */
+/* La pantalla ocupa el alto disponible: en Venta el panel de cobro queda abajo
+   y la lista del carrito es la que se desplaza */
+#screen-container {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .screen {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -251,31 +270,30 @@ body.app-loading-blocking {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  min-height: 44px;
   padding: 10px 20px;
   border: none;
   border-radius: var(--radius);
+  font: inherit;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, var(--color-primary), #ffd257);
+  background: var(--color-primary);
   color: var(--color-on-gold);
   font-weight: 700;
   border: none;
 }
 
 .btn-primary:hover {
-  background: linear-gradient(135deg, #ffd257, #ffe37f);
-  box-shadow: 0 4px 12px rgba(240, 185, 11, 0.25);
-  transform: translateY(-1px);
+  background: #ffd257;
 }
 
 .btn-primary:active {
-  transform: translateY(1px);
-  box-shadow: none;
+  transform: scale(0.99);
 }
 
 .btn.is-loading,
@@ -413,9 +431,8 @@ body.app-booting .global-loading-panel {
 
 /* ---- Sale Screen ---- */
 .sale-search-bar {
-  padding: 10px 12px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  padding: 14px 16px 10px;
+  background: var(--color-bg);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -423,23 +440,26 @@ body.app-booting .global-loading-panel {
 
 .search-input-wrap {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
 .search-input {
   flex: 1;
-  padding: 10px 12px;
+  min-width: 0;
+  height: 50px;
+  padding: 0 14px 0 44px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
+  border-radius: 14px;
+  font: inherit;
   font-size: 0.95rem;
   color: var(--color-text);
-  background: var(--color-bg);
+  background: var(--color-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236b746e' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 14px center;
 }
 
 .search-input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(201, 149, 42, 0.15);
+  box-shadow: 0 0 0 4px rgba(240, 185, 11, 0.18);
 }
 
 .search-input.is-loading {
@@ -450,10 +470,11 @@ body.app-booting .global-loading-panel {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius);
+  color: var(--color-text);
   background: var(--color-surface);
   font-size: 1.2rem;
   cursor: pointer;
@@ -465,9 +486,12 @@ body.app-booting .global-loading-panel {
 }
 
 .btn-scan {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: #12160e;
+  color: #14120a;
 }
 
 /* Search Results Dropdown */
@@ -609,29 +633,31 @@ body.app-booting .global-loading-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 140px;
 }
 
 .cart-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--color-border);
+  padding: 4px 18px 8px;
 }
 
 .cart-header h3 {
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .btn-text {
+  min-height: 36px;
   background: none;
   border: none;
-  font-size: 0.85rem;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border-radius: 10px;
 }
 
 .btn-danger-text {
@@ -646,7 +672,10 @@ body.app-booting .global-loading-panel {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 16px 12px;
 }
 
 .cart-empty {
@@ -659,9 +688,11 @@ body.app-booting .global-loading-panel {
 .cart-item {
   display: flex;
   align-items: center;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--color-border);
-  gap: 8px;
+  padding: 10px 8px 10px 14px;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 16px;
+  background: var(--color-surface);
+  gap: 10px;
 }
 
 .cart-item-info {
@@ -670,31 +701,35 @@ body.app-booting .global-loading-panel {
 }
 
 .cart-item-name {
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 0.95rem;
+  font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .cart-item-price {
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   color: var(--color-text-secondary);
 }
 
 .cart-item-qty {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0;
+  border-radius: 12px;
+  background: var(--color-surface-3);
 }
 
 .qty-btn {
-  width: 28px;
-  height: 28px;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  background: var(--color-surface);
-  font-size: 1rem;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 1.25rem;
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -702,7 +737,7 @@ body.app-booting .global-loading-panel {
 }
 
 .qty-btn:active {
-  background: var(--color-bg);
+  background: var(--color-border);
 }
 
 .qty-value {
@@ -713,20 +748,23 @@ body.app-booting .global-loading-panel {
 }
 
 .cart-item-subtotal {
-  font-size: 0.9rem;
-  font-weight: 600;
-  min-width: 70px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  min-width: 64px;
   text-align: right;
 }
 
 .cart-item-remove {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
   background: none;
   border: none;
+  border-radius: 10px;
   color: var(--color-error);
-  font-size: 1.1rem;
+  font-size: 1rem;
   cursor: pointer;
-  padding: 4px;
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
 .cart-item-remove:active {
@@ -736,50 +774,61 @@ body.app-booting .global-loading-panel {
 .cart-total-bar {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  padding: 12px;
-  background: linear-gradient(135deg, #01080b, #04120f);
-  color: var(--color-on-dark);
-  font-size: 1.1rem;
-  font-weight: 700;
-  box-shadow: 0 -4px 10px rgba(0,0,0,0.1);
+  align-items: baseline;
+  padding: 18px 16px 4px;
+  background: var(--color-surface);
+  border-radius: 24px 24px 0 0;
+  color: #4b544f;
+  font-size: 0.95rem;
+  font-weight: 600;
+  box-shadow: 0 -10px 30px rgba(6, 16, 13, 0.08);
 }
 
 .cart-total-amount {
-  color: #ffd257;
-  font-size: 1.3rem;
+  color: var(--color-text);
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 
 /* Payment Section */
 .payment-section {
-  padding: 12px;
+  padding: 10px 16px 18px;
   background: var(--color-surface);
-  border-top: 1px solid var(--color-border);
 }
 
 .payment-method-selector {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 5px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: var(--color-surface-3);
 }
 
 .payment-method-btn {
-  flex: 1;
-  padding: 10px;
-  border: 2px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #4b544f;
+  font: inherit;
   font-size: 0.9rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  text-align: center;
-  transition: border-color 0.15s, background 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
 
 .payment-method-btn.active {
-  border-color: var(--color-primary);
-  background: rgba(240, 185, 11, 0.08);
-  color: var(--color-primary);
+  background: var(--color-ink);
+  color: #ffd257;
+  font-weight: 700;
 }
 
 .payment-details {
@@ -788,19 +837,92 @@ body.app-booting .global-loading-panel {
 
 .amount-input {
   width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--color-border);
+  height: 50px;
+  padding: 0 14px;
+  border: 1.5px solid var(--color-border);
   border-radius: var(--radius);
-  font-size: 1.1rem;
-  font-weight: 600;
+  font: inherit;
+  font-size: 1.15rem;
+  font-weight: 700;
   color: var(--color-text);
-  background: var(--color-bg);
+  background: var(--color-surface-2);
 }
 
 .amount-input:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(201, 149, 42, 0.15);
+  box-shadow: 0 0 0 4px rgba(240, 185, 11, 0.18);
+}
+
+/* Montos rápidos bajo "Monto recibido" (Exacto y billetes que cubren el total) */
+.quick-amounts {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.quick-amounts:empty {
+  display: none;
+}
+
+.quick-amount {
+  flex: 1;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 6px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.quick-amount.is-selected {
+  border: 1.5px solid var(--color-primary);
+  background: #fff8db;
+  font-weight: 700;
+}
+
+.quick-amount:active {
+  transform: scale(0.97);
+}
+
+/* Estado de la impresora en el encabezado */
+.printer-indicator {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(240, 185, 11, 0.14);
+  color: #ffd257;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+@media (min-width: 641px) {
+  .printer-indicator {
+    margin-right: 10px;
+  }
+}
+
+.printer-indicator.is-on {
+  background: rgba(74, 222, 128, 0.12);
+  color: #86efac;
+}
+
+.printer-indicator + .btn-menu,
+.printer-indicator + .header-menu {
+  margin-left: 0;
 }
 
 .bulk-product-modal {
@@ -887,26 +1009,26 @@ body.app-booting .global-loading-panel {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
-  margin-top: 8px;
+  padding: 10px 14px;
+  margin-top: 10px;
   border-radius: var(--radius);
-  font-size: 0.95rem;
-  font-weight: 500;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .change-display.positive {
-  background: rgba(22, 163, 74, 0.08);
+  background: #ecfdf3;
   color: var(--color-success);
 }
 
 .change-display.negative {
-  background: rgba(220, 38, 38, 0.08);
+  background: #fef3f2;
   color: var(--color-error);
 }
 
 .change-amount {
-  font-weight: 700;
-  font-size: 1.05rem;
+  font-weight: 800;
+  font-size: 1.15rem;
 }
 
 .quick-amount-btns {
@@ -978,8 +1100,8 @@ body.app-booting .global-loading-panel {
 
 .btn-clear-amount {
   position: absolute;
-  right: 8px;
-  background: var(--color-border);
+  right: 10px;
+  background: var(--color-surface-3);
   border: none;
   border-radius: 50%;
   width: 24px;
@@ -999,7 +1121,7 @@ body.app-booting .global-loading-panel {
 
 .tarjeta-msg {
   padding: 12px;
-  background: rgba(201, 149, 42, 0.05);
+  background: var(--color-surface-2);
   border-radius: var(--radius);
   color: var(--color-text-secondary);
   font-size: 0.9rem;
@@ -1007,13 +1129,17 @@ body.app-booting .global-loading-panel {
 }
 
 .btn-pay {
-  font-size: 1.1rem;
+  min-height: 56px;
+  border-radius: 16px;
+  font-size: 1.05rem;
   padding: 14px;
-  font-weight: 700;
+  font-weight: 800;
+  box-shadow: 0 10px 24px rgba(240, 185, 11, 0.3);
 }
 
 .btn-pay:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
+  box-shadow: none;
   cursor: not-allowed;
 }
 
@@ -1579,16 +1705,18 @@ body.app-booting .global-loading-panel {
 }
 
 /* Toast notification */
+/* Arriba, bajo el encabezado, para no tapar el botón de cobrar */
 .toast {
   position: fixed;
-  bottom: 80px;
+  top: calc(var(--header-height) + 10px);
   left: 50%;
   transform: translateX(-50%);
-  padding: 10px 20px;
+  padding: 10px 18px;
   border-radius: var(--radius);
+  box-shadow: 0 10px 24px rgba(6, 16, 13, 0.2);
   color: #fff;
-  font-size: 0.85rem;
-  font-weight: 500;
+  font-size: 0.875rem;
+  font-weight: 600;
   z-index: 200;
   opacity: 0;
   transition: opacity 0.3s;

@@ -46,7 +46,7 @@ describe('DashboardService', () => {
   describe('getToday', () => {
     it('should return total and count of sales for today', async () => {
       mockSaleRepository.query.mockResolvedValue([
-        { total_ventas: '15000', cantidad_ventas: '3' },
+        { total_ventas: '15000', cantidad_ventas: '3', boletas_emitidas: '2', boletas_por_revisar: '1' },
       ]);
 
       const result = await service.getToday(tenantId);
@@ -54,6 +54,8 @@ describe('DashboardService', () => {
       expect(result).toEqual({
         total_ventas: 15000,
         cantidad_ventas: 3,
+        boletas_emitidas: 2,
+        boletas_por_revisar: 1,
       });
       expect(mockSaleRepository.query).toHaveBeenCalledWith(
         expect.any(String),
@@ -63,7 +65,7 @@ describe('DashboardService', () => {
 
     it('should return zeros when no sales today', async () => {
       mockSaleRepository.query.mockResolvedValue([
-        { total_ventas: '0', cantidad_ventas: '0' },
+        { total_ventas: '0', cantidad_ventas: '0', boletas_emitidas: '0', boletas_por_revisar: '0' },
       ]);
 
       const result = await service.getToday(tenantId);
@@ -71,6 +73,8 @@ describe('DashboardService', () => {
       expect(result).toEqual({
         total_ventas: 0,
         cantidad_ventas: 0,
+        boletas_emitidas: 0,
+        boletas_por_revisar: 0,
       });
     });
   });

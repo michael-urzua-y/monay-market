@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
 
 {% block title %}Detalle de venta{% endblock %}
 {% block page_title %}Detalle de venta{% endblock %}
@@ -279,7 +280,7 @@
                     {% if sale.boleta_status in ['pendiente', 'error'] %}
                     <form action="{{ url_for('sales_retry_boleta', sale_id=sale.id) }}" method="post" class="sales-detail-retry">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                        <button type="submit" class="btn btn-sm btn-primary">🔄 Reintentar Boleta</button>
+                        <button type="submit" class="btn btn-sm btn-primary">{{ icon('reintentar', 16) }} Reintentar boleta</button>
                     </form>
                     {% endif %}
                 </div>
@@ -334,7 +335,7 @@
                 </div>
             </div>
             {% if sale.boleta and sale.boleta.pdf_url %}
-            <div class="sales-detail-pdf"><a href="{{ sale.boleta.pdf_url }}" target="_blank" class="btn btn-primary btn-sm">📄 Ver PDF</a></div>
+            <div class="sales-detail-pdf"><a href="{{ sale.boleta.pdf_url }}" target="_blank" class="btn btn-primary btn-sm">{{ icon('documento', 16) }} Ver PDF</a></div>
             {% endif %}
         </div>
     </div>

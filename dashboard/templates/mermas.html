@@ -1,7 +1,8 @@
 {% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
 
 {% block title %}Mermas{% endblock %}
-{% block page_title %}Control de Mermas{% endblock %}
+{% block page_title %}Mermas{% endblock %}
 
 {% block head %}
 <style>
@@ -48,6 +49,10 @@
     searchQuery: '',
     selectedProductId: null,
     selectedProductPrice: 0,
+    quantity: '',
+    get estimatedLoss() {
+        return Math.round((parseFloat(this.quantity) || 0) * (this.selectedProductPrice || 0));
+    },
     products: [],
     loading: false,
     searchRequestId: 0,
@@ -82,13 +87,11 @@
             const rows = doc.querySelectorAll('tbody tr');
             this.products = [];
             rows.forEach(row => {
-                const cells = row.querySelectorAll('td');
-                if (cells.length >= 3) {
-                    const name = cells[0].textContent.trim();
-                    const price = parseInt(cells[2].textContent.replace(/[^0-9]/g, '')) || 0;
-                    const id = row.dataset?.id || name;
-                    this.products.push({ id, name, price });
-                }
+                // Nombre y precio vienen como atributos de la fila (htmx/products_table.html)
+                const name = (row.dataset.name || '').trim();
+                if (!row.dataset.id || !name) return;
+                const price = Math.round(parseFloat(row.dataset.price)) || 0;
+                this.products.push({ id: row.dataset.id, name, price });
             });
         } catch (e) {
             if (requestId !== this.searchRequestId) return;
@@ -111,27 +114,23 @@
 }">
 
     <!-- Stats summary -->
-    <div class="mermas-stats" style="display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;">
-        <div class="card" style="flex: 1; min-width: 80px;">
-            <div class="card-body" style="text-align: center; padding: 12px 8px;">
-                <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 4px;">Esta Semana</div>
-                <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-error);">
-                    ${{ "{:,}".format(weekly|int)|replace(',', '.') }}
-                </div>
+    <div class="dashboard-grid mermas-stats" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 20px;">
+        <div class="card">
+            <div class="kpi">
+                <span class="kpi-label">Pérdida esta semana</span>
+                <div class="kpi-value" style="color: var(--color-error);">${{ "{:,}".format(weekly|int)|replace(',', '.') }}</div>
             </div>
         </div>
-        <div class="card" style="flex: 1; min-width: 80px;">
-            <div class="card-body" style="text-align: center; padding: 12px 8px;">
-                <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 4px;">Este Mes</div>
-                <div style="font-size: 1.1rem; font-weight: 700; color: var(--color-error);">
-                    ${{ "{:,}".format(monthly|int)|replace(',', '.') }}
-                </div>
+        <div class="card">
+            <div class="kpi">
+                <span class="kpi-label">Pérdida este mes</span>
+                <div class="kpi-value" style="color: var(--color-error);">${{ "{:,}".format(monthly|int)|replace(',', '.') }}</div>
             </div>
         </div>
-        <div class="card" style="flex: 1; min-width: 80px;">
-            <div class="card-body" style="text-align: center; padding: 12px 8px;">
-                <div style="font-size: 0.75rem; color: var(--color-text-muted); margin-bottom: 4px;">Total</div>
-                <div style="font-size: 1.1rem; font-weight: 700;">{{ total }}</div>
+        <div class="card">
+            <div class="kpi">
+                <span class="kpi-label">Mermas registradas</span>
+                <div class="kpi-value">{{ total }}</div>
             </div>
         </div>
     </div>
@@ -140,7 +139,7 @@
         <!-- Form to register new merma -->
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">Registrar Merma</h3>
+                <h3 class="card-title">Registrar merma</h3>
             </div>
             <div class="card-body">
                 {% if error %}
@@ -160,8 +159,8 @@
                                    placeholder="Buscar o escanear..."
                                    autocomplete="off"
                                    style="flex: 1;">
-                            <button type="button" onclick="openScanner()" style="padding: 8px 12px; border: 1px solid var(--color-border); border-radius: 6px; background: var(--color-bg); cursor: pointer;">
-                                📷
+                            <button type="button" class="btn btn-secondary btn-icon" onclick="openScanner()" aria-label="Escanear código de barras" title="Escanear con cámara" style="width: 46px; min-height: 46px;">
+                                {{ icon('codigo-barras') }}
                             </button>
                         </div>
                         <input type="hidden" name="product_id" :value="selectedProductId">
@@ -184,9 +183,17 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="quantity">Cantidad</label>
-                        <input type="number" id="quantity" name="quantity" step="0.001" min="0.001" required placeholder="0">
+                    <div class="form-group" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+                        <div>
+                            <label for="quantity">Cantidad</label>
+                            <input type="number" id="quantity" name="quantity" step="0.001" min="0.001" required placeholder="0" x-model="quantity">
+                        </div>
+                        <div>
+                            <label>Pérdida estimada</label>
+                            <div style="min-height: 46px; display: flex; align-items: center; padding: 0 14px; border-radius: var(--radius); background: var(--color-error-bg); color: var(--color-error); font-weight: 700;"
+                                 aria-live="polite"
+                                 x-text="estimatedLoss > 0 ? formatCLP(estimatedLoss) : '—'">—</div>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -205,7 +212,7 @@
                         <input type="text" id="note" name="note" placeholder="Comentario adicional...">
                     </div>
 
-                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">Registrar Merma</button>
+                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">Registrar merma</button>
                 </form>
             </div>
         </div>
@@ -213,7 +220,7 @@
         <!-- Mermas history table -->
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title">Historial de Mermas</h3>
+                <h3 class="card-title">Historial de mermas</h3>
             </div>
             <div class="card-body" style="padding: 0; overflow-x: auto;">
                 {% if paginated %}

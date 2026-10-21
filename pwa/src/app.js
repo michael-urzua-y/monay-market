@@ -8,13 +8,13 @@ import { OfflineDB } from './offline.js';
 import { Cart } from './cart.js';
 // Módulos de impresión con versión en la URL: nginx los cachea 7 días como inmutables.
 // Al cambiarlos, subir este número junto con APP_ASSET_VERSION (y en printer.js / service-worker.js).
-import { ThermalPrinter } from './printer.js?v=38';
-import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=38';
+import { ThermalPrinter } from './printer.js?v=39';
+import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
 
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '38';
+  var APP_ASSET_VERSION = '39';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -986,6 +986,16 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=38';
       });
     }
 
+    var quickAmounts = document.getElementById('quick-amounts');
+    if (quickAmounts && amountInput) {
+      quickAmounts.addEventListener('click', function (event) {
+        var btn = event.target.closest('[data-amount]');
+        if (!btn) return;
+        amountInput.value = btn.getAttribute('data-amount');
+        updatePaymentState();
+      });
+    }
+
     // Clear amount button
     var btnClearAmount = document.getElementById('btn-clear-amount');
     if (btnClearAmount) {
@@ -1015,6 +1025,8 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=38';
     if (isButtonLoading(btnPay)) return;
 
     var total = Cart.getTotal();
+    btnPay.textContent = total > 0 ? 'Cobrar ' + formatCLP(total) : 'Cobrar';
+    renderQuickAmounts(total);
 
     if (Cart.items.length === 0) {
       btnPay.disabled = true;
@@ -1052,6 +1064,29 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=38';
       changeAmountEl.textContent = formatCLP(missing);
       changeDisplay.className = 'change-display negative';
     }
+  }
+
+  // Montos rápidos: "Exacto" y los billetes chilenos más cercanos que cubren el total
+  function quickAmountsFor(total) {
+    if (!(total > 0)) return [];
+    var amounts = [total];
+    [1000, 2000, 5000, 10000, 20000].forEach(function (bill) {
+      var rounded = Math.ceil(total / bill) * bill;
+      if (rounded > total && amounts.indexOf(rounded) === -1) amounts.push(rounded);
+    });
+    amounts.sort(function (a, b) { return a - b; });
+    return amounts.slice(0, 4);
+  }
+
+  function renderQuickAmounts(total) {
+    var container = document.getElementById('quick-amounts');
+    if (!container) return;
+    var amountInput = document.getElementById('amount-received');
+    var current = parseInt(amountInput ? amountInput.value : '0', 10) || 0;
+    container.innerHTML = quickAmountsFor(total).map(function (amount) {
+      return '<button type="button" class="quick-amount' + (amount === current ? ' is-selected' : '') +
+        '" data-amount="' + amount + '">' + (amount === total ? 'Exacto' : formatCLP(amount)) + '</button>';
+    }).join('');
   }
 
   function processSale() {
@@ -1543,6 +1578,22 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=38';
     modal.style.display = 'none';
   }
 
+  /** Indicador del encabezado: impresora conectada o pendiente (toca para abrir el panel). */
+  function updatePrinterIndicator() {
+    var indicator = document.getElementById('printer-indicator');
+    var label = document.getElementById('printer-indicator-label');
+    if (!indicator || !label) return;
+    if (!ThermalPrinter.isSupported()) {
+      indicator.classList.add('hidden');
+      return;
+    }
+    var connected = ThermalPrinter.isConnected();
+    indicator.classList.remove('hidden');
+    indicator.classList.toggle('is-on', connected);
+    label.textContent = connected ? 'Conectada' : 'Conectar';
+    indicator.setAttribute('aria-label', connected ? 'Impresora conectada' : 'Impresora desconectada: toca para conectarla');
+  }
+
   /** Al entrar a la caja en el celular: deja la impresora conectada antes de la primera venta. */
   function checkPrinterAtStart() {
     if (!printerRequired()) {
@@ -1566,6 +1617,10 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=38';
     var close = closePrinterModal;
 
     document.getElementById('btn-open-printer').addEventListener('click', open);
+    var indicator = document.getElementById('printer-indicator');
+    if (indicator) indicator.addEventListener('click', open);
+    window.addEventListener('monay-printer-change', updatePrinterIndicator);
+    updatePrinterIndicator();
     document.getElementById('btn-close-printer').addEventListener('click', close);
     modal.addEventListener('click', function (e) {
       if (e.target === modal) close();

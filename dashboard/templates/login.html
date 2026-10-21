@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#06100d">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
     <meta name="description" content="Monay Market - Acceso al panel de administración">
     <title>Iniciar Sesión - Monay Market</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='monay-market-logo.png', v=asset_version) }}">
@@ -112,8 +115,8 @@
             <section class="login-card" aria-label="Formulario de acceso">
                 <div class="login-card-inner">
                     <div class="login-heading">
-                        <h2>Bienvenido</h2>
-                        <p>Ingresa tus credenciales para continuar</p>
+                        <h2>Hola de nuevo</h2>
+                        <p>Ingresa para abrir la caja o el panel de tu almacén.</p>
                     </div>
 
                     {% if error %}
@@ -123,11 +126,11 @@
                     <form method="POST" action="{{ url_for('login') }}" class="login-form" data-loading-text="Validando acceso...">
                         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                         <div class="form-group">
-                            <label for="username">Nombre de usuario</label>
+                            <label for="username">Usuario</label>
                             <div class="input-wrap">
                                 <svg class="input-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                                    <path d="M4 6h16v12H4z"/>
-                                    <path d="m4 7 8 6 8-6"/>
+                                    <circle cx="12" cy="8" r="4"/>
+                                    <path d="M4 21a8 8 0 0 1 16 0"/>
                                 </svg>
                                 <input
                                     type="text"

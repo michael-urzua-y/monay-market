@@ -1,13 +1,17 @@
+{% from "partials/icons.html" import icon %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#c9952a">
+    <meta name="theme-color" content="#06100d">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}Admin{% endblock %} — Monay Market</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='monay-market-logo.png') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v=asset_version) }}">
     <script defer src="{{ url_for('static', filename='js/rut.js') }}"></script>
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png', v=2) }}">
@@ -16,20 +20,23 @@
     <script defer src="{{ url_for('static', filename='js/install.js') }}"></script>
     <style>
         /* Admin-specific overrides using the same design tokens as main dashboard */
-        .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }
-        .admin-stat { background: var(--color-white); border: 1px solid var(--color-border); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow-sm); }
-        .admin-stat-label { color: var(--color-text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
-        .admin-stat-value { font-size: 1.8rem; font-weight: 800; color: var(--color-primary); margin-top: 4px; }
+        .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 22px; }
+        .admin-stat { display: flex; align-items: center; gap: 16px; background: var(--color-white); border: 1px solid var(--color-border-soft); border-radius: var(--radius-lg); padding: 20px; box-shadow: var(--shadow-sm); }
+        .admin-stat-icon { width: 46px; height: 46px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; border-radius: var(--radius); background: var(--color-ink); color: var(--color-primary-hover); }
+        .admin-stat-label { color: var(--color-text-muted); font-size: 0.8125rem; font-weight: 600; }
+        .admin-stat-value { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; color: var(--color-text); margin-top: 2px; }
         .user-actions { display: flex; gap: 6px; flex-wrap: wrap; }
         .user-actions .btn { padding: 5px 10px; font-size: 0.8rem; }
-        .admin-modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:1000; align-items:center; justify-content:center; }
+        .admin-modal-overlay { display:none; position:fixed; inset:0; background:rgba(6,16,13,0.55); z-index:1000; align-items:center; justify-content:center; padding: 16px; }
+        .sidebar-overlay[hidden] { display: none !important; }
         .admin-modal-overlay.visible { display: flex; }
     </style>
 </head>
 <body>
     <div class="app-layout">
         <!-- Sidebar navigation (same structure as main dashboard) -->
-        <aside class="sidebar">
+        <div class="sidebar-overlay" id="admin-sidebar-overlay" hidden></div>
+        <aside class="sidebar" id="admin-sidebar">
             <div class="sidebar-header">
                 <a href="{{ url_for('admin_dashboard') }}" class="sidebar-logo" aria-label="Monay Admin">
                     <img
@@ -38,33 +45,42 @@
                         class="sidebar-logo-image"
                     >
                 </a>
+                <button class="sidebar-close" type="button" data-admin-menu="close" aria-label="Cerrar menú">{{ icon('cerrar') }}</button>
             </div>
+            <span class="sidebar-badge">Administración</span>
 
             <nav class="sidebar-nav">
-                <a href="{{ url_for('admin_dashboard') }}" class="nav-item {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
-                    <span class="nav-icon">📊</span>
-                    <span class="nav-label">Panel</span>
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-item {% if request.endpoint in ('admin_dashboard', 'admin_tenant_detail') %}active{% endif %}">
+                    <span class="nav-icon">{{ icon('negocios') }}</span>
+                    <span class="nav-label">Negocios</span>
                 </a>
                 <a href="{{ url_for('admin_tenant_create') }}" class="nav-item {% if request.endpoint == 'admin_tenant_create' %}active{% endif %}">
-                    <span class="nav-icon">➕</span>
+                    <span class="nav-icon">{{ icon('mas') }}</span>
                     <span class="nav-label">Nuevo negocio</span>
                 </a>
             </nav>
+
+            <div class="sidebar-footer">
+                <div class="sidebar-avatar" aria-hidden="true">{{ ((current_user.username if current_user else '') or 'A')[:1] }}</div>
+                <div class="sidebar-user">
+                    <strong>{{ (current_user.username if current_user else '') or 'superadmin' }}</strong>
+                    <span>Administrador</span>
+                </div>
+                <a href="{{ url_for('logout') }}" class="sidebar-logout" aria-label="Cerrar sesión" title="Cerrar sesión">{{ icon('salir') }}</a>
+            </div>
         </aside>
 
         <!-- Main content area -->
         <main class="main-content">
             <header class="top-bar">
                 <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="menu-toggle" type="button" data-admin-menu="open" aria-label="Abrir menú" aria-controls="admin-sidebar">{{ icon('menu', 22) }}</button>
                     <h2 class="page-title" style="margin: 0;">{% block page_title %}Admin{% endblock %}</h2>
                 </div>
 
                 <div class="top-bar-right">
-                    <div class="user-info top-user-info">
-                        <div class="user-name">superadmin</div>
-                    </div>
-                    <a href="{{ url_for('logout') }}" class="btn btn-secondary top-logout-link">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    <a href="{{ url_for('logout') }}" class="btn btn-secondary top-logout-link" aria-label="Cerrar sesión">
+                        {{ icon('salir', 18) }}
                         <span class="hide-mobile">Salir</span>
                     </a>
                 </div>
@@ -75,5 +91,22 @@
             </div>
         </main>
     </div>
+
+    <script>
+    // Menú lateral en el celular (el admin no usa Alpine)
+    (function () {
+        var sidebar = document.getElementById('admin-sidebar');
+        var overlay = document.getElementById('admin-sidebar-overlay');
+        function setOpen(open) {
+            sidebar.classList.toggle('sidebar-open', open);
+            overlay.hidden = !open;
+        }
+        document.addEventListener('click', function (e) {
+            var trigger = e.target.closest('[data-admin-menu]');
+            if (trigger) setOpen(trigger.dataset.adminMenu === 'open');
+            else if (e.target === overlay) setOpen(false);
+        });
+    })();
+    </script>
 </body>
 </html>

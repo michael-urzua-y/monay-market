@@ -1,3 +1,4 @@
+{% from "partials/icons.html" import icon %}
 {% if products %}
 <table class="data-table">
     <thead>
@@ -13,14 +14,14 @@
     </thead>
     <tbody>
         {% for p in products %}
-        <tr data-id="{{ p.id }}">
+        <tr data-id="{{ p.id }}" data-name="{{ p.name }}" data-price="{{ p.price }}">
             <td><input type="checkbox" class="product-check" value="{{ p.id }}" x-model="selectedIds" style="width:18px;height:18px;cursor:pointer;accent-color:var(--color-primary);"></td>
             <td>
                 <div style="display: flex; flex-direction: column; gap: 6px;">
-                    <span>{{ p.name }}</span>
+                    <span style="font-weight: 600;">{{ p.name }}</span>
                     <div style="display: flex; gap: 6px; flex-wrap: wrap;">
                         {% if p.is_weighed %}
-                        <span class="badge">Granel</span>
+                        <span class="badge badge-dark">Granel</span>
                         {% endif %}
                         {% if not p.tracks_stock %}
                         <span class="badge badge-warning">Sin inventario</span>
@@ -28,8 +29,8 @@
                     </div>
                 </div>
             </td>
-            <td>{{ p.barcode or '—' }}</td>
-            <td>{{ p.price|clp }}</td>
+            <td style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8125rem; color: var(--color-text-soft);">{{ p.barcode or '—' }}</td>
+            <td style="font-weight: 700;">{{ p.price|clp }}</td>
             <td>
                 {% if not p.tracks_stock %}
                 <span style="color: var(--color-text-muted);">No controlado</span>
@@ -41,10 +42,10 @@
             </td>
             <td>{{ p.category.name if p.category else '—' }}</td>
             <td style="white-space: nowrap;">
-                <a href="/products/{{ p.id }}/edit" class="btn btn-sm">✏️ Editar</a>
-                <button class="btn btn-sm btn-danger"
+                <a href="/products/{{ p.id }}/edit" class="btn btn-sm btn-secondary">{{ icon('editar', 16) }} Editar</a>
+                <button class="btn btn-sm btn-danger btn-icon" aria-label="Eliminar {{ p.name }}" title="Eliminar"
                         @click="deleteId = '{{ p.id }}'; deleteName = '{{ p.name }}'; showDeleteModal = true">
-                    🗑️
+                    {{ icon('eliminar', 16) }}
                 </button>
             </td>
         </tr>

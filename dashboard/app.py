@@ -1165,6 +1165,20 @@ def htmx_dashboard_today():
     )
 
 
+@app.route("/htmx/dashboard/boletas-today")
+@login_required
+def htmx_dashboard_boletas_today():
+    """Return HTML fragment with today's issued boletas."""
+    data = api.get("/dashboard/today")
+    if data.get("error") or data.get("status_code", 200) >= 400:
+        return render_template("htmx/error_fragment.html", title="Boletas emitidas hoy")
+    return render_template(
+        "htmx/boletas_today.html",
+        emitidas=data.get("boletas_emitidas", 0),
+        por_revisar=data.get("boletas_por_revisar", 0),
+    )
+
+
 @app.route("/htmx/dashboard/monthly")
 @login_required
 def htmx_dashboard_monthly():
@@ -1248,7 +1262,7 @@ def htmx_dashboard_critical_stock_count():
     count = len(data) if isinstance(data, list) else 0
     if count == 0:
         return '<script>document.getElementById("critical-stock-badge").style.display="none";</script>'
-    return f'{count}<script>document.getElementById("critical-stock-badge").style.display="inline";</script>'
+    return f'{count}<script>document.getElementById("critical-stock-badge").style.display="inline-flex";</script>'
 
 
 @app.route("/htmx/dashboard/inventory-value")
@@ -1279,6 +1293,7 @@ def htmx_dashboard_top_products():
     for p in top + bottom:
         try:
             qty = float(p.get("total_quantity", 0))
+            p["quantity_value"] = qty  # para el largo de la barra del ranking
             # 'g' quita los ceros finales, y replace cambia el punto por la coma chilena
             p["total_quantity"] = f"{qty:g}".replace(".", ",")
         except (ValueError, TypeError):

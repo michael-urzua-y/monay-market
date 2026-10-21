@@ -1,30 +1,34 @@
-<div style="display: flex; flex-wrap: wrap; gap: 24px;">
-    <!-- Más vendidos -->
-    <div style="flex: 1; min-width: 250px;">
-        <h4 style="color: #16a34a; margin-bottom: 12px; margin-top: 0; display: flex; align-items: center; gap: 8px;">📈 Los 5 Más Vendidos</h4>
-        <ul style="list-style: none; padding: 0; margin: 0;">
+{# Ranking: barra relativa al producto más vendido #}
+{% set max_top = (top|map(attribute='quantity_value')|map('float')|max) if top else 0 %}
+<div style="display: flex; flex-direction: column; gap: 22px;">
+    <div>
+        <h4 style="margin: 0 0 12px; font-size: 0.8125rem; font-weight: 700; color: var(--color-success);">Los 5 más vendidos</h4>
+        <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 12px;">
             {% for p in top %}
-            <li style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--color-border);">
-                <span style="font-weight: 500; color: var(--color-text);">{{ p.name }}</span>
-                <span style="color: var(--color-text-muted); font-size: 0.9rem;">{{ p.total_quantity }} vendidas</span>
+            <li style="display: flex; flex-direction: column; gap: 6px;">
+                <div style="display: flex; justify-content: space-between; gap: 12px; font-size: 0.875rem;">
+                    <span style="font-weight: 600;">{{ p.name }}</span>
+                    <span style="color: var(--color-text-soft); white-space: nowrap;">{{ p.total_quantity }} vendidas</span>
+                </div>
+                <div style="height: 8px; border-radius: 999px; background: var(--color-surface-3);">
+                    <div style="height: 8px; border-radius: 999px; background: var(--color-primary); width: {{ ((p.quantity_value|float) / max_top * 100)|round|int if max_top else 0 }}%;"></div>
+                </div>
             </li>
             {% else %}
-            <li style="color: var(--color-text-muted); font-size: 0.9rem;">No hay ventas recientes registradas.</li>
+            <li style="color: var(--color-text-muted); font-size: 0.875rem;">No hay ventas recientes registradas.</li>
             {% endfor %}
         </ul>
     </div>
-    
-    <!-- Menos vendidos -->
-    <div style="flex: 1; min-width: 250px;">
-        <h4 style="color: #dc2626; margin-bottom: 12px; margin-top: 0; display: flex; align-items: center; gap: 8px;">📉 Los 5 Menos Vendidos</h4>
+    <div>
+        <h4 style="margin: 0 0 10px; font-size: 0.8125rem; font-weight: 700; color: var(--color-error);">Los 5 menos vendidos</h4>
         <ul style="list-style: none; padding: 0; margin: 0;">
             {% for p in bottom %}
-            <li style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--color-border);">
-                <span style="font-weight: 500; color: var(--color-text);">{{ p.name }}</span>
-                <span style="color: var(--color-text-muted); font-size: 0.9rem;">{{ p.total_quantity }} vendidas</span>
+            <li style="display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--color-border-soft); font-size: 0.875rem;">
+                <span style="font-weight: 500;">{{ p.name }}</span>
+                <span style="color: var(--color-text-muted); white-space: nowrap;">{{ p.total_quantity }} vendidas</span>
             </li>
             {% else %}
-            <li style="color: var(--color-text-muted); font-size: 0.9rem;">No hay ventas recientes registradas.</li>
+            <li style="color: var(--color-text-muted); font-size: 0.875rem;">No hay ventas recientes registradas.</li>
             {% endfor %}
         </ul>
     </div>

@@ -1,0 +1,15 @@
+{% from "partials/icons.html" import icon %}
+<div class="kpi">
+    <div class="kpi-head">
+        <span class="kpi-label">Boletas emitidas hoy</span>
+        <span class="kpi-icon">{{ icon('ventas', 18) }}</span>
+    </div>
+    <div class="kpi-value">{{ emitidas }}</div>
+    {% if por_revisar %}
+    <a class="kpi-note is-down" href="{{ url_for('sales_pending') }}" style="text-decoration: none;">
+        {{ por_revisar }} pendiente{{ 's' if por_revisar != 1 else '' }} o con error · revisar
+    </a>
+    {% else %}
+    <div class="kpi-note">Todas al día con el SII</div>
+    {% endif %}
+</div>

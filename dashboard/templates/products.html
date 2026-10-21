@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
 
 {% block title %}Productos{% endblock %}
 {% block page_title %}Productos{% endblock %}
@@ -24,23 +25,25 @@
     .products-loading-row {
         display: flex;
         justify-content: flex-end;
-        min-height: 24px;
-        margin-top: 10px;
     }
 
     .products-loading-indicator {
-        display: inline-flex;
+        display: none;
         align-items: center;
         gap: 8px;
+        margin-top: 10px;
         font-size: 0.85rem;
         color: var(--color-text-muted);
-        opacity: 0;
-        transition: opacity 0.15s ease;
         pointer-events: none;
     }
 
     .products-loading-indicator.htmx-request {
-        opacity: 1;
+        display: inline-flex;
+    }
+
+    .products-toolbar > .card-body {
+        width: 100%;
+        padding: 0;
     }
 
     .products-loading-spinner {
@@ -59,18 +62,18 @@
      x-effect="selectAll ? selectedIds = [...document.querySelectorAll('.product-check')].map(el => el.value) : null">
 
     <!-- Action bar -->
-    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center;">
-        <a href="{{ url_for('products_new') }}" class="btn btn-primary">+ Nuevo producto</a>
-        <a href="{{ url_for('products_import') }}" class="btn btn-secondary">📥 Importar Excel</a>
+    <div class="page-actions" style="margin-bottom: 18px;">
+        <a href="{{ url_for('products_new') }}" class="btn btn-primary">{{ icon('mas', 18) }} Nuevo producto</a>
+        <a href="{{ url_for('products_import') }}" class="btn btn-secondary">{{ icon('subir', 18) }} Importar Excel</a>
     </div>
 
     <!-- Search and filter with live HTMX search -->
-    <div class="action-bar">
+    <div class="action-bar products-toolbar">
         <div class="card-body">
             <div class="products-filters" data-loading-enabled>
                 <div class="form-group products-filter-group flex-1">
-                    <label for="search">Buscar por nombre</label>
-                    <input type="text" id="search" name="search" value="{{ search }}" placeholder="Escriba para buscar..."
+                    <label for="search">Buscar producto</label>
+                    <input type="text" id="search" name="search" value="{{ search }}" placeholder="Nombre del producto"
                            hx-get="/htmx/products/search"
                            hx-trigger="keyup changed delay:300ms"
                            hx-target="#products-table-container"
@@ -115,7 +118,7 @@
     <div class="alert alert-error">{{ error }}</div>
     {% endif %}
     {% if success %}
-    <div class="alert alert-success" style="background:#dcfce7;color:#166534;border:1px solid #86efac;padding:12px 16px;border-radius:8px;">✅ {{ success }}</div>
+    <div class="alert alert-success">{{ icon('check-circulo', 18) }} {{ success }}</div>
     {% endif %}
 
     <!-- Products table (HTMX target) -->
@@ -127,7 +130,7 @@
                 <template x-for="id in selectedIds" :key="id">
                     <input type="hidden" name="ids" :value="id">
                 </template>
-                <button type="submit" class="btn btn-danger" style="width: 100%; padding: 12px 20px; font-size: 0.95rem; font-weight: 600; border-radius: 8px;" x-text="'🗑️ Eliminar ' + selectedIds.length + ' producto' + (selectedIds.length > 1 ? 's' : '')"></button>
+                <button type="submit" class="btn btn-danger" style="width: 100%; padding: 12px 20px; font-size: 0.95rem; font-weight: 600; border-radius: 8px;" x-text="'Eliminar ' + selectedIds.length + ' producto' + (selectedIds.length > 1 ? 's' : '')"></button>
             </form>
         </div>
         <div class="card-body" style="overflow-x: auto;" id="products-table-container">

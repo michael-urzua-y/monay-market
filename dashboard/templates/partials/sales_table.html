@@ -1,3 +1,4 @@
+{% from "partials/icons.html" import icon %}
 {% if sales %}
 <table class="data-table">
     <thead>
@@ -38,7 +39,7 @@
                 {% if pending_only or s.boleta_status in ['pendiente', 'error'] %}
                 <form action="{{ url_for('sales_retry_boleta', sale_id=s.id) }}" method="post" style="display: inline;">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="btn btn-sm btn-primary">🔄 Reintentar</button>
+                    <button type="submit" class="btn btn-sm btn-primary">{{ icon('reintentar', 16) }} Reintentar</button>
                 </form>
                 {% endif %}
                 <a href="{{ url_for('sales_detail', sale_id=s.id) }}" class="btn btn-sm btn-secondary">Ver detalle</a>

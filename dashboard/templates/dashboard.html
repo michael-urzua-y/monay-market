@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
 
 {% block title %}Dashboard{% endblock %}
 {% block page_title %}Dashboard{% endblock %}
@@ -15,11 +16,37 @@
     }
 
     .dashboard-chart-control {
-        padding: 6px;
+        min-height: 40px;
+        padding: 0 12px;
         border: 1px solid var(--color-border);
-        border-radius: 4px;
-        background: white;
-        font-family: inherit;
+        border-radius: 10px;
+        background: var(--color-white);
+        font: inherit;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--color-text);
+    }
+
+    .dashboard-rows {
+        display: grid;
+        grid-template-columns: repeat(12, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 16px;
+        align-items: start;
+    }
+
+    .dashboard-rows > .span-8 { grid-column: span 8; }
+    .dashboard-rows > .span-4 { grid-column: span 4; }
+    .dashboard-rows > .span-6 { grid-column: span 6; }
+
+    @media (max-width: 1180px) {
+        .dashboard-rows > .span-8,
+        .dashboard-rows > .span-4,
+        .dashboard-rows > .span-6 { grid-column: 1 / -1; }
+    }
+
+    .card-header.dashboard-card-toolbar {
+        align-items: flex-start;
     }
 
     .dashboard-chart-wrap {
@@ -57,13 +84,23 @@
 
     .dashboard-chart-error {
         margin-top: 10px;
-        color: #ef4444;
-        font-size: 0.92rem;
+        color: var(--color-error);
+        font-size: 0.875rem;
     }
 </style>
 {% endblock %}
 
 {% block content %}
+<div class="page-header">
+    <div>
+        <p class="page-eyebrow" id="dashboardDate"></p>
+        <h1 class="page-title" id="dashboardGreeting" data-name="{{ (current_user.username if current_user else '')|e }}">Hola{% if current_user %}, {{ current_user.username }}{% endif %}</h1>
+    </div>
+    <div class="page-actions">
+        <a href="{{ url_for('products_new') }}" class="btn btn-secondary">{{ icon('mas', 18) }} Nuevo producto</a>
+    </div>
+</div>
+
 <div class="dashboard-grid">
     <!-- Ventas del día -->
     <div class="card"
@@ -89,6 +126,17 @@
         <div class="card-loading">Cargando…</div>
     </div>
 
+    <!-- Boletas emitidas hoy -->
+    <div class="card"
+         hx-get="/htmx/dashboard/boletas-today"
+         hx-trigger="load, every 30s"
+         hx-swap="innerHTML">
+        <div class="card-loading">Cargando…</div>
+    </div>
+</div>
+
+<div class="dashboard-rows">
+
     <!-- Última venta registrada (desactivado temporalmente)
     <div class="card"
          hx-get="/htmx/dashboard/last-sale"
@@ -99,10 +147,13 @@
     -->
 
     <!-- Gráfico de ventas diarias -->
-    <div class="card card-wide">
+    <div class="card span-8">
         <div class="card-header dashboard-card-toolbar">
-            <h3 class="card-title">Ventas diarias del mes</h3>
-            <input type="month" id="monthSelector" class="dashboard-chart-control" onchange="loadDailyChart(true)">
+            <div>
+                <h3 class="card-title">Ventas diarias del mes</h3>
+                <p class="card-subtitle">Total vendido por día</p>
+            </div>
+            <input type="month" id="monthSelector" class="dashboard-chart-control" aria-label="Mes" onchange="loadDailyChart(true)">
         </div>
         <div class="card-body">
             <div class="dashboard-chart-wrap">
@@ -116,23 +167,11 @@
         </div>
     </div>
 
-    <!-- Stock crítico -->
-    <div class="card card-wide">
-        <div class="card-header">
-            <h3 class="card-title">Productos con stock crítico</h3>
-        </div>
-        <div class="card-body"
-             hx-get="/htmx/dashboard/critical-stock"
-             hx-trigger="load"
-             hx-swap="innerHTML">
-            <div class="card-loading">Cargando stock crítico…</div>
-        </div>
-    </div>
-
     <!-- Ranking de Productos -->
-    <div class="card card-wide">
+    <div class="card span-4">
         <div class="card-header">
-            <h3 class="card-title">Ranking de Productos (Últimos 30 días)</h3>
+            <h3 class="card-title">Ranking de productos</h3>
+            <p class="card-subtitle">Últimos 30 días</p>
         </div>
         <div class="card-body"
              hx-get="/htmx/dashboard/top-products"
@@ -143,10 +182,13 @@
     </div>
 
     <!-- Horas Punta -->
-    <div class="card card-wide">
+    <div class="card span-6">
         <div class="card-header dashboard-card-toolbar">
-            <h3 class="card-title">Horas Punta de Ventas</h3>
-            <select id="peakHoursPeriod" class="dashboard-chart-control" onchange="loadPeakHoursChart(true)">
+            <div>
+                <h3 class="card-title">Horas punta de ventas</h3>
+                <p class="card-subtitle" id="peakHoursSummary">Cantidad de ventas por hora</p>
+            </div>
+            <select id="peakHoursPeriod" class="dashboard-chart-control" aria-label="Periodo" onchange="loadPeakHoursChart(true)">
                 <option value="month">Últimos 30 días</option>
                 <option value="week">Esta semana</option>
             </select>
@@ -162,6 +204,23 @@
             </div>
         </div>
     </div>
+    <!-- Stock crítico -->
+    <div class="card span-6">
+        <div class="card-header dashboard-card-toolbar">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="kpi-icon is-danger">{{ icon('alerta', 18) }}</span>
+                <h3 class="card-title">Stock crítico</h3>
+            </div>
+            <a href="{{ url_for('shopping_list') }}" style="font-size: 0.8125rem; font-weight: 600; text-decoration: none;">Ver lista de compras</a>
+        </div>
+        <div class="card-body"
+             hx-get="/htmx/dashboard/critical-stock"
+             hx-trigger="load"
+             hx-swap="innerHTML">
+            <div class="card-loading">Cargando stock crítico…</div>
+        </div>
+    </div>
+
 </div>
 {% endblock %}
 
@@ -176,6 +235,43 @@ const dashboardLoadingTokens = {
 
 function formatCLP(value) {
     return '$' + Number(value).toLocaleString('es-CL');
+}
+
+// Barras del gráfico diario: el día de hoy en dorado, el resto en tinta
+function dailyBarColors(data) {
+    var now = new Date();
+    var today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+    return data.map(function(d) {
+        return d.fecha && d.fecha.substring(0, 10) === today ? '#f0b90b' : 'rgba(6, 16, 13, 0.82)';
+    });
+}
+
+function updatePeakSummary(values, max) {
+    var el = document.getElementById('peakHoursSummary');
+    if (!el) return;
+    if (!max) {
+        el.textContent = 'Aún no hay ventas en este periodo';
+        return;
+    }
+    var peak = values.indexOf(max);
+    el.textContent = 'Más movimiento entre ' + String(peak).padStart(2, '0') + ':00 y ' + String((peak + 1) % 24).padStart(2, '0') + ':00';
+}
+
+// Saludo según la hora de Chile y fecha de hoy en el encabezado
+function initGreeting() {
+    var title = document.getElementById('dashboardGreeting');
+    var dateEl = document.getElementById('dashboardDate');
+    var now = new Date();
+    if (dateEl) {
+        var text = now.toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Santiago' });
+        dateEl.textContent = text.charAt(0).toUpperCase() + text.slice(1);
+    }
+    if (title) {
+        var hour = Number(now.toLocaleString('en-US', { hour: 'numeric', hour12: false, timeZone: 'America/Santiago' })) % 24;
+        var greeting = hour < 12 ? 'Buenos días' : hour < 20 ? 'Buenas tardes' : 'Buenas noches';
+        var name = title.dataset.name;
+        title.textContent = greeting + (name ? ', ' + name : '');
+    }
 }
 
 function setChartLoading(loaderId, visible) {
@@ -246,21 +342,19 @@ function loadDailyChart(fromUserAction) {
             if (dailyChart) {
                 dailyChart.data.labels = labels;
                 dailyChart.data.datasets[0].data = values;
+                dailyChart.data.datasets[0].backgroundColor = dailyBarColors(data);
                 dailyChart.update();
             } else {
                 dailyChart = new Chart(ctx, {
-                    type: 'line',
+                    type: 'bar',
                     data: {
                         labels: labels,
                         datasets: [{
                             label: 'Ventas (CLP)',
                             data: values,
-                            borderColor: '#f0b90b',
-                            backgroundColor: 'rgba(240, 185, 11, 0.14)',
-                            fill: true,
-                            tension: 0.3,
-                            pointRadius: 3,
-                            pointHoverRadius: 5
+                            backgroundColor: dailyBarColors(data),
+                            borderRadius: 6,
+                            maxBarThickness: 28
                         }]
                     },
                     options: {
@@ -279,11 +373,14 @@ function loadDailyChart(fromUserAction) {
                         scales: {
                             y: {
                                 beginAtZero: true,
+                                border: { display: false },
+                                grid: { color: '#ecebe3' },
                                 ticks: {
                                     callback: function(v) { return formatCLP(v); }
                                 }
                             },
                             x: {
+                                grid: { display: false },
                                 title: { display: true, text: 'Día del mes' }
                             }
                         }
@@ -331,19 +428,16 @@ function loadPeakHoursChart(fromUserAction) {
             });
             const labels = hours.map(function(h) { return String(h).padStart(2, '0') + ':00'; });
 
-            // Paleta multicolor vibrante para cada hora
-            const colors = values.map(function(v, i) {
-                var palette = [
-                    '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e',
-                    '#ef4444', '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e',
-                    '#10b981', '#14b8a6', '#06b6d4', '#0ea5e9', '#3b82f6', '#6366f1',
-                    '#8b5cf6', '#a855f7', '#d946ef', '#ec4899', '#f43f5e', '#ef4444'
-                ];
-                return palette[i % palette.length];
+            // Horas de más movimiento en dorado, el resto en gris
+            const max = Math.max.apply(null, values);
+            const colors = values.map(function(v) {
+                return max > 0 && v >= max * 0.8 ? '#f0b90b' : '#cfd6d0';
             });
+            updatePeakSummary(values, max);
 
             if (peakHoursChart) {
                 peakHoursChart.data.datasets[0].data = values;
+                peakHoursChart.data.datasets[0].backgroundColor = colors;
                 peakHoursChart.update();
             } else {
                 peakHoursChart = new Chart(ctx, {
@@ -354,7 +448,8 @@ function loadPeakHoursChart(fromUserAction) {
                             label: 'Cantidad de Ventas',
                             data: values,
                             backgroundColor: colors,
-                            borderRadius: 4
+                            borderRadius: 6,
+                            maxBarThickness: 26
                         }]
                     },
                     options: {
@@ -362,8 +457,8 @@ function loadPeakHoursChart(fromUserAction) {
                         maintainAspectRatio: false,
                         plugins: { legend: { display: false } },
                         scales: {
-                            y: { beginAtZero: true, ticks: { stepSize: 1 } },
-                            x: { title: { display: true, text: 'Hora del día' } }
+                            y: { beginAtZero: true, border: { display: false }, grid: { color: '#ecebe3' }, ticks: { stepSize: 1 } },
+                            x: { grid: { display: false }, title: { display: true, text: 'Hora del día' } }
                         }
                     }
                 });
@@ -397,6 +492,7 @@ function initMonthSelector() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    initGreeting();
     initMonthSelector();
     loadDailyChart();
     loadPeakHoursChart();

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
 
 {% block title %}Ventas{% endblock %}
 {% block page_title %}Ventas{% endblock %}
@@ -6,7 +7,7 @@
 {% block content %}
 <div>
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
-        <a href="{{ url_for('sales_pending') }}" class="btn btn-secondary">⏳ Pendientes de boleta</a>
+        <a href="{{ url_for('sales_pending') }}" class="btn btn-secondary">{{ icon('reloj', 18) }} Pendientes de boleta</a>
     </div>
 
     {% if request.args.get('error') %}

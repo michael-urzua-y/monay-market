@@ -9,6 +9,9 @@ const CHILE_TIME_ZONE = 'America/Santiago';
 export interface TodayMetrics {
   total_ventas: number;
   cantidad_ventas: number;
+  boletas_emitidas: number;
+  /** Boletas pendientes o con error: hay que reintentarlas desde Ventas */
+  boletas_por_revisar: number;
 }
 
 export interface MonthlyMetrics {
@@ -76,7 +79,9 @@ export class DashboardService {
     const [result] = await this.saleRepository.query(`
       SELECT
         COALESCE(SUM(s.total), 0) AS total_ventas,
-        COUNT(s.id) AS cantidad_ventas
+        COUNT(s.id) AS cantidad_ventas,
+        COUNT(s.id) FILTER (WHERE s.boleta_status = 'emitida') AS boletas_emitidas,
+        COUNT(s.id) FILTER (WHERE s.boleta_status IN ('pendiente', 'error')) AS boletas_por_revisar
       FROM market.sales s
       WHERE s.tenant_id = $1
         AND DATE(s.created_at AT TIME ZONE 'UTC' AT TIME ZONE '${CHILE_TIME_ZONE}') = $2
@@ -85,6 +90,8 @@ export class DashboardService {
     return {
       total_ventas: Number(result.total_ventas),
       cantidad_ventas: Number(result.cantidad_ventas),
+      boletas_emitidas: Number(result.boletas_emitidas ?? 0),
+      boletas_por_revisar: Number(result.boletas_por_revisar ?? 0),
     };
   }
 

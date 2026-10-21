@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
 
 {% block title %}Usuarios{% endblock %}
 {% block page_title %}Usuarios{% endblock %}
@@ -99,14 +100,8 @@
 
     <!-- Action bar -->
     <div class="users-toolbar">
-        <p class="users-toolbar-copy">Gestión de cajeros de tu tienda</p>
-        <button class="btn btn-primary" @click="showCreateCashier = true">+ Nuevo cajero</button>
-    </div>
-
-    <div class="card users-helper-card">
-        <div class="card-header">
-            <h3 class="card-title">Gestión de cajeros de tu tienda</h3>
-        </div>
+        <p class="users-toolbar-copy">Cajeros de tu tienda y sus accesos a la caja</p>
+        <button class="btn btn-primary" @click="showCreateCashier = true">{{ icon('mas', 18) }} Nuevo cajero</button>
     </div>
 
     <!-- Users table -->
@@ -148,9 +143,9 @@
                                 <button type="submit" class="btn btn-sm btn-primary">Activar</button>
                                 {% endif %}
                             </form>
-                            <button type="button" class="btn btn-sm btn-secondary" @click="showResetPassword = true; resetUserId = '{{ u.id }}'; resetUsername = '{{ u.username or u.email }}'">🔑 Reset</button>
+                            <button type="button" class="btn btn-sm btn-secondary" @click="showResetPassword = true; resetUserId = '{{ u.id }}'; resetUsername = '{{ u.username or u.email }}'">{{ icon('llave', 16) }} Restablecer clave</button>
                             {% else %}
-                            <button type="button" class="btn btn-sm btn-secondary" @click="showChangePassword = true">🔑 Cambiar clave</button>
+                            <button type="button" class="btn btn-sm btn-secondary" @click="showChangePassword = true">{{ icon('llave', 16) }} Cambiar mi clave</button>
                             {% endif %}
                         </td>
                     </tr>
@@ -195,7 +190,7 @@
     <div x-show="showChangePassword" x-cloak class="modal-overlay"
          @keydown.escape.window="showChangePassword = false">
         <div class="card users-modal" @click.outside="showChangePassword = false">
-            <div class="card-header"><h3 class="card-title">🔑 Cambiar Contraseña</h3></div>
+            <div class="card-header"><h3 class="card-title">Cambiar contraseña</h3></div>
             <div class="card-body">
                 <form method="post" action="{{ url_for('settings_change_password') }}">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
@@ -223,7 +218,7 @@
     <div x-show="showResetPassword" x-cloak class="modal-overlay"
          @keydown.escape.window="showResetPassword = false">
         <div class="card users-modal" @click.outside="showResetPassword = false">
-            <div class="card-header"><h3 class="card-title">🔑 Resetear clave de cajero</h3></div>
+            <div class="card-header"><h3 class="card-title">Restablecer clave del cajero</h3></div>
             <div class="card-body">
                 <p class="users-toolbar-copy" style="margin-bottom: 16px;">
                     Vas a actualizar la contraseña de <strong x-text="resetUsername"></strong>.

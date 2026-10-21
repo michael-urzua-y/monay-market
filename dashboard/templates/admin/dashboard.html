@@ -1,20 +1,30 @@
 {% extends "admin/base_admin.html" %}
+{% from "partials/icons.html" import icon %}
 {% block title %}Panel Admin{% endblock %}
-{% block page_title %}Panel de Administración{% endblock %}
+{% block page_title %}Negocios{% endblock %}
 
 {% block content %}
 <div class="admin-stats">
     <div class="admin-stat">
+        <span class="admin-stat-icon">{{ icon('negocios', 22) }}</span>
+        <div>
         <div class="admin-stat-label">Total negocios</div>
         <div class="admin-stat-value">{{ stats.get('total_tenants', 0) }}</div>
+        </div>
     </div>
     <div class="admin-stat">
+        <span class="admin-stat-icon">{{ icon('check-circulo', 22) }}</span>
+        <div>
         <div class="admin-stat-label">Suscripciones activas</div>
         <div class="admin-stat-value">{{ stats.get('active_subscriptions', 0) }}</div>
+        </div>
     </div>
     <div class="admin-stat">
+        <span class="admin-stat-icon">{{ icon('usuarios', 22) }}</span>
+        <div>
         <div class="admin-stat-label">Total usuarios</div>
         <div class="admin-stat-value">{{ stats.get('total_users', 0) }}</div>
+        </div>
     </div>
 </div>
 

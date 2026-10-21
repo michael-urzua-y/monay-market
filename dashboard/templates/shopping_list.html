@@ -1,7 +1,8 @@
 {% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
 
 {% block title %}Asistente de Compras{% endblock %}
-{% block page_title %}Lista de Compras 🛒{% endblock %}
+{% block page_title %}Lista de compras{% endblock %}
 
 {% block head %}
 <style>
@@ -36,8 +37,15 @@
     }
 
     .shopping-list-empty-icon {
-        font-size: 4rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 72px;
+        height: 72px;
         margin-bottom: 16px;
+        border-radius: 50%;
+        background: var(--color-success-bg);
+        color: var(--color-success);
     }
 
     .shopping-list-empty-title {
@@ -56,30 +64,27 @@
     }
 
     .shopping-list-category {
-        margin-bottom: 24px;
+        margin-bottom: 18px;
         overflow: hidden;
-        border-radius: 12px;
-        border: 1px solid var(--color-border);
-        box-shadow: 0 4px 6px -1px rgba(23, 32, 22, 0.05);
     }
 
     .shopping-list-category-header {
-        background-color: var(--color-bg);
-        border-bottom: 1px solid var(--color-border);
+        border-bottom: 1px solid var(--color-border-soft);
         padding: 16px 20px;
     }
 
     .shopping-list-category-title {
         margin: 0;
         color: var(--color-text);
-        font-size: 1.2rem;
+        font-size: 1rem;
+        font-weight: 700;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
     }
 
-    .shopping-list-count {
-        font-size: 0.9rem;
+    .shopping-list-category-title .icon {
+        color: var(--color-link);
     }
 
     .shopping-list-category-body {
@@ -93,16 +98,16 @@
     }
 
     .shopping-list-item {
-        border-bottom: 1px solid var(--color-border);
-        padding: 16px 20px;
+        border-bottom: 1px solid var(--color-surface-3);
+        padding: 14px 20px;
         display: flex;
         align-items: center;
         gap: 16px;
     }
 
     .shopping-list-check {
-        width: 28px;
-        height: 28px;
+        width: 24px;
+        height: 24px;
         cursor: pointer;
         accent-color: var(--color-primary);
         flex: 0 0 auto;
@@ -121,19 +126,19 @@
     }
 
     .shopping-list-product {
-        font-weight: 700;
+        font-weight: 600;
         color: var(--color-text);
-        font-size: 1.1rem;
+        font-size: 0.95rem;
     }
 
     .shopping-list-stock {
-        color: var(--color-text-muted);
-        font-size: 0.95rem;
+        color: var(--color-text-soft);
+        font-size: 0.8125rem;
         margin-top: 4px;
     }
 
     .shopping-list-stock-now {
-        color: #ef4444;
+        color: var(--color-error);
     }
 
     .shopping-list-stock-critical {
@@ -142,25 +147,24 @@
     }
 
     .shopping-list-suggested {
-        text-align: right;
-        background: var(--color-info-bg);
-        padding: 8px 16px;
-        border-radius: 8px;
-        border: 1px solid rgba(92, 127, 47, 0.26);
-        min-width: 80px;
+        text-align: center;
+        background: var(--color-primary-soft);
+        color: var(--color-primary-ink);
+        padding: 6px 14px;
+        border-radius: var(--radius);
+        min-width: 84px;
     }
 
     .shopping-list-suggested-label {
-        font-size: 0.75rem;
-        color: var(--color-info);
+        font-size: 0.6875rem;
         font-weight: 700;
+        letter-spacing: 0.05em;
         text-transform: uppercase;
     }
 
     .shopping-list-suggested-value {
-        font-size: 1.4rem;
+        font-size: 1.1rem;
         font-weight: 800;
-        color: #4f6d2a;
     }
 
     @media (max-width: 640px) {
@@ -181,13 +185,13 @@
     <div class="shopping-list-toolbar">
         <p class="shopping-list-copy">Productos agrupados por pasillo/categoría que necesitan reposición.</p>
         <button onclick="window.print()" class="btn btn-secondary shopping-list-print">
-            🖨️ Imprimir Lista
+            {{ icon('imprimir', 18) }} Imprimir lista
         </button>
     </div>
 
     {% if not grouped_list %}
     <div class="card shopping-list-empty">
-        <div class="shopping-list-empty-icon">🎉</div>
+        <div class="shopping-list-empty-icon">{{ icon('check-circulo', 34) }}</div>
         <h3 class="shopping-list-empty-title">¡Todo en orden!</h3>
         <p class="shopping-list-empty-copy">Tu almacén está lleno. No tienes productos por debajo de su stock crítico.</p>
         <a href="{{ url_for('dashboard') }}" class="btn btn-primary shopping-list-empty-action">Volver al inicio</a>
@@ -197,7 +201,7 @@
         <div class="card shopping-list-category">
             <div class="card-header shopping-list-category-header">
                 <h3 class="shopping-list-category-title">
-                    📂 {{ category }} <span class="badge badge-neutral shopping-list-count">{{ items|length }} ítems</span>
+                    {{ icon('carpeta', 18) }} {{ category }} <span class="badge badge-neutral shopping-list-count">{{ items|length }} ítems</span>
                 </h3>
             </div>
             <div class="card-body shopping-list-category-body">
