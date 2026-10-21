@@ -8,13 +8,13 @@ import { OfflineDB } from './offline.js';
 import { Cart } from './cart.js';
 // Módulos de impresión con versión en la URL: nginx los cachea 7 días como inmutables.
 // Al cambiarlos, subir este número junto con APP_ASSET_VERSION (y en printer.js / service-worker.js).
-import { ThermalPrinter } from './printer.js?v=36';
-import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=36';
+import { ThermalPrinter } from './printer.js?v=37';
+import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=37';
 
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '36';
+  var APP_ASSET_VERSION = '37';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -1057,6 +1057,11 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=36';
   function processSale() {
     var btnPay = document.getElementById('btn-pay');
     if (isButtonLoading(btnPay)) return;
+    // La boleta se imprime al cobrar en efectivo: en el celular primero se asegura la impresora
+    if (selectedPaymentMethod === 'efectivo' && navigator.onLine && printerRequired() && !ThermalPrinter.isConnected()) {
+      connectPrinterThen(processSale, 'Conecte la impresora para cobrar en efectivo: la boleta se imprime al cobrar.');
+      return;
+    }
     setButtonLoading(btnPay, true, { label: 'Procesando...' });
     var processingMessage =
       selectedPaymentMethod === 'tarjeta'
@@ -1345,9 +1350,35 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=36';
   // ----------------------------------------------------------
   // Impresión: Bluetooth directo (ESC/POS, sin diálogo ni apps intermedias) si hay
   // una impresora vinculada; si no, window.print() como siempre (RawBT u otro driver).
+  // En el celular la impresora Bluetooth es obligatoria: nunca se abre window.print().
   // ----------------------------------------------------------
+
+  /** Celular o tablet con Bluetooth directo: ahí la boleta solo sale por la impresora vinculada. */
+  function printerRequired() {
+    if (!ThermalPrinter.isSupported()) return false;
+    var uaData = navigator.userAgentData;
+    return !!(uaData && uaData.mobile) || /Android|Mobile|Tablet/i.test(navigator.userAgent);
+  }
+
+  /** Conecta la impresora y sigue con `next`; si no se puede sin el usuario, abre el panel para conectarla. */
+  function connectPrinterThen(next, message) {
+    var activity = startActivity('Conectando impresora', {
+      message: 'Preparando la impresora para la boleta...',
+      blocking: true,
+    });
+    ThermalPrinter.connect()
+      .then(function () {
+        finishActivity(activity);
+        next();
+      })
+      .catch(function () {
+        finishActivity(activity);
+        openPrinterModal({ message: message, onReady: next });
+      });
+  }
+
   function printReceipt(receipt) {
-    if (!ThermalPrinter.isSupported() || !ThermalPrinter.isPaired()) {
+    if (!ThermalPrinter.isSupported() || (!ThermalPrinter.isPaired() && !printerRequired())) {
       return printWithSystemDialog();
     }
     return buildTimbreRaster(receipt.boleta_timbre, ThermalPrinter.paperDots())
@@ -1358,6 +1389,19 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=36';
         // Si no alcanzó a salir nada, se usa la impresión de siempre. Si se cortó a
         // mitad de camino no se reintenta solo, para no imprimir la boleta dos veces.
         if (err && err.started) throw err;
+        if (printerRequired()) {
+          openPrinterModal({
+            message: 'No se pudo conectar con la impresora. Conéctela para imprimir la boleta.',
+            onReady: function () {
+              printReceipt(receipt).catch(function (retryErr) {
+                showToast(printErrorMessage(retryErr), 'error');
+              });
+            },
+          });
+          var gateErr = new Error('Impresora desconectada');
+          gateErr.printerGate = true;
+          throw gateErr;
+        }
         console.warn('Impresión Bluetooth no disponible, se usa la del sistema', err);
         return printWithSystemDialog();
       });
@@ -1374,6 +1418,7 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=36';
   }
 
   function printErrorMessage(err) {
+    if (err && err.printerGate) return 'Conecte la impresora para imprimir la boleta';
     if (err && err.started) return 'La impresión se cortó. Revise la impresora y toque "Imprimir" de nuevo.';
     return 'No se pudo imprimir la boleta';
   }
@@ -1476,18 +1521,49 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=36';
   // ----------------------------------------------------------
   // Panel de impresora (vincular, papel, prueba)
   // ----------------------------------------------------------
+  // Aviso y acción pendiente cuando el panel se abre para pedir la impresora (al iniciar o al cobrar)
+  var printerGate = { message: '', onReady: null };
+
+  function openPrinterModal(options) {
+    var modal = document.getElementById('printer-modal');
+    if (!modal) return;
+    printerGate.message = (options && options.message) || '';
+    printerGate.onReady = (options && options.onReady) || null;
+    renderPrinterModal();
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+  }
+
+  function closePrinterModal() {
+    var modal = document.getElementById('printer-modal');
+    if (!modal) return;
+    printerGate.message = '';
+    printerGate.onReady = null;
+    modal.classList.add('hidden');
+    modal.style.display = 'none';
+  }
+
+  /** Al entrar a la caja en el celular: deja la impresora conectada antes de la primera venta. */
+  function checkPrinterAtStart() {
+    if (!printerRequired()) {
+      ThermalPrinter.warmUp();
+      return;
+    }
+    if (ThermalPrinter.isConnected()) return;
+    ThermalPrinter.connect().catch(function () {
+      openPrinterModal({
+        message: 'Conecte la impresora para empezar a vender: la boleta se imprime sola al cobrar en efectivo.',
+      });
+    });
+  }
+
   function initPrinterModal() {
     var modal = document.getElementById('printer-modal');
     if (!modal) return;
     var open = function () {
-      renderPrinterModal();
-      modal.classList.remove('hidden');
-      modal.style.display = 'flex';
+      openPrinterModal();
     };
-    var close = function () {
-      modal.classList.add('hidden');
-      modal.style.display = 'none';
-    };
+    var close = closePrinterModal;
 
     document.getElementById('btn-open-printer').addEventListener('click', open);
     document.getElementById('btn-close-printer').addEventListener('click', close);
@@ -1503,11 +1579,28 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=36';
     });
 
     document.getElementById('btn-printer-pair').addEventListener('click', function () {
-      ThermalPrinter.pair()
+      var firstTime = !ThermalPrinter.isPaired();
+      // Vinculada pero desconectada: se intenta reconectar sin abrir la lista de Chrome
+      var reconnect = !firstTime && !ThermalPrinter.isConnected() && !ThermalPrinter.needsReselect();
+      var task = reconnect
+        ? ThermalPrinter.connect().catch(function () { return ThermalPrinter.pair(); })
+        : ThermalPrinter.pair();
+      task
         .then(function () {
-          renderPrinterModal();
-          showToast('Impresora vinculada. Imprimiendo prueba...', 'success');
-          return ThermalPrinter.printTest();
+          var onReady = printerGate.onReady;
+          if (onReady || printerGate.message) {
+            closePrinterModal();
+          } else {
+            renderPrinterModal();
+          }
+          if (firstTime) {
+            showToast('Impresora vinculada. Imprimiendo prueba...', 'success');
+            return ThermalPrinter.printTest().then(function () {
+              if (onReady) onReady();
+            });
+          }
+          showToast('Impresora conectada', 'success');
+          if (onReady) onReady();
         })
         .catch(function (err) {
           renderPrinterModal(err);
@@ -1531,14 +1624,14 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=36';
     });
 
     document.getElementById('btn-printer-forget').addEventListener('click', function () {
-      if (!window.confirm('¿Desvincular la impresora? Se volverá a imprimir con el diálogo del sistema (RawBT).')) return;
+      var question = printerRequired()
+        ? '¿Desvincular la impresora? Tendrá que vincularla de nuevo para cobrar en efectivo.'
+        : '¿Desvincular la impresora? Se volverá a imprimir con el diálogo del sistema (RawBT).';
+      if (!window.confirm(question)) return;
       ThermalPrinter.forget();
       renderPrinterModal();
       showToast('Impresora desvinculada', 'success');
     });
-
-    // Deja la conexión lista para que la primera boleta salga sin esperar
-    ThermalPrinter.warmUp();
   }
 
   function renderPrinterModal(error) {
@@ -1556,12 +1649,22 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=36';
     } else if (error && paired) {
       title = 'No se pudo conectar';
       detail = error.message || 'Revise que la impresora esté encendida y cerca.';
+    } else if (paired && !connected && ThermalPrinter.needsReselect()) {
+      title = 'Impresora desconectada';
+      detail = 'Toque "Conectar impresora" y elíjala en la lista.';
     } else if (paired) {
       title = 'Impresora vinculada' + (name ? ': ' + name : '');
       detail = connected ? 'Conectada y lista para imprimir.' : 'Se conectará sola al imprimir.';
     } else {
       title = 'Sin impresora vinculada';
-      detail = 'Hoy se imprime con el diálogo del sistema (RawBT).';
+      detail = printerRequired()
+        ? 'Toque "Vincular impresora" para imprimir las boletas.'
+        : 'Hoy se imprime con el diálogo del sistema (RawBT).';
+    }
+    var gate = document.getElementById('printer-gate');
+    if (gate) {
+      gate.textContent = printerGate.message;
+      gate.classList.toggle('hidden', !printerGate.message);
     }
     status.className = 'printer-status' + (connected ? ' is-connected' : '') + (error && paired ? ' is-error' : '');
     status.innerHTML =
@@ -1574,7 +1677,7 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=36';
     });
 
     var pairBtn = document.getElementById('btn-printer-pair');
-    pairBtn.textContent = paired ? 'Cambiar impresora' : 'Vincular impresora';
+    pairBtn.textContent = !paired ? 'Vincular impresora' : connected ? 'Cambiar impresora' : 'Conectar impresora';
     pairBtn.disabled = !supported;
     document.getElementById('btn-printer-test').disabled = !supported || !paired;
     document.getElementById('btn-printer-forget').classList.toggle('hidden', !paired);
@@ -2357,6 +2460,7 @@ function initArqueo() {
       router.navigate('sale');
       finishActivity(startupActivity);
       releaseBootState();
+      checkPrinterAtStart();
     } else {
       api.clearToken();
       redirectToCentralLogin();

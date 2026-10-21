@@ -9,7 +9,7 @@
 // la app sigue usando window.print() + RawBT.
 // ============================================================
 
-import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=36'; // misma versión que en app.js
+import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=37'; // misma versión que en app.js
 
 // Servicios BLE "serial" de las térmicas chinas más comunes (Xprinter, Goojprt, Zjiang, MTP…)
 var SERVICES = [
@@ -35,6 +35,8 @@ var state = {
   characteristic: null,
   connecting: null,
   chunkSize: CHUNK_LARGE,
+  // Hay una impresora guardada pero este navegador no la entrega de nuevo sin elegirla
+  lost: false,
 };
 
 /** Error de impresión. `started` indica si alcanzó a enviarse algo (posible ticket a medias). */
@@ -94,6 +96,16 @@ function setPaper(mm) {
   storage(STORAGE_PAPER, mm === 80 ? '80' : '58');
 }
 
+/**
+ * La impresora está vinculada pero hay que volver a elegirla en la lista de Chrome.
+ * Pasa al recargar la página (p. ej. al cerrar sesión): Chrome en Android no deja
+ * recuperar el dispositivo sin que el usuario lo elija otra vez.
+ */
+function needsReselect() {
+  if (!isPaired() || state.device) return false;
+  return state.lost || !navigator.bluetooth || typeof navigator.bluetooth.getDevices !== 'function';
+}
+
 function deviceName() {
   return (state.device && state.device.name) || '';
 }
@@ -104,6 +116,7 @@ function forget() {
     state.device.forget().catch(function () {});
   }
   state.device = null;
+  state.lost = false;
   storage(STORAGE_DEVICE, null);
 }
 
@@ -123,6 +136,7 @@ function pair() {
     .then(function (device) {
       disconnect();
       state.device = device;
+      state.lost = false;
       storage(STORAGE_DEVICE, device.id);
       return connect(device);
     });
@@ -169,13 +183,15 @@ function findWritable(server) {
 /** Busca la impresora vinculada sin pedir permiso de nuevo (Chrome recuerda el permiso). */
 function rememberedDevice() {
   if (state.device) return Promise.resolve(state.device);
-  if (typeof navigator.bluetooth.getDevices !== 'function') {
-    return Promise.reject(PrinterError('Toque "Vincular impresora" para reconectarla'));
-  }
+  var lost = function () {
+    state.lost = true;
+    return PrinterError('Toque "Conectar impresora" y elíjala en la lista');
+  };
+  if (typeof navigator.bluetooth.getDevices !== 'function') return Promise.reject(lost());
   var savedId = storage(STORAGE_DEVICE);
   return navigator.bluetooth.getDevices().then(function (devices) {
     var device = devices.filter(function (d) { return d.id === savedId; })[0];
-    if (!device) throw PrinterError('Toque "Vincular impresora" para reconectarla');
+    if (!device) throw lost();
     state.device = device;
     return device;
   });
@@ -269,11 +285,13 @@ export var ThermalPrinter = {
   isSupported: isSupported,
   isPaired: isPaired,
   isConnected: isConnected,
+  needsReselect: needsReselect,
   deviceName: deviceName,
   getPaper: getPaper,
   setPaper: setPaper,
   paperDots: paperDots,
   pair: pair,
+  connect: ensureConnected,
   forget: forget,
   warmUp: warmUp,
   printReceipt: printReceipt,
