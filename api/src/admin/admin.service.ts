@@ -10,7 +10,7 @@ import { Tenant } from '../entities/tenant.entity';
 import { User } from '../entities/user.entity';
 import { Subscription } from '../entities/subscription.entity';
 import { TenantConfig } from '../entities/tenant-config.entity';
-import { UserRole, SubscriptionPlan, SubscriptionStatus } from '../entities/enums';
+import { UserRole, SubscriptionPlan, SubscriptionStatus, SiiProvider } from '../entities/enums';
 
 @Injectable()
 export class AdminService {
@@ -155,7 +155,8 @@ export class AdminService {
       const config = manager.create(TenantConfig, {
         tenant_id: savedTenant.id,
         sii_enabled: false,
-        printer_enabled: false,
+        sii_provider: SiiProvider.API_GATEWAY,
+        printer_enabled: true,
       });
       await manager.save(TenantConfig, config);
 

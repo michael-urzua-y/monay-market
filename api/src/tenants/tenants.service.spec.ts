@@ -100,10 +100,10 @@ describe('TenantsService', () => {
       const updated = {
         ...mockConfig,
         sii_enabled: true,
-        sii_provider: SiiProvider.HAULMER,
+        sii_provider: SiiProvider.API_GATEWAY,
         sii_api_key: 'test-key',
-        sii_rut_emisor: '12345678-9',
-        sii_rut_autenticador: '18673997-3',
+        sii_rut_emisor: '12.345.678-5',
+        sii_rut_autenticador: '11.111.111-1',
         sii_codigo_sucursal: 2,
         sii_sandbox_mode: false,
       };
@@ -112,16 +112,15 @@ describe('TenantsService', () => {
 
       const result = await service.updateSiiConfig(tenantId, {
         sii_enabled: true,
-        sii_provider: SiiProvider.HAULMER,
         sii_api_key: 'test-key',
-        sii_rut_emisor: '12345678-9',
-        sii_rut_autenticador: '18673997-3',
+        sii_rut_emisor: '12.345.678-5',
+        sii_rut_autenticador: '11.111.111-1',
         sii_codigo_sucursal: 2,
         sii_sandbox_mode: false,
       });
 
       expect(result.sii_enabled).toBe(true);
-      expect(result.sii_provider).toBe(SiiProvider.HAULMER);
+      expect(result.sii_provider).toBe(SiiProvider.API_GATEWAY);
       expect(configSave).toHaveBeenCalled();
     });
 
@@ -134,23 +133,9 @@ describe('TenantsService', () => {
       });
 
       expect(result.sii_enabled).toBe(true);
-      expect(result.sii_provider).toBeNull();
+      // El proveedor queda siempre en API Gateway, aunque no se envíe
+      expect(result.sii_provider).toBe(SiiProvider.API_GATEWAY);
       expect(result.sii_api_key).toBeNull();
-    });
-  });
-
-  describe('updatePrinterConfig', () => {
-    it('should update printer_enabled', async () => {
-      const updated = { ...mockConfig, printer_enabled: true };
-      configFindOne.mockResolvedValue({ ...mockConfig });
-      configSave.mockResolvedValue(updated);
-
-      const result = await service.updatePrinterConfig(tenantId, {
-        printer_enabled: true,
-      });
-
-      expect(result.printer_enabled).toBe(true);
-      expect(configSave).toHaveBeenCalled();
     });
   });
 

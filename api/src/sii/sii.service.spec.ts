@@ -416,14 +416,14 @@ describe('SiiService', () => {
     it('should include rut_autenticador from config', () => {
       const sale = mockSale();
       const config = mockConfig({
-        sii_rut_emisor: '78.260.737-5',
-        sii_rut_autenticador: '18.673.997-3',
+        sii_rut_emisor: '12.345.678-5',
+        sii_rut_autenticador: '11.111.111-1',
       });
 
       const data = service.buildSaleData(sale, config);
 
-      expect(data.rut_emisor).toBe('78.260.737-5');
-      expect(data.rut_autenticador).toBe('18.673.997-3');
+      expect(data.rut_emisor).toBe('12.345.678-5');
+      expect(data.rut_autenticador).toBe('11.111.111-1');
     });
 
     it('should include SII branch code from config', () => {

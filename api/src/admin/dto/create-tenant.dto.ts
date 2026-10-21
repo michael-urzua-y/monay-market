@@ -1,4 +1,5 @@
 import { IsString, MinLength, MaxLength, IsNotEmpty } from 'class-validator';
+import { RutField } from '../../common/rut/rut.decorator';
 
 export class CreateTenantDto {
   @IsString()
@@ -6,9 +7,7 @@ export class CreateTenantDto {
   @MaxLength(255)
   name: string;
 
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(20)
+  @RutField('El RUT del negocio')
   rut: string;
 
   @IsString()

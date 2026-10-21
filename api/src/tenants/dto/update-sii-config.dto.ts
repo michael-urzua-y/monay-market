@@ -1,6 +1,5 @@
 import {
   IsBoolean,
-  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -8,7 +7,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { SiiProvider } from '../../entities/enums';
+import { RutField } from '../../common/rut/rut.decorator';
 
 export class UpdateSiiConfigDto {
   @IsOptional()
@@ -16,22 +15,14 @@ export class UpdateSiiConfigDto {
   sii_enabled?: boolean;
 
   @IsOptional()
-  @IsEnum(SiiProvider)
-  sii_provider?: SiiProvider | null;
-
-  @IsOptional()
   @IsString()
   @MaxLength(512)
   sii_api_key?: string | null;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(20)
+  @RutField('El RUT emisor', { optional: true })
   sii_rut_emisor?: string | null;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(20)
+  @RutField('El RUT autenticador', { optional: true })
   sii_rut_autenticador?: string | null;
 
   @IsOptional()

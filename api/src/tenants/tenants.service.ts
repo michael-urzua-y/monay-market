@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { TenantConfig } from '../entities/tenant-config.entity';
 import { Subscription } from '../entities/subscription.entity';
 import { UpdateSiiConfigDto } from './dto/update-sii-config.dto';
-import { UpdatePrinterConfigDto } from './dto/update-printer-config.dto';
+import { SiiProvider } from '../entities/enums';
 
 @Injectable()
 export class TenantsService {
@@ -40,7 +40,8 @@ export class TenantsService {
     const config = await this.findConfigOrFail(tenantId);
 
     if (dto.sii_enabled !== undefined) config.sii_enabled = dto.sii_enabled;
-    if (dto.sii_provider !== undefined) config.sii_provider = dto.sii_provider;
+    // El proveedor es siempre API Gateway: no se elige desde el panel.
+    config.sii_provider = SiiProvider.API_GATEWAY;
     if (dto.sii_api_key !== undefined) config.sii_api_key = this.normalizeOptionalString(dto.sii_api_key);
     if (dto.sii_rut_emisor !== undefined) config.sii_rut_emisor = this.normalizeOptionalString(dto.sii_rut_emisor);
     if (dto.sii_rut_autenticador !== undefined) config.sii_rut_autenticador = this.normalizeOptionalString(dto.sii_rut_autenticador);
@@ -52,16 +53,6 @@ export class TenantsService {
     if (dto.sii_certificado_password !== undefined) config.sii_certificado_password = this.normalizeOptionalString(dto.sii_certificado_password);
     if (dto.sii_sandbox_mode !== undefined) config.sii_sandbox_mode = dto.sii_sandbox_mode;
 
-    const savedConfig = await this.configRepository.save(config);
-    return this.sanitizeConfig(savedConfig);
-  }
-
-  async updatePrinterConfig(
-    tenantId: string,
-    dto: UpdatePrinterConfigDto,
-  ): Promise<Partial<TenantConfig>> {
-    const config = await this.findConfigOrFail(tenantId);
-    config.printer_enabled = dto.printer_enabled;
     const savedConfig = await this.configRepository.save(config);
     return this.sanitizeConfig(savedConfig);
   }

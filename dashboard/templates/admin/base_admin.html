@@ -8,6 +8,12 @@
     <title>{% block title %}Admin{% endblock %} — Monay Market</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='monay-market-logo.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script defer src="{{ url_for('static', filename='js/rut.js') }}"></script>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Monay">
+    <script defer src="{{ url_for('static', filename='js/install.js') }}"></script>
     <style>
         /* Admin-specific overrides using the same design tokens as main dashboard */
         .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px; }

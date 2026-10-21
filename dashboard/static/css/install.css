@@ -1,0 +1,104 @@
+/* Aviso "Instala Monay" (static/js/install.js). Autocontenido: se usa en el login, el panel y la caja. */
+.monay-install {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  z-index: 3000;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: 14px 16px;
+  border: 1px solid rgba(240, 185, 11, 0.45);
+  border-radius: 16px;
+  background: #0b1714;
+  color: #f6faed;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  font-family: inherit;
+  animation: monay-install-in 0.25s ease-out;
+}
+
+.monay-install--bottom {
+  bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+.monay-install--top {
+  top: max(12px, env(safe-area-inset-top));
+}
+
+.monay-install__icon {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+}
+
+.monay-install__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.monay-install__body strong {
+  display: block;
+  font-size: 1rem;
+  color: #f0b90b;
+}
+
+.monay-install__body p {
+  margin: 4px 0 0;
+  font-size: 0.88rem;
+  line-height: 1.35;
+  color: rgba(231, 238, 224, 0.8);
+}
+
+.monay-install__steps {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(240, 185, 11, 0.1);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.monay-install__steps ol {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.monay-install__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.monay-install__actions button {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.monay-install__primary {
+  background: #f0b90b;
+  color: #12160e;
+}
+
+.monay-install__later {
+  background: transparent;
+  color: rgba(231, 238, 224, 0.75);
+}
+
+@keyframes monay-install-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

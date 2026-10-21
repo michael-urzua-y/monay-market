@@ -1,0 +1,92 @@
+# Monay en el VPS de serviciohyh.cl → https://pos.serviciohyh.cl (instancia de prueba)
+#
+# Corre detrás del nginx existente del VPS (hyh-nginx) sin tocar el sitio "taller":
+#  - Ningún puerto publicado: solo monay-web entra a la red del nginx (taller_default).
+#  - Postgres, API y panel quedan en una red interna propia.
+#  - Ningún servicio en la red compartida se llama "web": Docker registra el nombre del
+#    servicio como alias y chocaría con el "web" del sitio existente.
+#
+# Reutiliza las definiciones del docker-compose.yml principal (extends) y solo cambia
+# lo propio de este servidor. Uso: ver deploy/serviciohyh/README.md
+
+name: monay
+
+services:
+  postgres:
+    extends:
+      file: ../../docker-compose.yml
+      service: postgres
+    container_name: monay-postgres
+    # Menos memoria que en el servidor principal: el VPS es compartido (~3,8 GB)
+    command: >
+      postgres
+      -c shared_buffers=128MB
+      -c effective_cache_size=384MB
+      -c work_mem=4MB
+      -c maintenance_work_mem=32MB
+      -c max_connections=50
+      -c random_page_cost=1.1
+      -c checkpoint_completion_target=0.9
+      -c log_min_duration_statement=1000
+    networks: [internal]
+
+  backup:
+    extends:
+      file: ../../docker-compose.yml
+      service: backup
+    container_name: monay-backup
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+
+  api:
+    extends:
+      file: ../../docker-compose.yml
+      service: api
+    container_name: monay-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [internal]
+
+  dashboard:
+    extends:
+      file: ../../docker-compose.yml
+      service: dashboard
+    container_name: monay-dashboard
+    # 2 procesos en vez de 4: suficiente para pruebas y la mitad de memoria
+    command: ['gunicorn', '--bind', '0.0.0.0:5000', '--workers', '2', '--threads', '2', '--timeout', '120', '--keep-alive', '5', 'app:app']
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [internal]
+
+  monay-web:
+    image: nginx:1.27-alpine
+    container_name: monay-web
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+      dashboard:
+        condition: service_healthy
+    volumes:
+      - ../../docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1/login >/dev/null 2>&1 || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [internal, proxy]
+
+volumes:
+  postgres-data:
+  postgres-backups:
+  dashboard-uploads:
+
+networks:
+  internal:
+  proxy:
+    name: ${PROXY_NETWORK:-taller_default}
+    external: true
