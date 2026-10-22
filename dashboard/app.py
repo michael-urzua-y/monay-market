@@ -326,10 +326,14 @@ def pos_redirect():
 
 
 @app.route("/")
-@login_required
 def index():
-    """Redirect root to dashboard."""
-    return redirect(url_for("dashboard"))
+    """Portada pública; con sesión iniciada lleva a lo de cada perfil."""
+    if "jwt_token" in session:
+        role_redirect = redirect_for_authenticated_session()
+        if role_redirect:
+            return role_redirect
+        session.clear()
+    return render_template("portada.html")
 
 
 @app.route("/dashboard")

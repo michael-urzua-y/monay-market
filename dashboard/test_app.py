@@ -249,11 +249,22 @@ class TestLoginRequired:
         assert resp.status_code == 302
         assert "/login" in resp.headers["Location"]
 
-    def test_root_redirects_to_login_without_token(self, client):
-        """Root / should redirect to login without JWT."""
+    def test_root_shows_public_home_without_token(self, client):
+        """Root / shows the public home page without JWT."""
+        resp = client.get("/")
+        assert resp.status_code == 200
+        body = resp.data.decode("utf-8")
+        assert "Gestión inteligente" in body
+        assert "wa.me/56949790992" in body
+
+    def test_root_redirects_owner_to_dashboard(self, client):
+        """Root / takes a logged-in owner straight to the dashboard."""
+        with client.session_transaction() as sess:
+            sess["jwt_token"] = "some-token"
+            sess["user"] = {"username": "admin", "email": "dueno@example.com", "role": "dueno"}
         resp = client.get("/")
         assert resp.status_code == 302
-        assert "/login" in resp.headers["Location"]
+        assert "/dashboard" in resp.headers["Location"]
 
 
 class TestCsrfProtection:

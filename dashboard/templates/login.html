@@ -7,8 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <meta name="description" content="Monay Market - Acceso al panel de administración">
-    <title>Iniciar Sesión - Monay Market</title>
+    <meta name="description" content="Monay Market - Iniciar sesión en la caja o el panel de tu almacén">
+    <title>Iniciar sesión - Monay Market</title>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='monay-market-logo.png', v=asset_version) }}">
     <link rel="preload" as="image" href="{{ url_for('static', filename='monay-market-logo-horizontal.png', v=asset_version) }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css', v=asset_version) }}">
@@ -18,105 +18,31 @@
     <meta name="apple-mobile-web-app-title" content="Monay Market">
 </head>
 <body class="login-page">
-    <main class="login-shell">
-        <header class="login-topbar">
-            {% set whatsapp_message = "Hola Monay Market, les escribo desde la versión web y me gustaría conocer más sobre el servicio y sus costos." %}
-            <a href="{{ url_for('login') }}" class="login-brand" aria-label="Monay Market">
-                <img
-                    src="{{ url_for('static', filename='monay-market-logo-horizontal.png', v=asset_version) }}"
-                    alt="Monay Market"
-                    class="login-brand-logo"
-                    width="668"
-                    height="200"
-                    loading="eager"
-                    fetchpriority="high"
-                    decoding="async"
-                >
+    {% set whatsapp_message = "Hola, los estoy contactando desde el sitio web de Monay Market porque tengo problemas para ingresar." %}
+    <main class="auth">
+        <aside class="auth-brand">
+            <a href="{{ url_for('index') }}" class="auth-brand-logo" aria-label="Ir a la portada de Monay Market">
+                <img src="{{ url_for('static', filename='monay-market-logo-horizontal.png', v=asset_version) }}" alt="Monay Market" width="668" height="200">
+            </a>
+            <div class="auth-brand-copy">
+                <h1>Tu almacén, <span>siempre al día.</span></h1>
+                <p>Una sola cuenta: Monay abre la caja si eres cajero y el panel si eres dueño.</p>
+            </div>
+            <img class="auth-brand-visual" src="{{ url_for('static', filename='login-market-visual.webp', v=asset_version) }}" alt="" width="1448" height="1086" loading="lazy" decoding="async">
+        </aside>
+
+        <section class="auth-panel" aria-label="Iniciar sesión">
+            <a href="{{ url_for('index') }}" class="auth-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                Volver al inicio
             </a>
 
-            <nav class="login-nav" aria-label="Menú principal">
-                <a
-                    href="https://wa.me/56949790992?text={{ whatsapp_message|urlencode }}"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="login-contact-btn"
-                    aria-label="Contactar por WhatsApp"
-                >
-                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                        <path fill="currentColor" stroke="none" d="M19.05 4.91A9.82 9.82 0 0 0 12.02 2C6.57 2 2.13 6.42 2.13 11.87c0 1.75.46 3.45 1.34 4.95L2 22l5.34-1.39a9.82 9.82 0 0 0 4.68 1.2h.01c5.45 0 9.88-4.43 9.88-9.88a9.8 9.8 0 0 0-2.86-7.02Zm-7.03 15.24h-.01a8.15 8.15 0 0 1-4.15-1.14l-.3-.18-3.17.83.85-3.09-.2-.32a8.13 8.13 0 0 1-1.25-4.36c0-4.49 3.65-8.14 8.14-8.14 2.17 0 4.2.84 5.74 2.38a8.06 8.06 0 0 1 2.38 5.76c0 4.48-3.66 8.13-8.13 8.13Zm4.46-6.1c-.24-.12-1.4-.69-1.62-.77-.22-.08-.38-.12-.53.12-.16.24-.61.77-.75.93-.14.16-.28.18-.52.06-.24-.12-1.03-.38-1.95-1.21-.72-.64-1.2-1.44-1.34-1.68-.14-.24-.01-.37.11-.49.11-.11.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.53-1.28-.73-1.75-.19-.46-.38-.39-.53-.39h-.45c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2s.86 2.32.98 2.48c.12.16 1.69 2.58 4.1 3.62.57.25 1.02.4 1.37.51.57.18 1.1.15 1.52.09.46-.07 1.4-.57 1.6-1.12.2-.55.2-1.02.14-1.12-.05-.1-.21-.16-.45-.28Z"/>
-                    </svg>
-                    <span>Contacto</span>
-                </a>
-            </nav>
-        </header>
-
-        <section class="login-main" aria-label="Acceso Monay Market">
-            <div class="login-hero">
-                <div class="login-hero-copy">
-                    <p class="login-eyebrow">Panel de administración</p>
-                    <h1>Gestión inteligente <br> para tu<span> negocio</span>.</h1>
-                    <p>Controla ventas, stock y operación diaria desde un solo lugar.</p>
-                </div>
-
-                <div class="login-visual" aria-hidden="true">
-                    <img
-                        src="{{ url_for('static', filename='login-market-visual.webp', v=asset_version) }}"
-                        alt=""
-                        width="1448"
-                        height="1086"
-                        loading="lazy"
-                        decoding="async"
-                        fetchpriority="low"
-                    >
-                </div>
-
-                <div class="login-feature-strip" aria-label="Beneficios principales">
-                    <article class="login-feature">
-                        <span class="login-feature-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" focusable="false">
-                                <path d="M4 19h16M6 16l4-4 3 3 5-7"/>
-                                <path d="M18 8h-4M18 8v4"/>
-                            </svg>
-                        </span>
-                        <span>
-                            <strong>Ventas en tiempo real</strong>
-                            <small>Monitorea tu negocio al instante.</small>
-                        </span>
-                    </article>
-
-                    <article class="login-feature">
-                        <span class="login-feature-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" focusable="false">
-                                <path d="m12 3 7 4v10l-7 4-7-4V7l7-4Z"/>
-                                <path d="m5 7 7 4 7-4M12 11v10"/>
-                            </svg>
-                        </span>
-                        <span>
-                            <strong>Control de stock</strong>
-                            <small>Optimiza inventarios y evita quiebres.</small>
-                        </span>
-                    </article>
-
-                    <article class="login-feature">
-                        <span class="login-feature-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" focusable="false">
-                                <path d="M12 3v9h9"/>
-                                <path d="M21 12a9 9 0 1 1-9-9"/>
-                            </svg>
-                        </span>
-                        <span>
-                            <strong>Reportes inteligentes</strong>
-                            <small>Toma decisiones con datos precisos.</small>
-                        </span>
-                    </article>
-                </div>
-            </div>
-
-            <section class="login-card" aria-label="Formulario de acceso">
-                <div class="login-card-inner">
-                    <div class="login-heading">
-                        <h2>Hola de nuevo</h2>
-                        <p>Ingresa para abrir la caja o el panel de tu almacén.</p>
+            <div class="auth-center">
+                <img class="auth-mobile-logo" src="{{ url_for('static', filename='monay-market-logo-horizontal.png', v=asset_version) }}" alt="Monay Market" width="668" height="200">
+                <div class="auth-form-wrap">
+                    <div class="auth-heading">
+                        <h2><span class="only-desktop">Iniciar sesión</span><span class="only-mobile">Hola de nuevo</span></h2>
+                        <p><span class="only-desktop">Ingresa con el usuario que te entregamos.</span><span class="only-mobile">Ingresa para abrir la caja o el panel de tu almacén.</span></p>
                     </div>
 
                     {% if error %}
@@ -132,15 +58,7 @@
                                     <circle cx="12" cy="8" r="4"/>
                                     <path d="M4 21a8 8 0 0 1 16 0"/>
                                 </svg>
-                                <input
-                                    type="text"
-                                    id="username"
-                                    name="username"
-                                    placeholder="Tu usuario"
-                                    required
-                                    autofocus
-                                    autocomplete="username"
-                                >
+                                <input type="text" id="username" name="username" placeholder="Tu usuario" required autofocus autocomplete="username" autocapitalize="none" spellcheck="false">
                             </div>
                         </div>
 
@@ -148,20 +66,13 @@
                             <label for="password">Contraseña</label>
                             <div class="input-wrap">
                                 <svg class="input-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                                    <rect x="5" y="10" width="14" height="10" rx="2"/>
-                                    <path d="M8 10V8a4 4 0 0 1 8 0v2"/>
+                                    <rect x="4" y="10" width="16" height="11" rx="2.5"/>
+                                    <path d="M8 10V7a4 4 0 0 1 8 0v3"/>
                                 </svg>
-                                <input
-                                    type="password"
-                                    id="password"
-                                    name="password"
-                                    placeholder="Tu contraseña"
-                                    required
-                                    autocomplete="current-password"
-                                >
+                                <input type="password" id="password" name="password" placeholder="Tu contraseña" required autocomplete="current-password">
                                 <button type="button" class="password-toggle" aria-label="Mostrar contraseña">
                                     <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                                        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/>
+                                        <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/>
                                         <circle cx="12" cy="12" r="3"/>
                                     </svg>
                                 </button>
@@ -170,14 +81,13 @@
 
                         <button type="submit" class="login-btn">Ingresar</button>
                     </form>
-                    <p class="login-help">¿Necesitas ayuda? <a href="https://wa.me/56949790992?text={{ whatsapp_message|urlencode }}" target="_blank" rel="noopener noreferrer">Escríbenos por WhatsApp</a></p>
-                </div>
-            </section>
-        </section>
 
-        <footer class="login-footer">
-            &copy; 2026 <span>Monay Market</span>. Todos los derechos reservados.
-        </footer>
+                    <p class="login-help">¿Problemas para entrar? <a href="https://wa.me/56949790992?text={{ whatsapp_message|urlencode }}" target="_blank" rel="noopener noreferrer">Escríbenos por WhatsApp</a></p>
+                </div>
+            </div>
+
+            <footer class="auth-footer">&copy; 2026 Monay Market</footer>
+        </section>
     </main>
 
     <div class="global-loading-overlay" data-global-loading-overlay aria-hidden="true">
