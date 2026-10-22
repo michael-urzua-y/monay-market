@@ -13,8 +13,144 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-    <meta name="description" content="Monay Market: punto de venta y boleta electrónica para almacenes y minimarkets. La caja en el celular y el panel del dueño siempre al día.">
-    <title>Monay Market - Gestión inteligente para tu negocio</title>
+    <title>Monay Market | Software de punto de venta para almacenes, minimarkets y botillerías</title>
+    <meta name="description" content="Software de punto de venta para almacenes, minimarkets y botillerías en Chile: caja en el celular, boleta electrónica SII, impresión Bluetooth, control de stock y panel del dueño.">
+    <meta name="keywords" content="software para almacenes, sistema de punto de venta, POS Chile, gestor de almacenes, software para botillerías, software para minimarket, boleta electrónica SII, control de stock, caja registradora en el celular">
+    <meta name="robots" content="index, follow, max-image-preview:large">
+    <link rel="canonical" href="{{ site_url }}/">
+    <link rel="alternate" type="text/plain" title="Monay Market para asistentes de IA" href="{{ site_url }}/llms.txt">
+    <meta property="og:type" content="website">
+    <meta property="og:locale" content="es_CL">
+    <meta property="og:site_name" content="Monay Market">
+    <meta property="og:title" content="Monay Market | Punto de venta para almacenes, minimarkets y botillerías">
+    <meta property="og:description" content="Software de punto de venta para almacenes, minimarkets y botillerías en Chile: caja en el celular, boleta electrónica SII, impresión Bluetooth, control de stock y panel del dueño.">
+    <meta property="og:url" content="{{ site_url }}/">
+    <meta property="og:image" content="{{ site_url }}/static/og-monay-market.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Monay Market: gestión inteligente para tu negocio">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Monay Market | Punto de venta para almacenes, minimarkets y botillerías">
+    <meta name="twitter:description" content="Software de punto de venta para almacenes, minimarkets y botillerías en Chile: caja en el celular, boleta electrónica SII, impresión Bluetooth, control de stock y panel del dueño.">
+    <meta name="twitter:image" content="{{ site_url }}/static/og-monay-market.png">
+    {% if config.GOOGLE_SITE_VERIFICATION %}<meta name="google-site-verification" content="{{ config.GOOGLE_SITE_VERIFICATION }}">{% endif %}
+    {% if config.BING_SITE_VERIFICATION %}<meta name="msvalidate.01" content="{{ config.BING_SITE_VERIFICATION }}">{% endif %}
+    <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": "{{ site_url }}/#organizacion",
+      "name": "Monay Market",
+      "url": "{{ site_url }}/",
+      "logo": "{{ site_url }}/static/monay-market-logo.png",
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "telephone": "+56949790992",
+        "contactType": "sales",
+        "areaServed": "CL",
+        "availableLanguage": "es"
+      }
+    },
+    {
+      "@type": "WebSite",
+      "@id": "{{ site_url }}/#sitio",
+      "url": "{{ site_url }}/",
+      "name": "Monay Market",
+      "inLanguage": "es-CL",
+      "publisher": {
+        "@id": "{{ site_url }}/#organizacion"
+      }
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "Monay Market",
+      "applicationCategory": "BusinessApplication",
+      "applicationSubCategory": "Punto de venta (POS)",
+      "operatingSystem": "Web, Android",
+      "url": "{{ site_url }}/",
+      "image": "{{ site_url }}/static/og-monay-market.png",
+      "description": "Software de punto de venta para almacenes, minimarkets y botillerías en Chile: caja en el celular, boleta electrónica SII, impresión Bluetooth, control de stock y panel del dueño.",
+      "inLanguage": "es-CL",
+      "areaServed": {
+        "@type": "Country",
+        "name": "Chile"
+      },
+      "audience": {
+        "@type": "BusinessAudience",
+        "audienceType": "Almacenes, minimarkets y botillerías"
+      },
+      "featureList": [
+        "Caja en el celular",
+        "Boleta electrónica SII",
+        "Impresión por Bluetooth",
+        "Funciona sin internet",
+        "Control de stock y lista de compras",
+        "Ventas a granel",
+        "Carga de productos desde Excel",
+        "Panel del dueño"
+      ],
+      "publisher": {
+        "@id": "{{ site_url }}/#organizacion"
+      }
+    },
+    {
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "¿Qué es Monay Market?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Monay Market es un software de punto de venta para almacenes, minimarkets y botillerías en Chile. La caja funciona en el celular del cajero, emite boleta electrónica del SII e imprime por Bluetooth, y el dueño ve ventas, stock y boletas en su panel."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Sirve para botillerías y minimarkets?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Sí. Monay sirve para cualquier negocio de barrio que venda por unidad o a granel: almacenes, minimarkets, botillerías, panaderías y verdulerías."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Emite boleta electrónica del SII?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Sí. Cada venta emite su boleta electrónica ante el SII a través de API Gateway eBoleta. Si alguna boleta falla, se puede reintentar desde el panel del dueño."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Qué equipos necesito?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Un celular Android con Chrome para la caja (también funciona en el computador) y, para imprimir la boleta, una impresora térmica Bluetooth de 58 u 80 mm."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Funciona sin internet?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Sí. La caja sigue registrando ventas sin conexión y las sincroniza cuando vuelve internet."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "¿Cuánto cuesta?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Hay planes Básico y Pro. Escríbenos por WhatsApp y te contamos los precios; nosotros creamos tu cuenta y te ayudamos a cargar tus productos."
+          }
+        }
+      ]
+    }
+  ]
+}
+    </script>
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='monay-market-logo.png', v=asset_version) }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/portada.css', v=asset_version) }}">
     <link rel="manifest" href="/manifest.webmanifest">
@@ -36,6 +172,7 @@
             <nav class="topnav" aria-label="Secciones de la página">
                 <a href="#funciones" class="topnav-link">Funciones</a>
                 <a href="#como-funciona" class="topnav-link">Cómo funciona</a>
+                <a href="#preguntas" class="topnav-link">Preguntas</a>
                 <a href="{{ url_for('login') }}" class="btn-login">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><path d="m10 17 5-5-5-5M15 12H3"/></svg>
                     <span class="only-desktop">Iniciar sesión</span><span class="only-mobile">Ingresar</span>
@@ -47,7 +184,7 @@
             <div class="hero-copy">
                 <span class="eyebrow"><span class="eyebrow-dot" aria-hidden="true"></span>Punto de venta y boleta electrónica</span>
                 <h1>Gestión inteligente<br>para tu <span>negocio.</span></h1>
-                <p class="hero-lead">Controla ventas, stock y operación diaria desde un solo lugar: la caja en el celular del cajero y el panel del dueño siempre al día.</p>
+                <p class="hero-lead">Controla ventas, stock y operación diaria de tu almacén, minimarket o botillería desde un solo lugar: la caja en el celular del cajero y el panel del dueño siempre al día.</p>
                 <ul class="hero-points">
                     {% for point in ['Boleta electrónica SII', 'Impresión por Bluetooth', 'Funciona sin internet'] %}
                     <li><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>{{ point }}</li>
@@ -150,7 +287,7 @@
         <div class="section-head">
             <span class="kicker">Todo en un lugar</span>
             <h2>Lo que tu almacén necesita, sin complicaciones</h2>
-            <p>Pensado para el mostrador: rápido para el cajero y claro para el dueño.</p>
+            <p>Software de punto de venta pensado para el mostrador de almacenes, minimarkets y botillerías: rápido para el cajero y claro para el dueño.</p>
         </div>
         <div class="features">
             {% for title, text, icon in [
@@ -197,6 +334,41 @@
     </div>
 </section>
 
+<section id="preguntas" class="section section-tight">
+    <div class="wrap faq">
+        <div class="section-head">
+            <span class="kicker">Preguntas frecuentes</span>
+            <h2>Lo que nos preguntan los almaceneros</h2>
+        </div>
+        <div class="faq-list">
+            <details class="faq-item">
+                <summary>¿Qué es Monay Market?</summary>
+                <p>Monay Market es un software de punto de venta para almacenes, minimarkets y botillerías en Chile. La caja funciona en el celular del cajero, emite boleta electrónica del SII e imprime por Bluetooth, y el dueño ve ventas, stock y boletas en su panel.</p>
+            </details>
+            <details class="faq-item">
+                <summary>¿Sirve para botillerías y minimarkets?</summary>
+                <p>Sí. Monay sirve para cualquier negocio de barrio que venda por unidad o a granel: almacenes, minimarkets, botillerías, panaderías y verdulerías.</p>
+            </details>
+            <details class="faq-item">
+                <summary>¿Emite boleta electrónica del SII?</summary>
+                <p>Sí. Cada venta emite su boleta electrónica ante el SII a través de API Gateway eBoleta. Si alguna boleta falla, se puede reintentar desde el panel del dueño.</p>
+            </details>
+            <details class="faq-item">
+                <summary>¿Qué equipos necesito?</summary>
+                <p>Un celular Android con Chrome para la caja (también funciona en el computador) y, para imprimir la boleta, una impresora térmica Bluetooth de 58 u 80 mm.</p>
+            </details>
+            <details class="faq-item">
+                <summary>¿Funciona sin internet?</summary>
+                <p>Sí. La caja sigue registrando ventas sin conexión y las sincroniza cuando vuelve internet.</p>
+            </details>
+            <details class="faq-item">
+                <summary>¿Cuánto cuesta?</summary>
+                <p>Hay planes Básico y Pro. Escríbenos por WhatsApp y te contamos los precios; nosotros creamos tu cuenta y te ayudamos a cargar tus productos.</p>
+            </details>
+        </div>
+    </div>
+</section>
+
 <section id="contacto" class="section section-tight">
     <div class="wrap">
         <div class="cta">
@@ -221,6 +393,7 @@
         <nav class="footer-nav" aria-label="Enlaces del pie">
             <a href="#funciones">Funciones</a>
             <a href="#como-funciona">Cómo funciona</a>
+            <a href="#preguntas">Preguntas frecuentes</a>
             <a href="{{ url_for('login') }}">Iniciar sesión</a>
             <a href="{{ whatsapp_url }}" target="_blank" rel="noopener noreferrer">WhatsApp</a>
         </nav>

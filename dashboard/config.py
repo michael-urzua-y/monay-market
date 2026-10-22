@@ -13,6 +13,9 @@ class Config:
     PUBLIC_APP_URL = os.environ.get("PUBLIC_APP_URL", "http://localhost:8080")
     LOGIN_URL = os.environ.get("LOGIN_URL")
     POS_URL = os.environ.get("POS_URL", "/pos/")
+    # Verificación de propiedad en buscadores (Google Search Console, Bing Webmaster Tools)
+    GOOGLE_SITE_VERIFICATION = os.environ.get("GOOGLE_SITE_VERIFICATION", "")
+    BING_SITE_VERIFICATION = os.environ.get("BING_SITE_VERIFICATION", "")
     POS_AUTH_COOKIE_SECURE = os.environ.get("POS_AUTH_COOKIE_SECURE", "false").lower() == "true"
     FLASK_ENV = os.environ.get("FLASK_ENV", "development")
     STRICT_ENV_VALIDATION = os.environ.get("STRICT_ENV_VALIDATION", "false").lower() == "true"

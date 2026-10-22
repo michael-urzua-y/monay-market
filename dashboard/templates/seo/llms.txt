@@ -1,0 +1,31 @@
+# Monay Market
+
+> Monay Market es un software de punto de venta (POS) y gestión para almacenes, minimarkets y botillerías en Chile. La caja funciona en el celular del cajero, emite boleta electrónica del SII e imprime por Bluetooth; el dueño ve ventas, stock y boletas en su panel.
+
+## Para quién es
+
+- Almacenes de barrio, minimarkets y botillerías de Chile.
+- Negocios que venden por unidad (con código de barras) y a granel (por kilo: pan, fruta, verdura).
+- Dueños que quieren controlar ventas y stock sin estar en el local.
+
+## Qué hace
+
+- Caja en el celular: buscar o escanear productos con la cámara, carrito, cobro en efectivo o tarjeta con cálculo de vuelto.
+- Boleta electrónica del SII (a través de API Gateway eBoleta). Las boletas que fallan se pueden reintentar desde el panel.
+- Impresión directa por Bluetooth en impresoras térmicas de 58 u 80 mm, sin aplicaciones intermedias.
+- Sigue vendiendo sin internet y sincroniza las ventas cuando vuelve la conexión.
+- Control de stock con avisos de stock crítico y lista de compras agrupada por pasillo.
+- Productos a granel (por kilo) creados en segundos desde la caja.
+- Carga de productos uno por uno o masiva desde Excel.
+- Panel del dueño: ventas del día y del mes, productos más vendidos, horas punta, mermas y usuarios cajeros.
+- Se instala como app en el celular (aplicación web instalable).
+
+## Planes y contacto
+
+- Planes Básico y Pro. Para conocer precios y pedir una cuenta: WhatsApp +56 9 4979 0992.
+- Nosotros creamos la cuenta del negocio y ayudamos a cargar los productos.
+
+## Páginas
+
+- [Portada]({{ site_url }}/): qué es Monay, funciones, cómo empezar y contacto.
+- [Iniciar sesión]({{ site_url }}/login): acceso para dueños y cajeros con cuenta.

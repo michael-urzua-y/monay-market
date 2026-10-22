@@ -7,7 +7,7 @@ and tenant configuration via server-side rendered templates with HTMX.
 import json
 import os
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
 from urllib.parse import quote, urljoin
@@ -249,6 +249,54 @@ def parse_product_form():
 @app.route("/manifest.webmanifest")
 def web_manifest():
     return send_from_directory(app.static_folder, "manifest.webmanifest", mimetype="application/manifest+json")
+
+
+# --- Buscadores y asistentes de IA ---
+# Solo la portada y el ingreso son públicos; el panel, el admin y la caja quedan fuera.
+
+PRIVATE_PATHS = (
+    "/dashboard", "/products", "/shopping-list", "/sales", "/mermas", "/users",
+    "/settings", "/arqueos", "/admin", "/htmx/", "/logout", "/pos/", "/api/",
+)
+
+# Robots de buscadores y de asistentes de IA a los que se invita explícitamente
+SEARCH_AND_AI_BOTS = (
+    "Googlebot", "Bingbot", "DuckDuckBot", "Applebot", "Applebot-Extended", "Google-Extended",
+    "GPTBot", "OAI-SearchBot", "ChatGPT-User", "ClaudeBot", "Claude-SearchBot", "Claude-User",
+    "PerplexityBot", "Perplexity-User", "CCBot",
+)
+
+
+def public_site_url():
+    return app.config["PUBLIC_APP_URL"].rstrip("/")
+
+
+@app.context_processor
+def inject_site_url():
+    return {"site_url": public_site_url()}
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    rules = ["Allow: /"] + [f"Disallow: {path}" for path in PRIVATE_PATHS]
+    lines = []
+    for agent in ("*",) + SEARCH_AND_AI_BOTS:
+        lines.append(f"User-agent: {agent}")
+        lines.extend(rules)
+        lines.append("")
+    lines.append(f"Sitemap: {public_site_url()}/sitemap.xml")
+    return Response("\n".join(lines) + "\n", mimetype="text/plain")
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    xml = render_template("seo/sitemap.xml", lastmod=datetime.now(timezone.utc).date().isoformat())
+    return Response(xml, mimetype="application/xml")
+
+
+@app.route("/llms.txt")
+def llms_txt():
+    return Response(render_template("seo/llms.txt"), mimetype="text/plain")
 
 
 @app.route("/sw.js")

@@ -68,6 +68,9 @@ SESSION_COOKIE_SECURE=true
 SESSION_COOKIE_SAMESITE=Lax
 SESSION_LIFETIME_SECONDS=43200
 MAX_CONTENT_LENGTH=26214400
+# Verificación en Google Search Console / Bing Webmaster Tools (solo el código de la etiqueta meta)
+GOOGLE_SITE_VERIFICATION=
+BING_SITE_VERIFICATION=
 CERT_UPLOAD_DIR=/app/uploads/certificados
 EOF
 

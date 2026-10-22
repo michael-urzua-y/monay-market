@@ -466,3 +466,46 @@ class TestShoppingList:
         assert resp.status_code == 200
         body = resp.data.decode("utf-8")
         assert "Arroz" in body
+
+
+class TestSearchAndAi:
+    """Archivos para buscadores y asistentes de IA."""
+
+    def test_robots_allows_home_and_blocks_private_areas(self, client):
+        resp = client.get("/robots.txt")
+        assert resp.status_code == 200
+        body = resp.data.decode("utf-8")
+        assert "User-agent: *" in body
+        assert "User-agent: GPTBot" in body
+        assert "User-agent: ClaudeBot" in body
+        assert "Disallow: /dashboard" in body
+        assert "Disallow: /admin" in body
+        assert "Sitemap: " in body and body.strip().endswith("/sitemap.xml")
+
+    def test_sitemap_lists_public_pages(self, client):
+        resp = client.get("/sitemap.xml")
+        assert resp.status_code == 200
+        assert resp.mimetype == "application/xml"
+        body = resp.data.decode("utf-8")
+        assert "<loc>" in body and "/login</loc>" in body
+        assert "/dashboard" not in body
+
+    def test_llms_txt_describes_product(self, client):
+        resp = client.get("/llms.txt")
+        assert resp.status_code == 200
+        body = resp.data.decode("utf-8")
+        assert body.startswith("# Monay Market")
+        assert "botillerías" in body
+
+    def test_home_has_valid_structured_data(self, client):
+        import json
+        import re
+
+        body = client.get("/").data.decode("utf-8")
+        match = re.search(r'<script type="application/ld\+json">(.*?)</script>', body, re.S)
+        assert match, "falta el JSON-LD"
+        data = json.loads(match.group(1))
+        types = {node["@type"] for node in data["@graph"]}
+        assert {"Organization", "SoftwareApplication", "FAQPage"} <= types
+        assert '<link rel="canonical"' in body
+        assert 'property="og:image"' in body
