@@ -129,12 +129,12 @@
                         <td class="text-muted">{{ u.created_at|short_date }}</td>
                         <td>
                             <div class="user-actions" style="justify-content: flex-end;">
-                                <button type="button" class="btn btn-secondary btn-sm" onclick="openUserEdit('{{ u.id }}', '{{ u.username }}')">Editar</button>
+                                <button type="button" class="btn btn-secondary btn-sm" data-id="{{ u.id }}" data-name="{{ u.username }}" onclick="openUserEdit(this.dataset.id, this.dataset.name)">Editar</button>
                                 {% if u.active %}
                                 <form method="post" action="{{ url_for('admin_user_update', tenant_id=tenant.id, user_id=u.id) }}" style="display:inline;">
                                     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                                     <input type="hidden" name="active" value="false">
-                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Bloquear a {{ u.username }}?')">Bloquear</button>
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" data-name="{{ u.username }}" onclick="return confirm('¿Bloquear a ' + this.dataset.name + '?')">Bloquear</button>
                                 </form>
                                 {% else %}
                                 <form method="post" action="{{ url_for('admin_user_update', tenant_id=tenant.id, user_id=u.id) }}" style="display:inline;">

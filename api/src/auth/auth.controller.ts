@@ -37,11 +37,10 @@ export class AuthController {
     return this.authService.refresh(req.user.user_id);
   }
 
+  // req.ip ya considera "trust proxy" (main.ts): toma la IP que puso el nginx de Monay.
+  // No se lee X-Forwarded-For directo porque su primer valor lo puede inventar el cliente.
   private getClientIp(req: any): string {
-    const forwardedFor = String(req.headers?.['x-forwarded-for'] || '')
-      .split(',')[0]
-      .trim();
-    return forwardedFor || req.ip || req.socket?.remoteAddress || 'unknown';
+    return req.ip || req.socket?.remoteAddress || 'unknown';
   }
 
   private getThrottleKey(req: any, username: string): string {

@@ -172,7 +172,7 @@
                 {% endif %}
             </div>
             <div class="user-card-actions">
-                <button type="button" class="btn btn-sm btn-secondary" @click="showResetPassword = true; resetUserId = '{{ u.id }}'; resetUsername = '{{ u.username or u.email }}'">Restablecer clave</button>
+                <button type="button" class="btn btn-sm btn-secondary" data-id="{{ u.id }}" data-name="{{ u.username or u.email }}" @click="showResetPassword = true; resetUserId = $el.dataset.id; resetUsername = $el.dataset.name">Restablecer clave</button>
                 <form method="post" action="{{ url_for('users_toggle', user_id=u.id) }}">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                     {% if u.active %}

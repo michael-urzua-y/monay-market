@@ -41,7 +41,8 @@
                 <div class="row-actions">
                     <a href="/products/{{ p.id }}/edit" class="btn btn-sm btn-secondary btn-icon" aria-label="Editar {{ p.name }}" title="Editar">{{ icon('editar', 16) }}</a>
                     <button type="button" class="btn btn-sm btn-danger btn-icon" aria-label="Eliminar {{ p.name }}" title="Eliminar"
-                            @click="deleteId = '{{ p.id }}'; deleteName = '{{ p.name }}'; showDeleteModal = true">
+                            data-id="{{ p.id }}" data-name="{{ p.name }}"
+                            @click="deleteId = $el.dataset.id; deleteName = $el.dataset.name; showDeleteModal = true">
                         {{ icon('eliminar', 16) }}
                     </button>
                 </div>
