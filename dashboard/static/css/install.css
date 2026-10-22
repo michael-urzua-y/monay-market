@@ -1,4 +1,4 @@
-/* Aviso "Instala Monay" (static/js/install.js). Autocontenido: se usa en el login, el panel y la caja. */
+/* Aviso "Instala Monay Market" (static/js/install.js). Autocontenido: se usa en el login, el panel y la caja. */
 .monay-install {
   position: fixed;
   left: 12px;
@@ -43,6 +43,7 @@
   display: block;
   font-size: 1rem;
   color: #f0b90b;
+  white-space: nowrap; /* el nombre de la app siempre en una línea */
 }
 
 .monay-install__body p {

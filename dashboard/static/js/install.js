@@ -105,12 +105,12 @@
     banner = document.createElement('section');
     banner.className = 'monay-install monay-install--' + (position === 'top' ? 'top' : 'bottom');
     banner.setAttribute('role', 'dialog');
-    banner.setAttribute('aria-label', 'Instalar Monay');
+    banner.setAttribute('aria-label', 'Instalar Monay Market');
     banner.innerHTML =
       '<img class="monay-install__icon" src="/static/icons/icon-192x192.png" alt="" width="44" height="44">' +
       '<div class="monay-install__body">' +
-      '<strong>Instala Monay en tu ' + (/iPad|Tablet/i.test(navigator.userAgent) ? 'tablet' : 'celular') + '</strong>' +
-      '<p>Ábrela desde tu pantalla de inicio: más rápida y en pantalla completa.</p>' +
+      '<strong>Instala Monay Market</strong>' +
+      '<p>Ábrela desde la pantalla de inicio de tu ' + (/iPad|Tablet/i.test(navigator.userAgent) ? 'tablet' : 'celular') + ': más rápida y en pantalla completa.</p>' +
       '<div class="monay-install__steps" hidden></div>' +
       '<div class="monay-install__actions">' +
       '<button type="button" class="monay-install__primary">' + (isIos() ? 'Cómo instalar' : 'Instalar') + '</button>' +
