@@ -3,6 +3,7 @@
 
 {% block title %}Editar Producto{% endblock %}
 {% block page_title %}Editar producto{% endblock %}
+{% block page_subtitle %}{{ product.get('name', '') }}{% endblock %}
 {% block page_back %}<a href="{{ url_for('products') }}" class="back-link">{{ icon('volver', 16) }} Productos</a>{% endblock %}
 
 {% block content %}
@@ -13,15 +14,13 @@
     {% endif %}
 
     <div class="card">
-        <div class="card-header">
-            <h3 class="card-title">Editar producto</h3>
-        </div>
         <div class="card-body">
             <form method="post" action="{{ url_for('products_edit', product_id=product_id) }}">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                 {% set form_values = product %}
                 {% set current_category_id = product.get('category_id') or (product.get('category', {}).get('id', '') if product.get('category') else '') %}
-                {% set stock_label = 'Stock' %}
+                {% set stock_label = 'Stock actual' %}
+                {% set is_edit = true %}
                 {% set show_barcode_tools = false %}
                 {% include "partials/product_form_fields.html" %}
 

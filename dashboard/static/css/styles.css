@@ -1601,3 +1601,26 @@ input.rut-invalid {
     color: var(--color-text-soft);
     cursor: not-allowed;
 }
+
+/* Tipo de producto fijo al editar */
+.product-type-note {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    background: #f1f0e8;
+    font-size: 0.875rem;
+    color: var(--color-text-soft);
+}
+
+.product-type-note .icon {
+    flex-shrink: 0;
+    color: #8a6a00;
+}
+
+.form-group input[readonly]:not([type="checkbox"]):not([type="radio"]) {
+    background: #f1f0e8;
+    color: var(--color-text-soft);
+}

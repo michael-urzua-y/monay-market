@@ -1,4 +1,14 @@
 {% from "partials/icons.html" import icon %}
+{% set is_edit = is_edit|default(false) %}
+{% set weighed = form_values.get('is_weighed') %}
+{% if is_edit %}
+{# Al editar, el tipo de producto queda fijo: se muestra y viaja oculto para no cambiarlo #}
+<input type="checkbox" id="is_weighed" name="is_weighed" hidden {% if weighed %}checked{% endif %}>
+<div class="product-type-note">
+    {{ icon('balanza' if weighed else 'productos', 18) }}
+    <span>{% if weighed %}Producto <strong>a granel</strong> · se vende por kilo{% else %}Producto <strong>por unidad</strong>{% endif %}</span>
+</div>
+{% else %}
 <div class="form-group" style="margin-bottom: 18px;">
     <label style="display: inline-flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 800;">
         <input type="checkbox" id="is_weighed" name="is_weighed" {% if form_values.get('is_weighed') %}checked{% endif %} style="width: 22px; height: 22px; accent-color: var(--color-primary);">
@@ -8,14 +18,22 @@
         Para productos vendidos por kilos o fracciones, como pan, palta, frutas o verduras.
     </p>
 </div>
+{% endif %}
 
 <div id="bulk-code-note" class="alert alert-info" style="display: none; margin-bottom: 16px;">
     El sistema asignará un código interno automático para este producto. No usará un código de barras real del mercado.
 </div>
 
 <div class="form-group" id="barcode-group">
+    {% if is_edit and weighed %}
+    <label for="barcode">Código interno</label>
+    <input type="text" id="barcode" name="barcode" value="{{ form_values.get('barcode', '') or '' }}" readonly>
+    <p style="margin-top: 6px; color: var(--color-text-muted); font-size: 0.9rem;">Lo asignó el sistema al crear el producto a granel.</p>
+    {% else %}
     <label for="barcode">Código de barras</label>
-    {% if show_barcode_tools %}
+    {% endif %}
+    {% if is_edit and weighed %}
+    {% elif show_barcode_tools %}
     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
         <input type="text" id="barcode" name="barcode" value="{{ form_values.get('barcode', '') or '' }}" placeholder="Ej: 7801234567890" style="flex: 1 1 220px; min-width: 0;">
         <button type="button" class="btn btn-secondary" id="barcode-camera-btn" onclick="openScanner()" title="Escanear con cámara" aria-label="Escanear con cámara" style="padding: 0 12px; min-height: 46px;">{{ icon('codigo-barras') }}</button>
@@ -103,6 +121,7 @@
         var criticalStockInput = document.getElementById('critical_stock');
         var criticalStockHelp = document.getElementById('critical-stock-help');
         var wasBulkMode = !!(isWeighed && isWeighed.checked);
+        var isEdit = {{ 'true' if is_edit else 'false' }};
 
         function syncProductFormMode() {
             var bulkEnabled = !!(isWeighed && isWeighed.checked);
@@ -111,9 +130,10 @@
             }
             var criticalEnabled = !bulkEnabled || !!(useCriticalStock && useCriticalStock.checked);
 
-            if (barcodeGroup) barcodeGroup.style.display = bulkEnabled ? 'none' : '';
-            if (bulkCodeNote) bulkCodeNote.style.display = bulkEnabled ? '' : 'none';
-            if (barcodeInput && bulkEnabled) barcodeInput.value = '';
+            // Al editar se conserva el código (el interno de granel no se regenera)
+            if (barcodeGroup) barcodeGroup.style.display = bulkEnabled && !isEdit ? 'none' : '';
+            if (bulkCodeNote) bulkCodeNote.style.display = bulkEnabled && !isEdit ? '' : 'none';
+            if (barcodeInput && bulkEnabled && !isEdit) barcodeInput.value = '';
             if (useCriticalStock && !bulkEnabled) useCriticalStock.checked = true;
 
             if (stockInput) {
@@ -121,12 +141,13 @@
                 stockInput.placeholder = bulkEnabled ? 'Ej: 30.500' : '0';
             }
             if (stockLabel) {
-                stockLabel.textContent = bulkEnabled ? 'Stock inicial (kg) *' : 'Stock inicial *';
+                var stockWord = isEdit ? 'Stock actual' : 'Stock inicial';
+                stockLabel.textContent = bulkEnabled ? stockWord + ' (kg) *' : stockWord + ' *';
             }
             if (stockHelp) {
                 stockHelp.textContent = bulkEnabled
                     ? 'Puedes ingresar decimales, por ejemplo 30.500 kg.'
-                    : 'Cantidad inicial disponible para vender.';
+                    : (isEdit ? 'Cantidad disponible ahora para vender.' : 'Cantidad inicial disponible para vender.');
             }
             if (priceHelp) {
                 priceHelp.textContent = bulkEnabled
