@@ -3,39 +3,94 @@
 
 {% block title %}Usuarios{% endblock %}
 {% block page_title %}Usuarios{% endblock %}
+{% block page_subtitle %}Cajeros de tu tienda y sus accesos a la caja{% endblock %}
+{% block page_actions %}
+<button type="button" class="btn btn-secondary" @click="$dispatch('users-modal', 'password')">{{ icon('llave', 18) }} Cambiar mi contraseña</button>
+<button type="button" class="btn btn-primary" @click="$dispatch('users-modal', 'create')">{{ icon('mas', 18) }} Nuevo cajero</button>
+{% endblock %}
 
 {% block head %}
 <style>
-    .users-toolbar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-    }
-
     .users-toolbar-copy {
         color: var(--color-text-muted);
         font-size: 0.9rem;
         margin: 0;
     }
 
-    .users-form {
+    .users-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 16px;
+        margin-bottom: 20px;
+    }
+
+    .user-card {
         display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 20px;
+        border-radius: var(--radius-lg);
+        background: var(--color-white);
+        border: 1px solid var(--color-border-soft);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .user-card-head {
+        display: flex;
+        align-items: center;
         gap: 12px;
-        flex-wrap: wrap;
-        align-items: flex-end;
     }
 
-    .users-form-group {
-        margin-bottom: 0;
+    .user-card-avatar {
+        width: 44px;
+        height: 44px;
+        flex-shrink: 0;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        text-transform: uppercase;
+        background: var(--color-ink);
+        color: var(--color-primary-hover);
+    }
+
+    .user-card.is-inactive .user-card-avatar {
+        background: #ecebe3;
+        color: var(--color-text-muted);
+    }
+
+    .user-card-info {
         flex: 1;
-        min-width: 200px;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
     }
 
-    .users-table-wrap {
-        overflow-x: auto;
+    .user-card-info strong {
+        font-size: 1rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .user-card-info span {
+        font-size: 0.8125rem;
+        color: var(--color-text-muted);
+    }
+
+    .user-card-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .user-card-actions > * {
+        flex: 1;
+    }
+
+    .user-card-actions form .btn {
+        width: 100%;
     }
 
     .users-owner-placeholder {
@@ -89,7 +144,8 @@
 {% endblock %}
 
 {% block content %}
-<div x-data="{ showCreateCashier: false, showChangePassword: false, showResetPassword: false, resetUserId: '', resetUsername: '' }">
+<div x-data="{ showCreateCashier: false, showChangePassword: false, showResetPassword: false, resetUserId: '', resetUsername: '' }"
+     @users-modal.window="showCreateCashier = $event.detail === 'create'; showChangePassword = $event.detail === 'password'">
 
     {% if error %}
     <div class="alert alert-error">{{ error }}</div>
@@ -98,70 +154,56 @@
     <div class="alert alert-success">{{ success }}</div>
     {% endif %}
 
-    <!-- Action bar -->
-    <div class="users-toolbar">
-        <p class="users-toolbar-copy">Cajeros de tu tienda y sus accesos a la caja</p>
-        <button class="btn btn-primary" @click="showCreateCashier = true">{{ icon('mas', 18) }} Nuevo cajero</button>
+    {% set cashiers = users|selectattr('role', 'equalto', 'cajero')|list if users else [] %}
+    {% if cashiers %}
+    <div class="users-grid">
+        {% for u in cashiers %}
+        <article class="user-card {% if not u.active %}is-inactive{% endif %}">
+            <div class="user-card-head">
+                <div class="user-card-avatar" aria-hidden="true">{{ (u.username or u.email or '?')[:1] }}</div>
+                <div class="user-card-info">
+                    <strong>{{ u.username or u.email }}</strong>
+                    <span>Cajero · desde {{ u.created_at|short_date }}</span>
+                </div>
+                {% if u.active %}
+                <span class="badge badge-success">Activo</span>
+                {% else %}
+                <span class="pill">Desactivado</span>
+                {% endif %}
+            </div>
+            <div class="user-card-actions">
+                <button type="button" class="btn btn-sm btn-secondary" @click="showResetPassword = true; resetUserId = '{{ u.id }}'; resetUsername = '{{ u.username or u.email }}'">Restablecer clave</button>
+                <form method="post" action="{{ url_for('users_toggle', user_id=u.id) }}">
+                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                    {% if u.active %}
+                    <input type="hidden" name="active" value="false">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Desactivar</button>
+                    {% else %}
+                    <input type="hidden" name="active" value="true">
+                    <button type="submit" class="btn btn-sm btn-dark">Activar</button>
+                    {% endif %}
+                </form>
+            </div>
+        </article>
+        {% endfor %}
     </div>
-
-    <!-- Users table -->
-    <div class="card">
-        <div class="card-body users-table-wrap">
-            {% if users %}
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Usuario</th>
-                        <th>Rol</th>
-                        <th>Estado</th>
-                        <th>Creado</th>
-                        <th>Acciones</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for u in users %}
-                    <tr>
-                        <td>{{ u.username or u.email }}</td>
-                        <td>{{ u.role }}</td>
-                        <td>
-                            {% if u.active %}
-                            <span class="badge badge-success">Activo</span>
-                            {% else %}
-                            <span class="badge badge-error">Inactivo</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ u.created_at[:10] if u.created_at else '—' }}</td>
-                        <td>
-                            {% if u.role == 'cajero' %}
-                            <form method="post" action="{{ url_for('users_toggle', user_id=u.id) }}" style="display: inline;">
-                                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                                {% if u.active %}
-                                <input type="hidden" name="active" value="false">
-                                <button type="submit" class="btn btn-sm btn-danger">Desactivar</button>
-                                {% else %}
-                                <input type="hidden" name="active" value="true">
-                                <button type="submit" class="btn btn-sm btn-primary">Activar</button>
-                                {% endif %}
-                            </form>
-                            <button type="button" class="btn btn-sm btn-secondary" @click="showResetPassword = true; resetUserId = '{{ u.id }}'; resetUsername = '{{ u.username or u.email }}'">{{ icon('llave', 16) }} Restablecer clave</button>
-                            {% else %}
-                            <button type="button" class="btn btn-sm btn-secondary" @click="showChangePassword = true">{{ icon('llave', 16) }} Cambiar mi clave</button>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <p class="empty-msg">No hay usuarios registrados.</p>
-            {% endif %}
+    {% else %}
+    <div class="card" style="margin-bottom: 20px;">
+        <div class="card-body">
+            <p class="empty-msg" style="padding: 0;">Aún no tienes cajeros. Crea uno con «Nuevo cajero».</p>
         </div>
+    </div>
+    {% endif %}
+
+    <div class="alert alert-info">
+        {{ icon('info', 18) }}
+        <span>Un cajero desactivado no puede iniciar sesión, pero sus ventas siguen en el historial.</span>
     </div>
 
     <div x-show="showCreateCashier" x-cloak class="modal-overlay"
          @keydown.escape.window="showCreateCashier = false">
         <div class="card users-modal" @click.outside="showCreateCashier = false">
-            <div class="card-header"><h3 class="card-title">+ Crear cajero</h3></div>
+            <div class="card-header"><h3 class="card-title">Nuevo cajero</h3></div>
             <div class="card-body">
                 <form method="post" action="{{ url_for('users_create') }}">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">

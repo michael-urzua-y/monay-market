@@ -1,19 +1,19 @@
 {% extends "base.html" %}
+{% from "partials/icons.html" import icon %}
 
 {% block title %}Ventas pendientes de boleta{% endblock %}
-{% block page_title %}Ventas pendientes de boleta{% endblock %}
+{% block page_title %}Boletas pendientes{% endblock %}
+{% block page_subtitle %}Ventas cuya boleta no se pudo emitir; puedes reintentarlas aquí{% endblock %}
 
 {% block content %}
 <div>
-    <div style="margin-bottom: 20px;">
-        <a href="{{ url_for('sales') }}" class="btn btn-secondary">← Volver a ventas</a>
-    </div>
+    <a href="{{ url_for('sales') }}" class="back-link">{{ icon('volver', 16) }} Ventas</a>
 
     {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
     {% if success %}<div class="alert alert-success">{{ success }}</div>{% endif %}
 
-    <div class="card">
-        <div class="card-body" style="overflow-x: auto;">
+    <div class="card table-card">
+        <div class="card-body">
             {% set pending_only = true %}
             {% set status_heading = 'Estado' %}
             {% set empty_message = 'No hay ventas pendientes de boleta.' %}

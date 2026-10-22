@@ -3,6 +3,7 @@
 
 {% block title %}Mermas{% endblock %}
 {% block page_title %}Mermas{% endblock %}
+{% block page_subtitle %}Productos que salen del inventario sin venderse{% endblock %}
 
 {% block head %}
 <style>
@@ -196,40 +197,39 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="cause">Causa</label>
-                        <select id="cause" name="cause" required>
-                            <option value="">Seleccionar causa</option>
-                            <option value="vencido">Vencido</option>
-                            <option value="roto">Roto</option>
-                            <option value="robo">Robo</option>
-                            <option value="consumo_interno">Consumo interno</option>
-                        </select>
-                    </div>
+                    <fieldset class="choice-group">
+                        <legend>Causa</legend>
+                        <div class="choice-grid">
+                            <label class="choice"><input type="radio" name="cause" value="vencido" required> Vencido</label>
+                            <label class="choice"><input type="radio" name="cause" value="roto"> Roto</label>
+                            <label class="choice"><input type="radio" name="cause" value="robo"> Robo</label>
+                            <label class="choice"><input type="radio" name="cause" value="consumo_interno"> Consumo interno</label>
+                        </div>
+                    </fieldset>
 
                     <div class="form-group">
                         <label for="note">Nota (opcional)</label>
-                        <input type="text" id="note" name="note" placeholder="Comentario adicional...">
+                        <textarea id="note" name="note" rows="2" placeholder="Ej: venció el 20 de octubre"></textarea>
                     </div>
 
-                    <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 8px;">Registrar merma</button>
+                    <button type="submit" class="btn btn-dark" style="width: 100%; min-height: 48px; margin-top: 8px;">Registrar merma</button>
                 </form>
             </div>
         </div>
 
         <!-- Mermas history table -->
-        <div class="card">
+        <div class="card table-card">
             <div class="card-header">
                 <h3 class="card-title">Historial de mermas</h3>
             </div>
-            <div class="card-body" style="padding: 0; overflow-x: auto;">
+            <div class="card-body">
                 {% if paginated %}
                 <table class="data-table">
                     <thead>
                         <tr>
                             <th>Fecha</th>
                             <th>Producto</th>
-                            <th>Cantidad</th>
+                            <th class="text-right">Cantidad</th>
                             <th>Causa</th>
                             <th style="text-align: right;">Pérdida</th>
                         </tr>
@@ -239,22 +239,13 @@
                         {% set qty = m.quantity|default(0) %}
                         {% set is_weighed = m.product.is_weighed if m.product and m.product.is_weighed else false %}
                         <tr>
-                            <td class="local-date" data-date="{{ m.created_at if m.created_at else '' }}">{{ m.created_at[:10] if m.created_at else '-' }}</td>
-                            <td>{{ m.product.name if m.product else '-' }}</td>
-                            <td>{% if is_weighed %}{{ qty }}{% else %}{{ qty|int }}{% endif %}</td>
+                            <td class="text-muted">{{ m.created_at|short_date }}</td>
+                            <td style="font-weight: 600;">{{ m.product.name if m.product else '-' }}</td>
+                            <td class="text-right">{% if is_weighed %}{{ qty|receipt_quantity }} kg{% else %}{{ qty|int }}{% endif %}</td>
                             <td>
-                                <span style="
-                                    {% if m.cause == 'vencido' %}background: #fef3c7; color: #92400e;
-                                    {% elif m.cause == 'roto' %}background: #fecaca; color: #991b1b;
-                                    {% elif m.cause == 'robo' %}background: #e0e7ff; color: #3730a3;
-                                    {% else %}background: #f3f4f6; color: #374151;
-                                    {% endif %}
-                                    padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 500;
-                                ">
-                                {% if m.cause == 'vencido' %}Vencido{% elif m.cause == 'roto' %}Roto{% elif m.cause == 'robo' %}Robo{% else %}Consumo{% endif %}
-                                </span>
+                                <span class="pill">{% if m.cause == 'vencido' %}Vencido{% elif m.cause == 'roto' %}Roto{% elif m.cause == 'robo' %}Robo{% else %}Consumo interno{% endif %}</span>
                             </td>
-                            <td style="text-align: right; font-weight: 600; color: var(--color-error);">
+                            <td style="text-align: right; font-weight: 700; color: var(--color-error);">
                                 ${{ "{:,}".format(m.value_loss|default(0)|int)|replace(',', '.') }}
                             </td>
                         </tr>
@@ -262,14 +253,14 @@
                     </tbody>
                 </table>
 
-                {% set pagination_label = total ~ ' merma' ~ ('s' if total != 1 else '') ~ ' — Página ' ~ page ~ ' de ' ~ total_pages %}
+                {% set pagination_label = total ~ ' merma' ~ ('s' if total != 1 else '') ~ ' · página ' ~ page ~ ' de ' ~ total_pages %}
                 {% set previous_url = url_for('mermas') ~ '?page=' ~ (page - 1) %}
                 {% set next_url = url_for('mermas') ~ '?page=' ~ (page + 1) %}
                 {% set disable_previous = page <= 1 %}
                 {% set disable_next = page >= total_pages %}
                 {% include "partials/pagination_footer.html" %}
                 {% else %}
-                <p class="empty-msg" style="padding: 40px; text-align: center; color: var(--color-text-muted);">No hay mermas registradas.</p>
+                <p class="empty-msg" style="text-align: center; padding: 36px 20px;">No hay mermas registradas.</p>
                 {% endif %}
 </div>
 </div>

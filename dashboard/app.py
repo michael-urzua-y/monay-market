@@ -1024,10 +1024,15 @@ def settings_sii():
 
     data = {
         "sii_enabled": request.form.get("sii_enabled") == "on",
-        "sii_razon_social": request.form.get("sii_razon_social", "").strip() or None,
-        "sii_giro": request.form.get("sii_giro", "").strip() or None,
         "sii_sandbox_mode": request.form.get("sii_sandbox_mode") == "on",
     }
+
+    # Los datos de la empresa solo llegan cuando el bloque está en edición;
+    # si no vienen, se conservan los guardados.
+    if "sii_razon_social" in request.form:
+        data["sii_razon_social"] = request.form.get("sii_razon_social", "").strip() or None
+    if "sii_giro" in request.form:
+        data["sii_giro"] = request.form.get("sii_giro", "").strip() or None
 
     if "sii_api_key" in request.form:
         data["sii_api_key"] = request.form.get("sii_api_key", "").strip() or None
@@ -1147,6 +1152,16 @@ def receipt_datetime_filter(value):
     suffix = "p. m." if dt.hour >= 12 else "a. m."
     hour = dt.hour % 12 or 12
     return f"{dt.day:02d}-{dt.month:02d}-{dt.year} {hour}:{dt.minute:02d} {suffix}"
+
+
+@app.template_filter("receipt_time")
+def receipt_time_filter(value):
+    dt = parse_receipt_datetime(value)
+    if not dt:
+        return ""
+    suffix = "p. m." if dt.hour >= 12 else "a. m."
+    hour = dt.hour % 12 or 12
+    return f"{hour}:{dt.minute:02d} {suffix}"
 
 
 @app.template_filter("receipt_quantity")

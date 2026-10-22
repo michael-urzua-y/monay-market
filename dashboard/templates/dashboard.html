@@ -90,7 +90,7 @@
 </style>
 {% endblock %}
 
-{% block content %}
+{% block page_header %}
 <div class="page-header">
     <div>
         <p class="page-eyebrow" id="dashboardDate"></p>
@@ -100,7 +100,9 @@
         <a href="{{ url_for('products_new') }}" class="btn btn-secondary">{{ icon('mas', 18) }} Nuevo producto</a>
     </div>
 </div>
+{% endblock %}
 
+{% block content %}
 <div class="dashboard-grid">
     <!-- Ventas del día -->
     <div class="card"

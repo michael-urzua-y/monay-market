@@ -471,6 +471,29 @@ body.is-busy {
     cursor: pointer;
 }
 
+/* En PC cada página muestra su propio encabezado; la barra superior queda solo en celular */
+@media (min-width: 769px) {
+    .top-bar {
+        display: none;
+    }
+}
+
+.top-bar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 800;
+    font-size: 1rem;
+    letter-spacing: -0.01em;
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.top-bar-brand img {
+    width: 30px;
+    height: 30px;
+}
+
 .top-bar .page-title {
     font-size: 1.125rem;
     font-weight: 700;
@@ -502,7 +525,7 @@ body.is-busy {
 }
 
 .page-title {
-    font-size: 1.75rem;
+    font-size: 1.875rem;
     font-weight: 800;
     letter-spacing: -0.02em;
     color: var(--color-text);
@@ -703,6 +726,18 @@ a[aria-disabled="true"] {
 .btn-danger:hover {
     background: var(--color-error-bg);
     color: var(--color-error);
+}
+
+.btn-soft {
+    background: #fff4cc;
+    color: #5a4300;
+    border-color: rgba(240, 185, 11, 0.6);
+    font-weight: 700;
+}
+
+.btn-soft:hover {
+    background: #ffecaa;
+    color: #5a4300;
 }
 
 .btn-sm {
@@ -996,6 +1031,160 @@ a[aria-disabled="true"] {
     padding: 12px 0;
 }
 
+/* Tarjeta con tabla de borde a borde (como en el diseño) */
+.table-card {
+    overflow: hidden;
+}
+
+.table-card > .card-body {
+    padding: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-card .data-table {
+    min-width: 680px;
+}
+
+.table-card .data-table th:first-child,
+.table-card .data-table td:first-child {
+    padding-left: 20px;
+}
+
+.table-card .data-table th:last-child,
+.table-card .data-table td:last-child {
+    padding-right: 20px;
+}
+
+.table-card .empty-msg,
+.table-card .error-msg,
+.table-card .empty-state-text {
+    padding: 22px 20px;
+    margin: 0;
+}
+
+.table-card .table-footer {
+    margin: 0;
+    padding: 14px 20px;
+}
+
+.text-right {
+    text-align: right !important;
+}
+
+.text-muted {
+    color: var(--color-text-muted);
+}
+
+.cell-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.cell-stack small {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.8125rem;
+    color: var(--color-text-soft);
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: #f1f0e8;
+    color: #4b544f;
+    font-size: 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pill-dark {
+    background: var(--color-ink);
+    color: var(--color-primary-hover);
+    font-weight: 700;
+}
+
+.pill-danger {
+    background: var(--color-error-bg);
+    color: var(--color-error);
+    font-weight: 700;
+}
+
+.row-actions {
+    display: flex;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.row-actions form {
+    margin: 0;
+}
+
+.btn-outline-danger {
+    background: var(--color-white);
+    color: var(--color-error);
+    border-color: var(--color-error-border);
+    font-weight: 700;
+}
+
+.btn-outline-danger:hover {
+    background: var(--color-error-bg);
+    color: var(--color-error);
+}
+
+/* Barra de búsqueda con ícono */
+.search-field {
+    position: relative;
+    flex: 1 1 280px;
+    min-width: 0;
+}
+
+.search-field > .icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+    pointer-events: none;
+}
+
+.search-field input {
+    width: 100%;
+    min-height: 46px;
+    padding: 0 14px 0 42px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-surface-2);
+    font: inherit;
+    font-size: 0.9rem;
+    color: var(--color-text);
+}
+
+.search-field input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(240, 185, 11, 0.18);
+    background: var(--color-white);
+}
+
+.visually-hidden {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
 /* === Paginación === */
 .pagination {
     display: flex;
@@ -1274,6 +1463,11 @@ input.rut-invalid {
         width: 100%;
     }
 
+    .action-bar > .search-field,
+    .action-bar > select {
+        flex: 0 0 auto;
+    }
+
     .page-actions,
     .page-actions .btn {
         width: 100%;
@@ -1301,4 +1495,109 @@ input.rut-invalid {
         padding: 6px 0 0;
         opacity: 0.7;
     }
+}
+
+/* Enlace para volver a la sección anterior */
+.back-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 16px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+/* Opciones en botones (causa de merma, plan, etc.) */
+.choice-group {
+    margin: 0 0 16px;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+}
+
+.choice-group legend {
+    display: block;
+    padding: 0;
+    margin-bottom: 8px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-text-soft);
+}
+
+.choice-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.choice {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 10px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    background: var(--color-white);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+}
+
+.choice input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+}
+
+.choice:hover {
+    border-color: #d0cfc4;
+}
+
+.choice:has(input:checked) {
+    border: 1.5px solid var(--color-primary);
+    background: #fff8db;
+    font-weight: 700;
+}
+
+.choice:has(input:focus-visible) {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+}
+
+/* === Impresión: solo el contenido de la página === */
+@media print {
+    .sidebar,
+    .sidebar-overlay,
+    .top-bar,
+    .page-actions,
+    .back-link,
+    .global-loading-overlay {
+        display: none !important;
+    }
+
+    .main-content {
+        margin-left: 0 !important;
+    }
+
+    .content-area {
+        padding: 0;
+    }
+
+    body {
+        background: #fff;
+    }
+}
+
+.form-group input:disabled,
+.form-group select:disabled,
+.form-group textarea:disabled {
+    background: #f1f0e8;
+    color: var(--color-text-soft);
+    cursor: not-allowed;
 }

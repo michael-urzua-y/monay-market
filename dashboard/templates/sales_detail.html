@@ -3,6 +3,7 @@
 
 {% block title %}Detalle de venta{% endblock %}
 {% block page_title %}Detalle de venta{% endblock %}
+{% block page_back %}<a href="{{ url_for('sales') }}" class="back-link">{{ icon('volver', 16) }} Ventas</a>{% endblock %}
 
 {% block head %}
 <style>
@@ -238,9 +239,6 @@
 
 {% block content %}
 <div>
-    <div class="sales-detail-back">
-        <a href="{{ url_for('sales') }}" class="btn btn-secondary">← Volver a ventas</a>
-    </div>
 
     {% if request.args.get('error') %}
     <div class="alert alert-error">{{ request.args.get('error') }}</div>

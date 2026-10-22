@@ -54,6 +54,15 @@ export const api = {
       storage.setItem('monay_user', JSON.stringify(user));
     }
   },
+  getUser: function () {
+    var storage = getAuthStorage();
+    if (!storage) return null;
+    try {
+      return JSON.parse(storage.getItem('monay_user') || 'null');
+    } catch (err) {
+      return null;
+    }
+  },
   clearToken: function () {
     var storage = getAuthStorage();
     if (!storage) return;

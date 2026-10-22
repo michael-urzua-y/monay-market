@@ -37,6 +37,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v=asset_version) }}">
 
     {% block head %}{% endblock %}
+    {#- Bloques del encabezado de cada página: subtítulo y botones a la derecha -#}
+    {% if false %}{% block page_back %}{% endblock %}{% block page_subtitle %}{% endblock %}{% block page_actions %}{% endblock %}{% endif %}
 
     <style>
         /* Estilos inyectados para el menú contraíble en escritorio */
@@ -210,12 +212,25 @@
                     <button class="menu-toggle" @click="sidebarOpen = true" aria-label="Abrir menú">
                         {{ icon('menu', 22) }}
                     </button>
-                    <h2 class="page-title" style="margin: 0;">{% block page_title %}Dashboard{% endblock %}</h2>
+                    <a href="{{ url_for('dashboard') }}" class="top-bar-brand"><img src="{{ url_for('static', filename='monay-market-logo.png') }}" alt="" width="30" height="30">Monay Market</a>
+                    {%- if false %}{% block page_title %}Dashboard{% endblock %}{% endif %}
                 </div>
 
             </header>
 
             <div class="content-area">
+                {% block page_header %}
+                {{ self.page_back()|trim }}
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">{{ self.page_title() }}</h1>
+                        {% set _subtitle = self.page_subtitle()|trim %}
+                        {% if _subtitle %}<p class="page-subtitle">{{ _subtitle }}</p>{% endif %}
+                    </div>
+                    {% set _actions = self.page_actions()|trim %}
+                    {% if _actions %}<div class="page-actions">{{ _actions }}</div>{% endif %}
+                </div>
+                {% endblock %}
                 {% block content %}{% endblock %}
             </div>
         </main>

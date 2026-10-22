@@ -3,35 +3,33 @@
 
 {% block title %}Productos{% endblock %}
 {% block page_title %}Productos{% endblock %}
+{% block page_subtitle %}{{ total }} producto{{ 's' if total != 1 }}{% endblock %}
+{% block page_actions %}
+<a href="{{ url_for('products_import') }}" class="btn btn-secondary">{{ icon('subir', 18) }} Importar Excel</a>
+<a href="{{ url_for('products_new') }}" class="btn btn-primary">{{ icon('mas', 18) }} Nuevo producto</a>
+{% endblock %}
 
 {% block head %}
 <style>
-    .products-filters {
-        display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-        align-items: flex-end;
+    .products-toolbar {
+        padding: 12px;
     }
 
-    .products-filter-group {
-        margin-bottom: 0;
-        min-width: 200px;
-    }
-
-    .products-filter-group.flex-1 {
-        flex: 1;
-    }
-
-    .products-loading-row {
-        display: flex;
-        justify-content: flex-end;
+    .products-category {
+        flex: 0 1 240px;
+        min-height: 46px;
+        padding: 0 14px;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius);
+        background: var(--color-surface-2);
+        font: inherit;
+        font-size: 0.9rem;
     }
 
     .products-loading-indicator {
         display: none;
         align-items: center;
         gap: 8px;
-        margin-top: 10px;
         font-size: 0.85rem;
         color: var(--color-text-muted);
         pointer-events: none;
@@ -39,11 +37,6 @@
 
     .products-loading-indicator.htmx-request {
         display: inline-flex;
-    }
-
-    .products-toolbar > .card-body {
-        width: 100%;
-        padding: 0;
     }
 
     .products-loading-spinner {
@@ -61,56 +54,42 @@
 <div x-data="{ showDeleteModal: false, deleteId: null, deleteName: '', selectedIds: [], selectAll: false }"
      x-effect="selectAll ? selectedIds = [...document.querySelectorAll('.product-check')].map(el => el.value) : null">
 
-    <!-- Action bar -->
-    <div class="page-actions" style="margin-bottom: 18px;">
-        <a href="{{ url_for('products_new') }}" class="btn btn-primary">{{ icon('mas', 18) }} Nuevo producto</a>
-        <a href="{{ url_for('products_import') }}" class="btn btn-secondary">{{ icon('subir', 18) }} Importar Excel</a>
-    </div>
-
     <!-- Search and filter with live HTMX search -->
-    <div class="action-bar products-toolbar">
-        <div class="card-body">
-            <div class="products-filters" data-loading-enabled>
-                <div class="form-group products-filter-group flex-1">
-                    <label for="search">Buscar producto</label>
-                    <input type="text" id="search" name="search" value="{{ search }}" placeholder="Nombre del producto"
-                           hx-get="/htmx/products/search"
-                           hx-trigger="keyup changed delay:300ms"
-                           hx-target="#products-table-container"
-                           hx-swap="innerHTML"
-                           hx-include="#category-filter"
-                           hx-indicator="#products-search-loading"
-                           data-loading-enabled
-                           data-keep-enabled
-                           data-loading-overlay="false"
-                           data-loading-text="Buscando productos...">
-                </div>
-                <div class="form-group products-filter-group">
-                    <label for="category-filter">Categoría</label>
-                    <select id="category-filter" name="category_id"
-                            hx-get="/htmx/products/search"
-                            hx-trigger="change"
-                            hx-target="#products-table-container"
-                            hx-swap="innerHTML"
-                            hx-include="#search"
-                            hx-indicator="#products-search-loading"
-                            data-loading-enabled
-                            data-keep-enabled
-                            data-loading-overlay="false"
-                            data-loading-text="Filtrando productos...">
-                        <option value="">Todas las categorías</option>
-                        {% for cat_id, cat_name in categories.items() %}
-                        <option value="{{ cat_id }}" {% if category_id == cat_id %}selected{% endif %}>{{ cat_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-            <div class="products-loading-row" aria-live="polite">
-                <div id="products-search-loading" class="products-loading-indicator htmx-indicator">
-                    <span class="products-loading-spinner" aria-hidden="true"></span>
-                    <span>Actualizando listado...</span>
-                </div>
-            </div>
+    <div class="action-bar products-toolbar" data-loading-enabled>
+        <label class="search-field">
+            <span class="visually-hidden">Buscar producto</span>
+            {{ icon('buscar', 18) }}
+            <input type="search" id="search" name="search" value="{{ search }}" placeholder="Buscar por nombre o código de barras"
+                   hx-get="/htmx/products/search"
+                   hx-trigger="keyup changed delay:300ms, search"
+                   hx-target="#products-table-container"
+                   hx-swap="innerHTML"
+                   hx-include="#category-filter"
+                   hx-indicator="#products-search-loading"
+                   data-loading-enabled
+                   data-keep-enabled
+                   data-loading-overlay="false"
+                   data-loading-text="Buscando productos...">
+        </label>
+        <select id="category-filter" name="category_id" aria-label="Categoría" class="products-category"
+                hx-get="/htmx/products/search"
+                hx-trigger="change"
+                hx-target="#products-table-container"
+                hx-swap="innerHTML"
+                hx-include="#search"
+                hx-indicator="#products-search-loading"
+                data-loading-enabled
+                data-keep-enabled
+                data-loading-overlay="false"
+                data-loading-text="Filtrando productos...">
+            <option value="">Todas las categorías</option>
+            {% for cat_id, cat_name in categories.items() %}
+            <option value="{{ cat_id }}" {% if category_id == cat_id %}selected{% endif %}>{{ cat_name }}</option>
+            {% endfor %}
+        </select>
+        <div id="products-search-loading" class="products-loading-indicator htmx-indicator" aria-live="polite">
+            <span class="products-loading-spinner" aria-hidden="true"></span>
+            <span>Actualizando…</span>
         </div>
     </div>
 
@@ -122,7 +101,7 @@
     {% endif %}
 
     <!-- Products table (HTMX target) -->
-    <div class="card">
+    <div class="card table-card">
         <div x-show="selectedIds.length > 0" x-cloak style="padding: 14px 20px; background: linear-gradient(135deg, #fef2f2, #fff1f2); border-bottom: 1px solid #fecaca; display: flex; align-items: center; gap: 16px; border-radius: 8px 8px 0 0;">
             <form method="post" action="{{ url_for('products_bulk_delete') }}" style="width: 100%;"
                   @submit.prevent="if(confirm('¿Eliminar ' + selectedIds.length + ' productos seleccionados?')) $el.submit()">
@@ -133,7 +112,7 @@
                 <button type="submit" class="btn btn-danger" style="width: 100%; padding: 12px 20px; font-size: 0.95rem; font-weight: 600; border-radius: 8px;" x-text="'Eliminar ' + selectedIds.length + ' producto' + (selectedIds.length > 1 ? 's' : '')"></button>
             </form>
         </div>
-        <div class="card-body" style="overflow-x: auto;" id="products-table-container">
+        <div class="card-body" id="products-table-container">
             {% include "htmx/products_table.html" %}
         </div>
     </div>

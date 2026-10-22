@@ -738,7 +738,26 @@ a[aria-disabled="true"] {
 /* ============================================================
    Mobile-only: Clean login with logo + install banner
    ============================================================ */
+/* Ayuda por WhatsApp bajo el formulario: en PC ya está el botón Contacto arriba */
+.login-help {
+    display: none;
+    margin: 18px 0 0;
+    text-align: center;
+    font-size: 0.875rem;
+    color: rgba(231, 236, 229, 0.72);
+}
+
+.login-help a {
+    color: #ffd257;
+    font-weight: 700;
+    text-decoration: none;
+}
+
 @media (max-width: 768px) {
+    .login-help {
+        display: block;
+    }
+
     .login-shell {
         display: flex;
         flex-direction: column;

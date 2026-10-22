@@ -3,10 +3,10 @@
 
 {% block title %}Nuevo Producto{% endblock %}
 {% block page_title %}Nuevo producto{% endblock %}
+{% block page_back %}<a href="{{ url_for('products') }}" class="back-link">{{ icon('volver', 16) }} Productos</a>{% endblock %}
 
 {% block content %}
 <div style="max-width: 600px;">
-    <a href="{{ url_for('products') }}" style="display: inline-block; margin-bottom: 16px; color: var(--color-primary); text-decoration: none; font-size: 0.9rem;">← Volver a productos</a>
 
     {% if error %}
     <div class="alert alert-error">{{ error }}</div>

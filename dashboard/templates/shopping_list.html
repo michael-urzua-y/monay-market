@@ -3,12 +3,14 @@
 
 {% block title %}Asistente de Compras{% endblock %}
 {% block page_title %}Lista de compras{% endblock %}
+{% block page_subtitle %}Productos agrupados por pasillo que necesitan reposición{% endblock %}
+{% block page_actions %}
+<button type="button" onclick="window.print()" class="btn btn-secondary">{{ icon('imprimir', 18) }} Imprimir lista</button>
+{% endblock %}
 
 {% block head %}
 <style>
     .shopping-list-shell {
-        max-width: 800px;
-        margin: 0 auto;
         padding-bottom: 40px;
     }
 
@@ -131,10 +133,49 @@
         font-size: 0.95rem;
     }
 
+    .shopping-list-meter {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px 10px;
+        margin-top: 6px;
+    }
+
+    .shopping-list-bar {
+        flex: 0 1 220px;
+        min-width: 120px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--color-surface-3, #f1f0e8);
+        overflow: hidden;
+    }
+
+    .shopping-list-bar span {
+        display: block;
+        height: 100%;
+        border-radius: 999px;
+        background: var(--color-primary);
+    }
+
+    .shopping-list-bar span.is-empty {
+        background: #f04438;
+    }
+
     .shopping-list-stock {
         color: var(--color-text-soft);
         font-size: 0.8125rem;
-        margin-top: 4px;
+    }
+
+    .shopping-list-stock strong {
+        color: var(--color-text);
+    }
+
+    .shopping-list-stock strong.shopping-list-stock-now {
+        color: var(--color-error);
+    }
+
+    @media print {
+        .shopping-list-bar { display: none; }
     }
 
     .shopping-list-stock-now {
@@ -182,13 +223,6 @@
 
 {% block content %}
 <div class="shopping-list-shell">
-    <div class="shopping-list-toolbar">
-        <p class="shopping-list-copy">Productos agrupados por pasillo/categoría que necesitan reposición.</p>
-        <button onclick="window.print()" class="btn btn-secondary shopping-list-print">
-            {{ icon('imprimir', 18) }} Imprimir lista
-        </button>
-    </div>
-
     {% if not grouped_list %}
     <div class="card shopping-list-empty">
         <div class="shopping-list-empty-icon">{{ icon('check-circulo', 34) }}</div>
@@ -201,7 +235,7 @@
         <div class="card shopping-list-category">
             <div class="card-header shopping-list-category-header">
                 <h3 class="shopping-list-category-title">
-                    {{ icon('carpeta', 18) }} {{ category }} <span class="badge badge-neutral shopping-list-count">{{ items|length }} ítems</span>
+                    {{ icon('carpeta', 18) }} {{ category }} <span class="pill shopping-list-count">{{ items|length }} {{ 'ítem' if items|length == 1 else 'ítems' }}</span>
                 </h3>
             </div>
             <div class="card-body shopping-list-category-body">
@@ -217,16 +251,23 @@
                         
                         <label for="chk-{{ p.id }}" class="shopping-list-label">
                             <div class="shopping-list-product">{{ p.name }}</div>
-                            <div class="shopping-list-stock">
-                                Stock actual: <strong class="shopping-list-stock-now">{{ p.stock }}</strong>
-                                <span class="shopping-list-stock-critical">(Crítico: {{ p.critical_stock }})</span>
+                            {% set stock_num = p.stock|float %}
+                            {% set crit_num = p.critical_stock|float %}
+                            {% set unit = ' kg' if p.is_weighed else '' %}
+                            <div class="shopping-list-meter">
+                                <div class="shopping-list-bar" aria-hidden="true">
+                                    <span class="{% if stock_num <= 0 %}is-empty{% endif %}" style="width: {{ [4, ((stock_num / crit_num) * 50)|round|int]|max if crit_num > 0 else 4 }}%;"></span>
+                                </div>
+                                <div class="shopping-list-stock">
+                                    Stock <strong class="{% if stock_num <= 0 %}shopping-list-stock-now{% endif %}">{{ p.stock|receipt_quantity }}{{ unit }}</strong> · crítico {{ p.critical_stock|receipt_quantity }}{{ unit }}
+                                </div>
                             </div>
                         </label>
                         
                         <div class="shopping-list-suggested">
                             <div class="shopping-list-suggested-label">Comprar</div>
                             <div class="shopping-list-suggested-value">
-                                +{{ p.suggested_qty }}
+                                +{{ p.suggested_qty|receipt_quantity }}{{ ' kg' if p.is_weighed else '' }}
                             </div>
                         </div>
                     </li>

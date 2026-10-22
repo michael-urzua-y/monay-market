@@ -7,21 +7,26 @@
             {% if show_cashier %}
             <th>Cajero</th>
             {% endif %}
-            <th>Total</th>
             <th>Método de pago</th>
+            <th class="text-right">Total</th>
             <th>{{ status_heading|default('Estado boleta') }}</th>
-            <th>Acciones</th>
+            <th class="text-right">Acciones</th>
         </tr>
     </thead>
     <tbody>
         {% for s in sales %}
         <tr>
-            <td>{{ s.created_at|receipt_datetime }}</td>
+            <td>
+                <div class="cell-stack">
+                    <strong style="font-weight: 600;">{{ s.created_at|receipt_date }}</strong>
+                    <small>{{ s.created_at|receipt_time }}</small>
+                </div>
+            </td>
             {% if show_cashier %}
             <td>{{ (s.user.username or s.user.email) if s.user else '—' }}</td>
             {% endif %}
-            <td>{{ s.total|clp }}</td>
             <td>{{ s.payment_method|capitalize if s.payment_method else '—' }}</td>
+            <td class="text-right" style="font-weight: 700;">{{ s.total|clp }}</td>
             <td>
                 {% if pending_only %}
                 <span class="badge badge-warning">Pendiente</span>
@@ -35,14 +40,16 @@
                 <span class="badge badge-neutral">No aplica</span>
                 {% endif %}
             </td>
-            <td style="white-space: nowrap;">
+            <td>
+                <div class="row-actions">
                 {% if pending_only or s.boleta_status in ['pendiente', 'error'] %}
                 <form action="{{ url_for('sales_retry_boleta', sale_id=s.id) }}" method="post" style="display: inline;">
                     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                    <button type="submit" class="btn btn-sm btn-primary">{{ icon('reintentar', 16) }} Reintentar</button>
+                    <button type="submit" class="btn btn-sm btn-dark">{{ icon('reintentar', 16) }} Reintentar boleta</button>
                 </form>
                 {% endif %}
                 <a href="{{ url_for('sales_detail', sale_id=s.id) }}" class="btn btn-sm btn-secondary">Ver detalle</a>
+                </div>
             </td>
         </tr>
         {% endfor %}

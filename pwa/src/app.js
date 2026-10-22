@@ -14,7 +14,7 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '39';
+  var APP_ASSET_VERSION = '40';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -117,7 +117,7 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
 
     // Show in-app toast
     var names = alerts.map(function(a) { return a.name || a.product_name || 'Producto'; });
-    showToast('⚠️ Stock crítico: ' + names.join(', '), 'warning');
+    showToast('Stock crítico: ' + names.join(', '), 'warning');
 
     // Request browser notification permission and show notification
     if ('Notification' in window) {
@@ -137,7 +137,7 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
     }).join('\n');
 
     try {
-      new Notification('⚠️ Stock Crítico - Monay POS', {
+      new Notification('Stock crítico - Monay POS', {
         body: body,
         icon: 'icons/icon-192x192.png',
         tag: 'critical-stock',
@@ -459,7 +459,7 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
         '</div>' +
         '<div class="cart-item-qty">' + qtyHtml + '</div>' +
         '<div class="cart-item-subtotal">' + formatCLP(item.subtotal) + '</div>' +
-        '<button class="cart-item-remove" data-action="remove" data-id="' + item.product_id + '">✕</button>' +
+        '<button class="cart-item-remove" data-action="remove" data-id="' + item.product_id + '" aria-label="Quitar ' + escapeHtml(item.name) + '"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg></button>' +
         '</div>';
     }
     container.innerHTML = html;
@@ -1127,7 +1127,7 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
         finishActivity(paymentActivity);
         setButtonLoading(btnPay, false);
         updatePaymentState();
-        showToast('⚠️ Monto recibido insuficiente', 'warning');
+        showToast('Monto recibido insuficiente', 'warning');
         return;
       }
 
@@ -1167,13 +1167,13 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
       if (btnPay) btnPay.disabled = false;
       var msg = 'Error al procesar la venta';
       if (err.data && err.data.error === 'INSUFFICIENT_STOCK') {
-        msg = '⚠️ Stock insuficiente para uno o más productos';
+        msg = 'Stock insuficiente para uno o más productos';
       } else if (err.data && err.data.error === 'INSUFFICIENT_PAYMENT') {
-        msg = '⚠️ Monto recibido insuficiente';
+        msg = 'Monto recibido insuficiente';
       } else if (err.data && err.data.error === 'DUPLICATE_SALE') {
-        msg = '⚠️ Esta venta ya fue registrada';
+        msg = 'Esta venta ya fue registrada';
       } else if (err.message) {
-        msg = '❌ ' + err.message;
+        msg = err.message;
       }
       showToast(msg, 'error');
     }).finally(function () {
@@ -1591,6 +1591,11 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
     indicator.classList.remove('hidden');
     indicator.classList.toggle('is-on', connected);
     label.textContent = connected ? 'Conectada' : 'Conectar';
+    var hint = document.getElementById('nav-hint-printer');
+    if (hint) {
+      var name = ThermalPrinter.deviceName();
+      hint.textContent = connected ? 'Conectada' + (name ? ' · ' + name : '') : 'Desconectada';
+    }
     indicator.setAttribute('aria-label', connected ? 'Impresora conectada' : 'Impresora desconectada: toca para conectarla');
   }
 
@@ -1723,8 +1728,9 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
     }
     status.className = 'printer-status' + (connected ? ' is-connected' : '') + (error && paired ? ' is-error' : '');
     status.innerHTML =
-      '<span class="printer-status-dot" aria-hidden="true"></span><span>' +
-      escapeHtml(title) + '<small>' + escapeHtml(detail) + '</small></span>';
+      '<span class="printer-status-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg></span>' +
+      '<span class="printer-status-text"><strong>' + escapeHtml(title) + '</strong>' +
+      '<small><span class="printer-status-dot" aria-hidden="true"></span>' + escapeHtml(detail) + '</small></span>';
 
     var paper = ThermalPrinter.getPaper();
     document.querySelectorAll('#printer-modal [data-paper]').forEach(function (btn) {
@@ -1757,7 +1763,8 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
     tarjeta: [],
     pageEfectivo: 1,
     pageTarjeta: 1,
-    perPage: 5
+    perPage: 8,
+    tab: 'efectivo'
   };
   var historyLoadVersion = 0;
 
@@ -1802,39 +1809,45 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
     var listEl = document.getElementById('history-list');
     if (!listEl) return;
 
+    var dateEl = document.getElementById('history-date');
+    if (dateEl) {
+      var today = new Date().toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long' });
+      dateEl.textContent = today.charAt(0).toUpperCase() + today.slice(1);
+    }
+
     var totalEfe = historyState.efectivo.reduce(function(sum, s) { return sum + s.total; }, 0);
     var totalTar = historyState.tarjeta.reduce(function(sum, s) { return sum + s.total; }, 0);
     var granTotal = totalEfe + totalTar;
+    var count = historyState.efectivo.length + historyState.tarjeta.length;
+    var tab = historyState.tab;
 
     var html = '<div class="history-dashboard">';
 
     html += '<div class="history-summary-grid" aria-label="Resumen de ventas del día">';
-    html += '<article class="history-summary-card history-summary-card-cash"><span class="history-summary-label">Efectivo</span><strong class="history-summary-amount">' + formatCLP(totalEfe) + '</strong></article>';
-    html += '<article class="history-summary-card history-summary-card-card"><span class="history-summary-label">Tarjeta</span><strong class="history-summary-amount">' + formatCLP(totalTar) + '</strong></article>';
-    html += '<article class="history-summary-card history-summary-card-total"><span class="history-summary-label">Total</span><strong class="history-summary-amount">' + formatCLP(granTotal) + '</strong></article>';
+    html += '<article class="history-summary-card"><span class="history-summary-label">Efectivo</span><strong class="history-summary-amount">' + formatCLP(totalEfe) + '</strong></article>';
+    html += '<article class="history-summary-card"><span class="history-summary-label">Tarjeta</span><strong class="history-summary-amount">' + formatCLP(totalTar) + '</strong></article>';
+    html += '<article class="history-summary-card history-summary-card-total"><span class="history-summary-label">Total del día · ' + count + (count === 1 ? ' venta' : ' ventas') + '</span><strong class="history-summary-amount">' + formatCLP(granTotal) + '</strong></article>';
     html += '</div>';
 
-    html += '<div class="history-columns">';
-    
-    html += '<section class="history-column">';
-    html += '<h3 class="history-section-title">Ventas en Efectivo</h3>';
-    html += renderHistoryTable(historyState.efectivo, historyState.pageEfectivo, 'efectivo');
-    html += '</section>';
+    html += '<div class="history-tabs" role="tablist" aria-label="Medio de pago">';
+    html += '<button type="button" role="tab" class="history-tab" data-action="history-tab" data-method="efectivo" aria-selected="' + (tab === 'efectivo') + '">Efectivo (' + historyState.efectivo.length + ')</button>';
+    html += '<button type="button" role="tab" class="history-tab" data-action="history-tab" data-method="tarjeta" aria-selected="' + (tab === 'tarjeta') + '">Tarjeta (' + historyState.tarjeta.length + ')</button>';
+    html += '</div>';
 
-    html += '<section class="history-column">';
-    html += '<h3 class="history-section-title">Ventas con Tarjeta</h3>';
-    html += renderHistoryTable(historyState.tarjeta, historyState.pageTarjeta, 'tarjeta');
-    html += '</section>';
+    if (tab === 'efectivo') {
+      html += renderHistoryTable(historyState.efectivo, historyState.pageEfectivo, 'efectivo');
+    } else {
+      html += renderHistoryTable(historyState.tarjeta, historyState.pageTarjeta, 'tarjeta');
+    }
 
-    html += '</div></div>';
+    html += '</div>';
 
     listEl.innerHTML = html;
   }
 
   function renderHistoryTable(salesArray, page, method) {
     if (salesArray.length === 0) {
-      var emptyStyle = 'background: var(--color-surface); border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(23,32,22,0.08); border: 1px solid var(--color-border); padding: 24px; text-align: center; color: var(--color-text-secondary);';
-      return '<div style="' + emptyStyle + '">No hay ventas registradas.</div>';
+      return '<p class="history-empty">No hay ventas ' + (method === 'efectivo' ? 'en efectivo' : 'con tarjeta') + ' hoy.</p>';
     }
 
     var totalPages = Math.ceil(salesArray.length / historyState.perPage);
@@ -1845,45 +1858,38 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
     var end = start + historyState.perPage;
     var paginatedSales = salesArray.slice(start, end);
 
-    var tableCardStyle = 'background: var(--color-surface); border-radius: 10px; box-shadow: 0 4px 6px -1px rgba(23,32,22,0.08); border: 1px solid var(--color-border); overflow: hidden;';
-    var html = '<div style="' + tableCardStyle + '"><div style="overflow-x: auto; padding: 0;">';
-    html += '<table class="data-table" style="margin: 0; width: 100%; white-space: nowrap; border-collapse: collapse;">';
-    html += '<thead style="background-color: var(--color-bg); border-bottom: 1px solid var(--color-border);"><tr><th style="text-align: left; padding: 12px 16px; color: var(--color-text-secondary); font-weight: 600;">Hora</th><th style="text-align: left; padding: 12px 16px; color: var(--color-text-secondary); font-weight: 600;">Total</th><th style="text-align: left; padding: 12px 16px; color: var(--color-text-secondary); font-weight: 600;">Estado Boleta</th><th style="text-align: left; padding: 12px 16px; color: var(--color-text-secondary); font-weight: 600;">Acción</th></tr></thead>';
-    html += '<tbody>';
+    var html = '<div class="history-sales">';
 
     for (var i = 0; i < paginatedSales.length; i++) {
       var sale = paginatedSales[i];
-      var boletaLabel = boletaStatusLabel(sale.boleta_status);
       var badgeType = 'neutral';
       if (sale.boleta_status === 'emitida') badgeType = 'success';
       if (sale.boleta_status === 'pendiente') badgeType = 'warning';
       if (sale.boleta_status === 'error') badgeType = 'error';
+      var folio = sale.boleta && sale.boleta.folio;
+      var boletaLabel = sale.boleta_status === 'emitida' && folio
+        ? 'Boleta ' + folio
+        : boletaStatusLabel(sale.boleta_status);
+      var itemCount = Array.isArray(sale.lines) ? sale.lines.length : 0;
+      var detail = formatTime(sale.created_at) + (itemCount ? ' · ' + itemCount + (itemCount === 1 ? ' producto' : ' productos') : '');
 
-      html += '<tr style="border-bottom: 1px solid var(--color-border);">';
-      html += '<td style="padding: 12px 16px;">' + formatTime(sale.created_at) + '</td>';
-      html += '<td style="padding: 12px 16px;">' + formatCLP(sale.total) + '</td>';
-      html += '<td style="padding: 12px 16px;"><span class="badge badge-' + badgeType + '">' + boletaLabel + '</span></td>';
-      html += '<td style="padding: 12px 16px;"><button class="btn btn-sm btn-primary" data-action="view-receipt" data-sale-id="' + sale.id + '">Ver</button></td>';
-      html += '</tr>';
+      html += '<button type="button" class="history-sale" data-action="view-receipt" data-sale-id="' + sale.id + '" aria-label="Ver comprobante de ' + formatCLP(sale.total) + '">';
+      html += '<span class="history-sale-main"><strong>' + formatCLP(sale.total) + '</strong><span>' + detail + '</span></span>';
+      html += '<span class="badge badge-' + badgeType + '">' + boletaLabel + '</span>';
+      html += '<svg class="history-sale-chevron" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+      html += '</button>';
     }
-    html += '</tbody></table>';
+    html += '</div>';
 
-    // Paginador
     if (totalPages > 1) {
-      html += '<div style="display: flex; justify-content: space-between; align-items: center; padding: 16px; border-top: 1px solid var(--color-border);">';
-      html += '<span style="color: var(--color-text-muted); font-size: 0.9rem;">Página ' + page + ' de ' + totalPages + '</span>';
-      html += '<div style="display: flex; gap: 8px;">';
-
-      var prevDisabled = page <= 1 ? 'pointer-events: none; opacity: 0.5;' : '';
-      html += '<button class="btn btn-sm btn-secondary" style="' + prevDisabled + '" data-action="paginate" data-method="' + method + '" data-page="' + (page - 1) + '">Anterior</button>';
-
-      var nextDisabled = page >= totalPages ? 'pointer-events: none; opacity: 0.5;' : '';
-      html += '<button class="btn btn-sm btn-secondary" style="' + nextDisabled + '" data-action="paginate" data-method="' + method + '" data-page="' + (page + 1) + '">Siguiente</button>';
-
+      html += '<div class="history-pagination">';
+      html += '<span>Página ' + page + ' de ' + totalPages + '</span>';
+      html += '<div>';
+      html += '<button class="btn btn-sm btn-secondary" data-action="paginate" data-method="' + method + '" data-page="' + (page - 1) + '"' + (page <= 1 ? ' disabled' : '') + '>Anterior</button>';
+      html += '<button class="btn btn-sm btn-secondary" data-action="paginate" data-method="' + method + '" data-page="' + (page + 1) + '"' + (page >= totalPages ? ' disabled' : '') + '>Siguiente</button>';
       html += '</div></div>';
     }
 
-    html += '</div></div>';
     return html;
   }
 
@@ -2029,6 +2035,13 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
         var btnView = e.target.closest('[data-action="view-receipt"]');
         if (btnView && btnView.dataset.saleId) {
           viewSaleReceipt(btnView.dataset.saleId, btnView);
+          return;
+        }
+
+        var btnTab = e.target.closest('[data-action="history-tab"]');
+        if (btnTab) {
+          historyState.tab = btnTab.dataset.method;
+          renderHistoryView();
           return;
         }
 
@@ -2387,7 +2400,20 @@ function initArqueo() {
     var menu = document.getElementById('header-menu');
     if (!header || !toggle || !menu) return;
 
+    // Nombre del cajero al pie del menú (se lee al abrir: la sesión puede llegar después)
+    function renderHeaderUser() {
+      var user = api.getUser() || {};
+      var nameEl = document.getElementById('header-user-name');
+      var avatarEl = document.getElementById('header-user-avatar');
+      var roleEl = document.getElementById('header-user-role');
+      var displayName = user.username || user.email || '';
+      if (nameEl) nameEl.textContent = displayName || 'Caja';
+      if (avatarEl) avatarEl.textContent = (displayName || 'C').charAt(0).toUpperCase();
+      if (roleEl) roleEl.textContent = user.role === 'vendedor' ? 'Vendedor' : 'Cajero';
+    }
+
     function setOpen(open) {
+      if (open) renderHeaderUser();
       header.classList.toggle('menu-open', open);
       toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
       toggle.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');

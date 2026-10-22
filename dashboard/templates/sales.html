@@ -3,13 +3,13 @@
 
 {% block title %}Ventas{% endblock %}
 {% block page_title %}Ventas{% endblock %}
+{% block page_subtitle %}Historial de ventas y estado de cada boleta{% endblock %}
+{% block page_actions %}
+<a href="{{ url_for('sales_pending') }}" class="btn btn-soft">{{ icon('reloj', 18) }} Boletas pendientes</a>
+{% endblock %}
 
 {% block content %}
 <div>
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
-        <a href="{{ url_for('sales_pending') }}" class="btn btn-secondary">{{ icon('reloj', 18) }} Pendientes de boleta</a>
-    </div>
-
     {% if request.args.get('error') %}
     <div class="alert alert-error">{{ request.args.get('error') }}</div>
     {% endif %}
@@ -59,8 +59,8 @@
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-body" style="overflow-x: auto;">
+    <div class="card table-card">
+        <div class="card-body">
             {% set pending_only = false %}
             {% set status_heading = 'Estado boleta' %}
             {% set empty_message = 'No se encontraron ventas.' %}
@@ -68,7 +68,7 @@
             {% include "partials/sales_table.html" %}
 
             <!-- Paginador -->
-            {% set pagination_label = 'Página ' ~ page ~ ' de ' ~ total_pages %}
+            {% set pagination_label = total ~ ' venta' ~ ('s' if total != 1 else '') ~ ' · página ' ~ page ~ ' de ' ~ total_pages %}
             {% set previous_url = url_for('sales', page=page-1, date_from=date_from, date_to=date_to, boleta_status=boleta_status, user_id=user_id) %}
             {% set next_url = url_for('sales', page=page+1, date_from=date_from, date_to=date_to, boleta_status=boleta_status, user_id=user_id) %}
             {% set disable_previous = page <= 1 %}

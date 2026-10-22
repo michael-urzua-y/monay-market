@@ -30,19 +30,6 @@
         .sidebar-overlay[hidden] { display: none !important; }
         .admin-modal-overlay.visible { display: flex; }
 
-        /* Tablas a todo el ancho de la tarjeta */
-        .admin-card { overflow: hidden; }
-        .admin-card > .card-body { padding: 0; overflow-x: auto; }
-        .admin-card .data-table { min-width: 680px; }
-        .admin-card .data-table th:first-child, .admin-card .data-table td:first-child { padding-left: 22px; }
-        .admin-card .data-table th:last-child, .admin-card .data-table td:last-child { padding-right: 22px; }
-        .admin-card .empty-state-text { padding: 22px; color: var(--color-text-muted); margin: 0; }
-        .text-right { text-align: right !important; }
-        .text-muted { color: var(--color-text-muted); }
-        .btn-sm { min-height: 34px; padding: 0 12px; font-size: 0.8125rem; border-radius: 10px; }
-        .btn-outline-danger { background: var(--color-white); color: var(--color-error, #B42318); border-color: #F5D0CC; font-weight: 700; }
-        .btn-outline-danger:hover { background: #FEF3F2; color: #B42318; }
-
         /* Negocio con inicial */
         .tenant-cell { display: flex; align-items: center; gap: 12px; }
         .tenant-initial { width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; background: #F1F0E8; display: flex; align-items: center; justify-content: center; font-weight: 800; text-transform: uppercase; }
@@ -50,7 +37,6 @@
         .plan-pill.is-pro { background: var(--color-ink); color: var(--color-primary-hover); }
 
         /* Ficha del negocio */
-        .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; font-weight: 600; text-decoration: none; margin-bottom: 18px; }
         .tenant-hero { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
         .tenant-hero-main { display: flex; align-items: center; gap: 16px; min-width: 0; }
         .tenant-avatar { width: 56px; height: 56px; flex-shrink: 0; border-radius: 16px; background: var(--color-ink); color: var(--color-primary-hover); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 800; text-transform: uppercase; }
@@ -59,7 +45,7 @@
         .tenant-hero-actions form { margin: 0; }
         .tenant-layout { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
         .tenant-layout > .subscription-card { flex: 1 1 300px; }
-        .tenant-layout > .admin-card { flex: 2 1 480px; min-width: 0; }
+        .tenant-layout > .table-card { flex: 2 1 480px; min-width: 0; }
         .subscription-form { display: flex; flex-direction: column; gap: 16px; }
         .subscription-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 0.875rem; color: var(--color-text-muted); }
         .field-label { display: block; font-size: 0.8125rem; font-weight: 600; color: #4B544F; margin-bottom: 8px; }
@@ -134,7 +120,8 @@
             <header class="top-bar">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <button class="menu-toggle" type="button" data-admin-menu="open" aria-label="Abrir menú" aria-controls="admin-sidebar">{{ icon('menu', 22) }}</button>
-                    <h2 class="page-title" style="margin: 0;">{% block page_title %}Admin{% endblock %}</h2>
+                    <a href="{{ url_for('admin_dashboard') }}" class="top-bar-brand"><img src="{{ url_for('static', filename='monay-market-logo.png') }}" alt="" width="30" height="30">Monay Market</a>
+                    {%- if false %}{% block page_title %}Admin{% endblock %}{% endif %}
                 </div>
 
             </header>

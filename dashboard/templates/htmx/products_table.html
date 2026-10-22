@@ -3,50 +3,48 @@
 <table class="data-table">
     <thead>
         <tr>
-            <th style="width: 36px;"><input type="checkbox" @change="selectAll = $el.checked; if(!$el.checked) selectedIds = []" style="width:18px;height:18px;cursor:pointer;accent-color:var(--color-primary);"></th>
+            <th style="width: 36px;"><input type="checkbox" aria-label="Seleccionar todos" @change="selectAll = $el.checked; if(!$el.checked) selectedIds = []" style="width:18px;height:18px;cursor:pointer;accent-color:var(--color-primary);"></th>
             <th>Nombre</th>
             <th>Código de barras</th>
-            <th>Precio</th>
-            <th>Stock</th>
             <th>Categoría</th>
-            <th>Acciones</th>
+            <th class="text-right">Precio</th>
+            <th class="text-right">Stock</th>
+            <th class="text-right">Acciones</th>
         </tr>
     </thead>
     <tbody>
         {% for p in products %}
+        {% set is_critical = p.tracks_stock and p.stock is defined and p.critical_stock is defined and p.critical_stock > 0 and p.stock <= p.critical_stock %}
         <tr data-id="{{ p.id }}" data-name="{{ p.name }}" data-price="{{ p.price }}">
-            <td><input type="checkbox" class="product-check" value="{{ p.id }}" x-model="selectedIds" style="width:18px;height:18px;cursor:pointer;accent-color:var(--color-primary);"></td>
+            <td><input type="checkbox" class="product-check" value="{{ p.id }}" aria-label="Seleccionar {{ p.name }}" x-model="selectedIds" style="width:18px;height:18px;cursor:pointer;accent-color:var(--color-primary);"></td>
             <td>
-                <div style="display: flex; flex-direction: column; gap: 6px;">
-                    <span style="font-weight: 600;">{{ p.name }}</span>
-                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                        {% if p.is_weighed %}
-                        <span class="badge badge-dark">Granel</span>
-                        {% endif %}
-                        {% if not p.tracks_stock %}
-                        <span class="badge badge-warning">Sin inventario</span>
-                        {% endif %}
-                    </div>
+                <div class="cell-stack">
+                    <strong style="font-weight: 600;">{{ p.name }}</strong>
+                    <small>
+                        {% if p.is_weighed %}Granel · por kg{% else %}Unidad{% endif %}{% if not p.tracks_stock %} · sin inventario{% endif %}
+                    </small>
                 </div>
             </td>
-            <td style="font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8125rem; color: var(--color-text-soft);">{{ p.barcode or '—' }}</td>
-            <td style="font-weight: 700;">{{ p.price|clp }}</td>
-            <td>
+            <td class="mono">{{ p.barcode or '—' }}</td>
+            <td>{% if p.category %}<span class="pill">{{ p.category.name }}</span>{% else %}<span class="text-muted">—</span>{% endif %}</td>
+            <td class="text-right" style="font-weight: 700;">{{ p.price|clp }}{% if p.is_weighed %} <span class="text-muted" style="font-weight: 500;">/kg</span>{% endif %}</td>
+            <td class="text-right">
                 {% if not p.tracks_stock %}
-                <span style="color: var(--color-text-muted);">No controlado</span>
-                {% elif p.stock is defined and p.critical_stock is defined and p.critical_stock > 0 and p.stock <= p.critical_stock %}
-                <span class="badge badge-error">{{ p.stock }}</span>
+                <span class="text-muted">No controlado</span>
+                {% elif is_critical %}
+                <span class="pill pill-danger">{{ p.stock|receipt_quantity if p.is_weighed else p.stock }}{% if p.is_weighed %} kg{% endif %} · crítico</span>
                 {% else %}
-                {{ p.stock }}
+                <strong>{{ p.stock|receipt_quantity if p.is_weighed else p.stock }}{% if p.is_weighed %} kg{% endif %}</strong>
                 {% endif %}
             </td>
-            <td>{{ p.category.name if p.category else '—' }}</td>
-            <td style="white-space: nowrap;">
-                <a href="/products/{{ p.id }}/edit" class="btn btn-sm btn-secondary">{{ icon('editar', 16) }} Editar</a>
-                <button class="btn btn-sm btn-danger btn-icon" aria-label="Eliminar {{ p.name }}" title="Eliminar"
-                        @click="deleteId = '{{ p.id }}'; deleteName = '{{ p.name }}'; showDeleteModal = true">
-                    {{ icon('eliminar', 16) }}
-                </button>
+            <td>
+                <div class="row-actions">
+                    <a href="/products/{{ p.id }}/edit" class="btn btn-sm btn-secondary btn-icon" aria-label="Editar {{ p.name }}" title="Editar">{{ icon('editar', 16) }}</a>
+                    <button type="button" class="btn btn-sm btn-danger btn-icon" aria-label="Eliminar {{ p.name }}" title="Eliminar"
+                            @click="deleteId = '{{ p.id }}'; deleteName = '{{ p.name }}'; showDeleteModal = true">
+                        {{ icon('eliminar', 16) }}
+                    </button>
+                </div>
             </td>
         </tr>
         {% endfor %}
@@ -54,7 +52,7 @@
 </table>
 
 <!-- Pagination -->
-{% set pagination_label = total ~ ' producto' ~ ('s' if total != 1 else '') ~ ' — Página ' ~ page ~ ' de ' ~ total_pages %}
+{% set pagination_label = total ~ ' producto' ~ ('s' if total != 1 else '') ~ ' · página ' ~ page ~ ' de ' ~ total_pages %}
 {% set previous_url = '/htmx/products/search?search=' ~ search ~ '&category_id=' ~ category_id ~ '&page=' ~ (page - 1) %}
 {% set next_url = '/htmx/products/search?search=' ~ search ~ '&category_id=' ~ category_id ~ '&page=' ~ (page + 1) %}
 {% set target_selector = '#products-table-container' %}
