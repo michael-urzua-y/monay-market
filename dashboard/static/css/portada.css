@@ -941,7 +941,9 @@ svg {
 }
 
 .site-footer {
-    padding: 0 24px 40px;
+    padding: 56px 24px 32px;
+    background: var(--ink);
+    color: var(--on-ink-soft);
 }
 
 .site-footer .wrap {
@@ -949,16 +951,52 @@ svg {
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
-    padding-top: 28px;
-    border-top: 1px solid var(--line-2);
-    font-size: 0.875rem;
-    color: var(--muted);
+    gap: 24px;
 }
 
-.site-footer img {
-    width: 40px;
-    height: 40px;
+.footer-brand {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 360px;
+}
+
+.footer-brand img {
+    display: block;
+    width: 210px;
+    height: auto;
+}
+
+.footer-brand p {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.55;
+    color: var(--on-ink-muted);
+}
+
+.footer-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+}
+
+.footer-nav a {
+    color: var(--on-ink);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.footer-nav a:hover {
+    color: var(--gold-soft);
+}
+
+.site-footer .footer-bottom {
+    margin-top: 36px;
+    padding-top: 22px;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.8125rem;
+    color: var(--on-ink-muted);
 }
 
 /* === WhatsApp siempre visible === */
@@ -982,25 +1020,6 @@ svg {
     display: flex;
     align-items: center;
     gap: 12px;
-}
-
-.wa-float-label {
-    display: inline-flex;
-    flex-direction: column;
-    padding: 10px 14px;
-    border-radius: 14px;
-    background: var(--white);
-    color: var(--text);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
-    font-size: 0.75rem;
-}
-
-.wa-float-label strong {
-    font-size: 0.8125rem;
-}
-
-.wa-float-label span {
-    color: var(--text-soft);
 }
 
 .wa-float-btn {
@@ -1044,8 +1063,7 @@ svg {
 /* === Celular === */
 @media (max-width: 760px) {
     .only-desktop,
-    .topnav-link,
-    .wa-float-label {
+    .topnav-link {
         display: none;
     }
 
@@ -1160,13 +1178,32 @@ svg {
         justify-content: center;
     }
 
+    .site-footer {
+        padding: 40px 20px 28px;
+        border-radius: 28px 28px 0 0;
+    }
+
     .site-footer .wrap {
-        justify-content: center;
+        flex-direction: column;
+        align-items: center;
         text-align: center;
     }
 
-    .site-footer img {
-        display: none;
+    .footer-brand {
+        align-items: center;
+    }
+
+    .footer-brand img {
+        width: 170px;
+    }
+
+    .footer-nav {
+        justify-content: center;
+    }
+
+    .site-footer .footer-bottom {
+        margin-top: 28px;
+        padding-bottom: 64px; /* espacio para el botón de WhatsApp */
     }
 
     .wa-float {

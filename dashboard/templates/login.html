@@ -24,11 +24,18 @@
             <a href="{{ url_for('index') }}" class="auth-brand-logo" aria-label="Ir a la portada de Monay Market">
                 <img src="{{ url_for('static', filename='monay-market-logo-horizontal.png', v=asset_version) }}" alt="Monay Market" width="668" height="200">
             </a>
-            <div class="auth-brand-copy">
-                <h1>Tu almacén, <span>siempre al día.</span></h1>
-                <p>Una sola cuenta: Monay abre la caja si eres cajero y el panel si eres dueño.</p>
+            <div class="auth-brand-body">
+                <div class="auth-brand-copy">
+                    <h1>Tu almacén, <span>siempre al día.</span></h1>
+                    <p>Una sola cuenta: Monay abre la caja si eres cajero y el panel si eres dueño.</p>
+                </div>
+                <img class="auth-brand-visual" src="{{ url_for('static', filename='login-market-visual.webp', v=asset_version) }}" alt="" width="1448" height="1086" decoding="async">
+                <ul class="auth-brand-points">
+                    {% for point in ['Boleta electrónica SII', 'Impresión por Bluetooth', 'Funciona sin internet'] %}
+                    <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>{{ point }}</li>
+                    {% endfor %}
+                </ul>
             </div>
-            <img class="auth-brand-visual" src="{{ url_for('static', filename='login-market-visual.webp', v=asset_version) }}" alt="" width="1448" height="1086" loading="lazy" decoding="async">
         </aside>
 
         <section class="auth-panel" aria-label="Iniciar sesión">
