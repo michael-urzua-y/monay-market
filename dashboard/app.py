@@ -1127,6 +1127,18 @@ def receipt_date_filter(value):
     return f"{dt.day:02d}-{dt.month:02d}-{dt.year}"
 
 
+SHORT_MONTHS = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
+
+
+@app.template_filter("short_date")
+def short_date_filter(value):
+    """Jinja2 filter: {{ fecha|short_date }} → 3 jun 2026"""
+    dt = parse_receipt_datetime(value)
+    if not dt:
+        return "—"
+    return f"{dt.day} {SHORT_MONTHS[dt.month - 1]} {dt.year}"
+
+
 @app.template_filter("receipt_datetime")
 def receipt_datetime_filter(value):
     dt = parse_receipt_datetime(value)

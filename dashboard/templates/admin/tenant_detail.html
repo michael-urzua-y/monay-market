@@ -4,129 +4,152 @@
 {% block page_title %}{{ tenant.name }}{% endblock %}
 
 {% block content %}
-<div style="margin-bottom: 20px;">
-    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.85rem;">← Volver</a>
+{% set sub = tenant.subscription %}
+{% set role_labels = {'dueno': 'Dueño', 'cajero': 'Cajero', 'vendedor': 'Vendedor', 'superadmin': 'Administrador'} %}
+{% set any_active = tenant.users|selectattr('active')|list|length > 0 %}
+{% set any_blocked = tenant.users|rejectattr('active')|list|length > 0 %}
+<a href="{{ url_for('admin_dashboard') }}" class="back-link">{{ icon('volver', 16) }} Negocios</a>
+
+<div class="tenant-hero">
+    <div class="tenant-hero-main">
+        <span class="tenant-avatar" aria-hidden="true">{{ (tenant.name or '?')[:1] }}</span>
+        <div>
+            <h1>{{ tenant.name }}</h1>
+            <p class="page-subtitle">RUT {{ tenant.rut }} · creado el {{ tenant.created_at|short_date }}</p>
+        </div>
+    </div>
+    <div class="tenant-hero-actions">
+        {% if any_active %}
+        <form method="post" action="{{ url_for('admin_tenant_block', tenant_id=tenant.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="blocked" value="true">
+            <button type="submit" class="btn btn-secondary" onclick="return confirm('¿Bloquear este negocio? Todos sus usuarios serán desactivados.')">{{ icon('bloquear', 18) }} Bloquear todo</button>
+        </form>
+        {% endif %}
+        {% if any_blocked %}
+        <form method="post" action="{{ url_for('admin_tenant_block', tenant_id=tenant.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="blocked" value="false">
+            <button type="submit" class="btn btn-secondary">{{ icon('check', 18) }} Desbloquear todo</button>
+        </form>
+        {% endif %}
+        <form method="post" action="{{ url_for('admin_tenant_delete', tenant_id=tenant.id) }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button type="submit" class="btn btn-outline-danger" onclick="return confirm('¿Eliminar este negocio? Se cancelará su suscripción y se bloquearán todos los usuarios.')">{{ icon('eliminar', 18) }} Eliminar negocio</button>
+        </form>
+    </div>
 </div>
 
 <div class="admin-stats">
     <div class="admin-stat">
-        <div class="admin-stat-label">RUT</div>
-        <div class="admin-stat-value" style="font-size: 1.2rem;">{{ tenant.rut }}</div>
+        <span class="admin-stat-icon">{{ icon('productos', 22) }}</span>
+        <div>
+            <div class="admin-stat-label">Productos activos</div>
+            <div class="admin-stat-value">{{ tenant.metrics.active_products }}</div>
+        </div>
     </div>
     <div class="admin-stat">
-        <div class="admin-stat-label">Productos activos</div>
-        <div class="admin-stat-value">{{ tenant.metrics.active_products }}</div>
+        <span class="admin-stat-icon">{{ icon('ventas', 22) }}</span>
+        <div>
+            <div class="admin-stat-label">Ventas (30 días)</div>
+            <div class="admin-stat-value">{{ tenant.metrics.sales_last_30_days }}</div>
+        </div>
     </div>
     <div class="admin-stat">
-        <div class="admin-stat-label">Ventas (30 días)</div>
-        <div class="admin-stat-value">{{ tenant.metrics.sales_last_30_days }}</div>
-    </div>
-    <div class="admin-stat">
-        <div class="admin-stat-label">Ingresos (30 días)</div>
-        <div class="admin-stat-value" style="font-size: 1.2rem;">${{ "{:,.0f}".format(tenant.metrics.revenue_last_30_days).replace(",", ".") }}</div>
+        <span class="admin-stat-icon">{{ icon('billete', 22) }}</span>
+        <div>
+            <div class="admin-stat-label">Ingresos (30 días)</div>
+            <div class="admin-stat-value">{{ tenant.metrics.revenue_last_30_days|clp }}</div>
+        </div>
     </div>
 </div>
 
-<!-- Subscription -->
-<div class="card" style="margin-bottom: 16px;">
-    <div class="card-header">
-        <h3 class="card-title">Suscripción</h3>
+<div class="tenant-layout">
+    <div class="card subscription-card">
+        <div class="card-header">
+            <h3 class="card-title">Suscripción</h3>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_for('admin_tenant_subscription', tenant_id=tenant.id) }}" class="subscription-form">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                {% if not sub %}
+                <p class="subscription-summary">Sin suscripción configurada.</p>
+                {% elif sub.end_date %}
+                <p class="subscription-summary">{{ icon('calendario', 16) }} Vence el {{ sub.end_date|short_date }}</p>
+                {% endif %}
+                <fieldset class="plan-options">
+                    <legend class="field-label">Plan</legend>
+                    <label class="plan-option">
+                        <input type="radio" name="plan" value="basico" {% if not sub or sub.plan != 'pro' %}checked{% endif %}>
+                        <strong>Básico</strong>
+                        <span>Caja y productos</span>
+                    </label>
+                    <label class="plan-option">
+                        <input type="radio" name="plan" value="pro" {% if sub and sub.plan == 'pro' %}checked{% endif %}>
+                        <strong>Pro</strong>
+                        <span>+ Dashboard completo</span>
+                    </label>
+                </fieldset>
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label for="sub-status">Estado</label>
+                        <select name="status" id="sub-status">
+                            <option value="activa" {% if sub and sub.status == 'activa' %}selected{% endif %}>Activa</option>
+                            <option value="expirada" {% if sub and sub.status == 'expirada' %}selected{% endif %}>Vencida</option>
+                            <option value="cancelada" {% if sub and sub.status == 'cancelada' %}selected{% endif %}>Cancelada</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="sub-end">Vencimiento</label>
+                        <input type="date" name="end_date" id="sub-end" value="{{ sub.end_date[:10] if sub and sub.end_date else '' }}">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-dark">Guardar suscripción</button>
+            </form>
+        </div>
     </div>
-    <div class="card-body">
-        {% if tenant.subscription %}
-        <p style="margin-bottom: 14px;">
-            Plan: <strong>{{ tenant.subscription.plan|capitalize }}</strong> |
-            Estado: <span class="badge {% if tenant.subscription.status == 'activa' %}badge-success{% elif tenant.subscription.status == 'cancelada' %}badge-error{% else %}badge-warning{% endif %}">{{ tenant.subscription.status|capitalize }}</span> |
-            Vence: <strong>{{ tenant.subscription.end_date[:10] if tenant.subscription.end_date else '—' }}</strong>
-        </p>
-        {% else %}
-        <p style="color: var(--color-text-muted); margin-bottom: 14px;">Sin suscripción configurada.</p>
-        {% endif %}
-        <form method="post" action="{{ url_for('admin_tenant_subscription', tenant_id=tenant.id) }}" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-            <div style="display:flex; flex-direction:column; gap:4px;">
-                <label style="font-size:0.8rem; color:var(--color-text-muted); font-weight:600;">Plan</label>
-                <select name="plan" style="padding:8px 10px; border:1px solid var(--color-border); border-radius:var(--radius);">
-                    <option value="basico" {% if tenant.subscription and tenant.subscription.plan == 'basico' %}selected{% endif %}>Básico</option>
-                    <option value="pro" {% if tenant.subscription and tenant.subscription.plan == 'pro' %}selected{% endif %}>Pro</option>
-                </select>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:4px;">
-                <label style="font-size:0.8rem; color:var(--color-text-muted); font-weight:600;">Estado</label>
-                <select name="status" style="padding:8px 10px; border:1px solid var(--color-border); border-radius:var(--radius);">
-                    <option value="activa" {% if tenant.subscription and tenant.subscription.status == 'activa' %}selected{% endif %}>Activa</option>
-                    <option value="expirada" {% if tenant.subscription and tenant.subscription.status == 'expirada' %}selected{% endif %}>Expirada</option>
-                    <option value="cancelada" {% if tenant.subscription and tenant.subscription.status == 'cancelada' %}selected{% endif %}>Cancelada</option>
-                </select>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:4px;">
-                <label style="font-size:0.8rem; color:var(--color-text-muted); font-weight:600;">Vencimiento</label>
-                <input type="date" name="end_date" value="{{ tenant.subscription.end_date[:10] if tenant.subscription and tenant.subscription.end_date else '' }}" style="padding:8px 10px; border:1px solid var(--color-border); border-radius:var(--radius);">
-            </div>
-            <button type="submit" class="btn btn-primary" style="padding:8px 16px;">Guardar</button>
-        </form>
-    </div>
-</div>
 
-<!-- Users -->
-<div class="card" style="margin-bottom: 16px;">
-    <div class="card-header">
-        <h3 class="card-title">Usuarios ({{ tenant.users|length }})</h3>
-    </div>
-    <div class="card-body">
-        <table class="data-table">
-            <thead>
-                <tr><th>Username</th><th>Rol</th><th>Estado</th><th>Creado</th><th>Acciones</th></tr>
-            </thead>
-            <tbody>
-                {% for u in tenant.users %}
-                <tr>
-                    <td>{{ u.username }}</td>
-                    <td>{{ u.role }}</td>
-                    <td>
-                        {% if u.active %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-error">Inactivo</span>{% endif %}
-                    </td>
-                    <td>{{ u.created_at[:10] if u.created_at else '—' }}</td>
-                    <td class="user-actions">
-                        {% if u.active %}
-                        <form method="post" action="{{ url_for('admin_user_update', tenant_id=tenant.id, user_id=u.id) }}" style="display:inline;">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                            <input type="hidden" name="active" value="false">
-                            <button type="submit" class="btn btn-danger" style="padding:5px 10px; font-size:0.8rem;" onclick="return confirm('¿Bloquear a {{ u.username }}?')">Bloquear</button>
-                        </form>
-                        {% else %}
-                        <form method="post" action="{{ url_for('admin_user_update', tenant_id=tenant.id, user_id=u.id) }}" style="display:inline;">
-                            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-                            <input type="hidden" name="active" value="true">
-                            <button type="submit" class="btn btn-primary" style="padding:5px 10px; font-size:0.8rem;">Activar</button>
-                        </form>
-                        {% endif %}
-                        <button type="button" class="btn btn-secondary" style="padding:5px 10px; font-size:0.8rem;" onclick="openUserEdit('{{ u.id }}', '{{ u.username }}')">Editar</button>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Actions -->
-<div class="card">
-    <div class="card-body" style="display: flex; gap: 12px; flex-wrap: wrap;">
-        <form method="post" action="{{ url_for('admin_tenant_block', tenant_id=tenant.id) }}">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="blocked" value="true">
-            <button type="submit" class="btn btn-danger" style="padding:8px 16px;" onclick="return confirm('¿Bloquear este negocio? Todos sus usuarios serán desactivados.')">{{ icon('bloquear', 18) }} Bloquear todo</button>
-        </form>
-        <form method="post" action="{{ url_for('admin_tenant_block', tenant_id=tenant.id) }}">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="blocked" value="false">
-            <button type="submit" class="btn btn-primary" style="padding:8px 16px;">{{ icon('check', 18) }} Desbloquear todo</button>
-        </form>
-        <form method="post" action="{{ url_for('admin_tenant_delete', tenant_id=tenant.id) }}" style="margin-left: auto;">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
-            <button type="submit" class="btn btn-danger" style="padding:8px 16px;" onclick="return confirm('¿Eliminar este negocio? Se cancelará su suscripción y se bloquearán todos los usuarios.')">{{ icon('eliminar', 18) }} Eliminar</button>
-        </form>
+    <div class="card admin-card">
+        <div class="card-header">
+            <h3 class="card-title">Usuarios ({{ tenant.users|length }})</h3>
+        </div>
+        <div class="card-body">
+            <table class="data-table" style="min-width: 520px;">
+                <thead>
+                    <tr><th>Usuario</th><th>Rol</th><th>Estado</th><th>Creado</th><th class="text-right">Acciones</th></tr>
+                </thead>
+                <tbody>
+                    {% for u in tenant.users %}
+                    <tr>
+                        <td><strong>{{ u.username }}</strong></td>
+                        <td class="text-muted">{{ role_labels.get(u.role, u.role|capitalize) }}</td>
+                        <td>
+                            {% if u.active %}<span class="badge badge-success">Activo</span>{% else %}<span class="badge badge-error">Bloqueado</span>{% endif %}
+                        </td>
+                        <td class="text-muted">{{ u.created_at|short_date }}</td>
+                        <td>
+                            <div class="user-actions" style="justify-content: flex-end;">
+                                <button type="button" class="btn btn-secondary btn-sm" onclick="openUserEdit('{{ u.id }}', '{{ u.username }}')">Editar</button>
+                                {% if u.active %}
+                                <form method="post" action="{{ url_for('admin_user_update', tenant_id=tenant.id, user_id=u.id) }}" style="display:inline;">
+                                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                    <input type="hidden" name="active" value="false">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('¿Bloquear a {{ u.username }}?')">Bloquear</button>
+                                </form>
+                                {% else %}
+                                <form method="post" action="{{ url_for('admin_user_update', tenant_id=tenant.id, user_id=u.id) }}" style="display:inline;">
+                                    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                                    <input type="hidden" name="active" value="true">
+                                    <button type="submit" class="btn btn-dark btn-sm">Activar</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
@@ -140,7 +163,7 @@
             <form method="post" id="user-edit-form">
                 <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
                 <div class="form-group">
-                    <label for="edit-username">Username</label>
+                    <label for="edit-username">Usuario</label>
                     <input type="text" name="username" id="edit-username" required>
                 </div>
                 <div class="form-group">

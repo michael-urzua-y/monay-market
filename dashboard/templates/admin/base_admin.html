@@ -26,10 +26,69 @@
         .admin-stat-label { color: var(--color-text-muted); font-size: 0.8125rem; font-weight: 600; }
         .admin-stat-value { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em; color: var(--color-text); margin-top: 2px; }
         .user-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-        .user-actions .btn { padding: 5px 10px; font-size: 0.8rem; }
         .admin-modal-overlay { display:none; position:fixed; inset:0; background:rgba(6,16,13,0.55); z-index:1000; align-items:center; justify-content:center; padding: 16px; }
         .sidebar-overlay[hidden] { display: none !important; }
         .admin-modal-overlay.visible { display: flex; }
+
+        /* Tablas a todo el ancho de la tarjeta */
+        .admin-card { overflow: hidden; }
+        .admin-card > .card-body { padding: 0; overflow-x: auto; }
+        .admin-card .data-table { min-width: 680px; }
+        .admin-card .data-table th:first-child, .admin-card .data-table td:first-child { padding-left: 22px; }
+        .admin-card .data-table th:last-child, .admin-card .data-table td:last-child { padding-right: 22px; }
+        .admin-card .empty-state-text { padding: 22px; color: var(--color-text-muted); margin: 0; }
+        .text-right { text-align: right !important; }
+        .text-muted { color: var(--color-text-muted); }
+        .btn-sm { min-height: 34px; padding: 0 12px; font-size: 0.8125rem; border-radius: 10px; }
+        .btn-outline-danger { background: var(--color-white); color: var(--color-error, #B42318); border-color: #F5D0CC; font-weight: 700; }
+        .btn-outline-danger:hover { background: #FEF3F2; color: #B42318; }
+
+        /* Negocio con inicial */
+        .tenant-cell { display: flex; align-items: center; gap: 12px; }
+        .tenant-initial { width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px; background: #F1F0E8; display: flex; align-items: center; justify-content: center; font-weight: 800; text-transform: uppercase; }
+        .plan-pill { display: inline-flex; align-items: center; min-height: 26px; padding: 0 10px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; background: #F1F0E8; color: #4B544F; }
+        .plan-pill.is-pro { background: var(--color-ink); color: var(--color-primary-hover); }
+
+        /* Ficha del negocio */
+        .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 0.875rem; font-weight: 600; text-decoration: none; margin-bottom: 18px; }
+        .tenant-hero { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+        .tenant-hero-main { display: flex; align-items: center; gap: 16px; min-width: 0; }
+        .tenant-avatar { width: 56px; height: 56px; flex-shrink: 0; border-radius: 16px; background: var(--color-ink); color: var(--color-primary-hover); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; font-weight: 800; text-transform: uppercase; }
+        .tenant-hero h1 { margin: 0; font-size: 1.75rem; font-weight: 800; letter-spacing: -0.02em; }
+        .tenant-hero-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+        .tenant-hero-actions form { margin: 0; }
+        .tenant-layout { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
+        .tenant-layout > .subscription-card { flex: 1 1 300px; }
+        .tenant-layout > .admin-card { flex: 2 1 480px; min-width: 0; }
+        .subscription-form { display: flex; flex-direction: column; gap: 16px; }
+        .subscription-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 0.875rem; color: var(--color-text-muted); }
+        .field-label { display: block; font-size: 0.8125rem; font-weight: 600; color: #4B544F; margin-bottom: 8px; }
+        .plan-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; border: 0; }
+        .plan-option { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 64px; border-radius: 12px; border: 1px solid var(--color-border); background: var(--color-white); cursor: pointer; text-align: center; }
+        .plan-option input { position: absolute; opacity: 0; pointer-events: none; }
+        .plan-option strong { font-size: 0.875rem; }
+        .plan-option span { font-size: 0.75rem; color: var(--color-text-muted); }
+        .plan-option:has(input:checked) { border: 1.5px solid var(--color-primary); background: #FFF8DB; }
+        .plan-option:has(input:checked) span { color: #5A4300; }
+        .plan-option:has(input:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+        .form-row-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .form-row-2 .form-group { margin: 0; }
+
+        /* Nuevo negocio por pasos */
+        .steps-card { max-width: 720px; overflow: hidden; }
+        .form-step { padding: 24px; border-bottom: 1px solid var(--color-border-soft); }
+        .form-step-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+        .form-step-head h2 { margin: 0; font-size: 1.0625rem; font-weight: 700; }
+        .step-number { width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%; background: var(--color-ink); color: var(--color-primary-hover); display: flex; align-items: center; justify-content: center; font-size: 0.875rem; font-weight: 800; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+        .form-grid .form-group { margin: 0; }
+        .form-footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 18px 24px; background: var(--color-surface-2); }
+
+        @media (max-width: 520px) {
+            .form-row-2 { grid-template-columns: 1fr; }
+            .tenant-hero h1 { font-size: 1.4rem; }
+            .form-step, .form-footer { padding-left: 18px; padding-right: 18px; }
+        }
     </style>
 </head>
 <body>

@@ -1,41 +1,59 @@
 {% extends "admin/base_admin.html" %}
 {% block title %}Nuevo Negocio — Admin{% endblock %}
-{% block page_title %}Crear nuevo negocio{% endblock %}
+{% block page_title %}Nuevo negocio{% endblock %}
 
 {% block content %}
-<div style="margin-bottom: 20px;">
-    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.85rem;">← Volver</a>
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Nuevo negocio</h1>
+        <p class="page-subtitle">Crea el negocio y la cuenta de su dueño. El plan y la suscripción se ajustan después.</p>
+    </div>
 </div>
 
 {% if error %}
-<div class="alert alert-error">{{ error }}</div>
+<div class="alert alert-error" style="max-width: 720px;">{{ error }}</div>
 {% endif %}
 
-<div class="card" style="max-width: 500px;">
-    <div class="card-header">
-        <h3 class="card-title">Datos del negocio</h3>
-    </div>
-    <div class="card-body">
-        <form method="post" action="{{ url_for('admin_tenant_create') }}">
-            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+<form method="post" action="{{ url_for('admin_tenant_create') }}" class="card steps-card">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+    <div class="form-step">
+        <div class="form-step-head">
+            <span class="step-number" aria-hidden="true">1</span>
+            <h2>Datos del negocio</h2>
+        </div>
+        <div class="form-grid">
             <div class="form-group">
                 <label for="name">Nombre del negocio</label>
-                <input type="text" id="name" name="name" value="{{ form.get('name', '') }}" required placeholder="Ej: Almacén Don Pedro">
+                <input type="text" id="name" name="name" value="{{ form.get('name', '') }}" required placeholder="Ej: Almacén Las Rosas">
             </div>
             <div class="form-group">
                 <label for="rut">RUT</label>
                 <input type="text" id="rut" name="rut" value="{{ form.get('rut', '') }}" required placeholder="Ej: 12.345.678-5" autocomplete="off" maxlength="12" data-rut>
             </div>
+        </div>
+    </div>
+
+    <div class="form-step">
+        <div class="form-step-head">
+            <span class="step-number" aria-hidden="true">2</span>
+            <h2>Cuenta del dueño</h2>
+        </div>
+        <div class="form-grid">
             <div class="form-group">
-                <label for="owner_username">Username del dueño</label>
-                <input type="text" id="owner_username" name="owner_username" value="{{ form.get('owner_username', '') }}" required placeholder="Ej: pedro">
+                <label for="owner_username">Usuario del dueño</label>
+                <input type="text" id="owner_username" name="owner_username" value="{{ form.get('owner_username', '') }}" required placeholder="Ej: juan.perez">
             </div>
             <div class="form-group">
-                <label for="owner_password">Contraseña del dueño</label>
+                <label for="owner_password">Contraseña inicial</label>
                 <input type="password" id="owner_password" name="owner_password" required placeholder="Mínimo 8 caracteres">
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px;">Crear negocio</button>
-        </form>
+        </div>
     </div>
-</div>
+
+    <div class="form-footer">
+        <a href="{{ url_for('admin_dashboard') }}" class="btn btn-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary">Crear negocio</button>
+    </div>
+</form>
 {% endblock %}
