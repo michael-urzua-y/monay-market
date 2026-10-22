@@ -51,6 +51,38 @@
             body.sidebar-collapsed .main-content {
                 margin-left: 80px !important; /* Resguardo por si usa position: absolute */
             }
+            /* Con el menú contraído solo quedan íconos: el nombre aparece al pasar el mouse */
+            body.sidebar-collapsed .sidebar,
+            body.sidebar-collapsed .sidebar-header {
+                overflow: visible !important;
+            }
+            body.sidebar-collapsed [data-tooltip] {
+                position: relative;
+            }
+            body.sidebar-collapsed [data-tooltip]::after {
+                content: attr(data-tooltip);
+                position: absolute;
+                left: calc(100% + 14px);
+                top: 50%;
+                transform: translate(-4px, -50%);
+                padding: 7px 11px;
+                border-radius: 9px;
+                background: var(--sidebar-bg);
+                color: #fff;
+                font-size: 0.8125rem;
+                font-weight: 600;
+                white-space: nowrap;
+                box-shadow: 0 8px 24px rgba(6, 16, 13, 0.25);
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.12s ease, transform 0.12s ease;
+                z-index: 200;
+            }
+            body.sidebar-collapsed [data-tooltip]:hover::after,
+            body.sidebar-collapsed [data-tooltip]:focus-visible::after {
+                opacity: 1;
+                transform: translate(0, -50%);
+            }
             body.sidebar-collapsed .sidebar-logo,
             body.sidebar-collapsed .nav-label,
             body.sidebar-collapsed .nav-count,
@@ -81,11 +113,6 @@
     @media (max-width: 768px) {
         .desktop-toggle { display: none !important; }
         }
-        /* Ocultar textos en móviles para que encaje bien en la barra superior */
-        @media (max-width: 600px) {
-            .top-bar-right .user-info { display: none !important; }
-            .top-bar-right .hide-mobile { display: none !important; }
-        }
     </style>
 </head>
 <body x-data="{ sidebarOpen: false, sidebarCollapsed: localStorage.getItem('sidebarCollapsed') === 'true' }" 
@@ -110,7 +137,7 @@
                         class="sidebar-logo-image"
                     >
                 </a>
-                <button @click="sidebarCollapsed = !sidebarCollapsed" class="desktop-toggle" aria-label="Alternar menú lateral">
+                <button @click="sidebarCollapsed = !sidebarCollapsed" class="desktop-toggle" aria-label="Alternar menú lateral" data-tooltip="Expandir menú">
                     {{ icon('menu') }}
                 </button>
                 <button class="sidebar-close" @click="sidebarOpen = false" aria-label="Cerrar menú">
@@ -119,11 +146,11 @@
             </div>
 
             <nav class="sidebar-nav">
-                <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
+                <a href="{{ url_for('dashboard') }}" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}" data-tooltip="Dashboard">
                     <span class="nav-icon">{{ icon('dashboard') }}</span>
                     <span class="nav-label">Dashboard</span>
                 </a>
-                <a href="{{ url_for('products') }}" class="nav-item {% if request.endpoint in ('products', 'products_new', 'products_edit', 'products_import') %}active{% endif %}">
+                <a href="{{ url_for('products') }}" class="nav-item {% if request.endpoint in ('products', 'products_new', 'products_edit', 'products_import') %}active{% endif %}" data-tooltip="Productos">
                     <span class="nav-icon">{{ icon('productos') }}</span>
                     <span class="nav-label">Productos</span>
                     <span id="critical-stock-badge"
@@ -134,29 +161,29 @@
                           hx-swap="innerHTML"
                           style="display:none;"></span>
                 </a>
-                <a href="{{ url_for('shopping_list') }}" class="nav-item {% if request.endpoint == 'shopping_list' %}active{% endif %}">
+                <a href="{{ url_for('shopping_list') }}" class="nav-item {% if request.endpoint == 'shopping_list' %}active{% endif %}" data-tooltip="Lista de compras">
                     <span class="nav-icon">{{ icon('lista') }}</span>
                     <span class="nav-label">Lista de compras</span>
                 </a>
-                <a href="{{ url_for('sales') }}" class="nav-item {% if request.endpoint in ('sales', 'sales_detail', 'sales_pending', 'sales_retry_boleta') %}active{% endif %}">
+                <a href="{{ url_for('sales') }}" class="nav-item {% if request.endpoint in ('sales', 'sales_detail', 'sales_pending', 'sales_retry_boleta') %}active{% endif %}" data-tooltip="Ventas">
                     <span class="nav-icon">{{ icon('ventas') }}</span>
                     <span class="nav-label">Ventas</span>
                 </a>
                 {# Cuadraturas oculto temporalmente. Mantener la ruta y plantilla para futura reactivacion.
-                <a href="{{ url_for('arqueos') }}" class="nav-item {% if request.endpoint == 'arqueos' %}active{% endif %}">
+                <a href="{{ url_for('arqueos') }}" class="nav-item {% if request.endpoint == 'arqueos' %}active{% endif %}" data-tooltip="Cuadraturas">
                     <span class="nav-icon">{{ icon('cuadraturas') }}</span>
                     <span class="nav-label">Cuadraturas</span>
                 </a>
                 #}
-                <a href="{{ url_for('mermas') }}" class="nav-item {% if request.endpoint == 'mermas' %}active{% endif %}">
+                <a href="{{ url_for('mermas') }}" class="nav-item {% if request.endpoint == 'mermas' %}active{% endif %}" data-tooltip="Mermas">
                     <span class="nav-icon">{{ icon('mermas') }}</span>
                     <span class="nav-label">Mermas</span>
                 </a>
-                <a href="{{ url_for('users') }}" class="nav-item {% if request.endpoint == 'users' %}active{% endif %}">
+                <a href="{{ url_for('users') }}" class="nav-item {% if request.endpoint == 'users' %}active{% endif %}" data-tooltip="Usuarios">
                     <span class="nav-icon">{{ icon('usuarios') }}</span>
                     <span class="nav-label">Usuarios</span>
                 </a>
-                <a href="{{ url_for('settings') }}" class="nav-item {% if request.endpoint == 'settings' %}active{% endif %}">
+                <a href="{{ url_for('settings') }}" class="nav-item {% if request.endpoint == 'settings' %}active{% endif %}" data-tooltip="Configuración">
                     <span class="nav-icon">{{ icon('configuracion') }}</span>
                     <span class="nav-label">Configuración</span>
                 </a>
@@ -169,7 +196,7 @@
                     <strong>{{ current_user.username or current_user.email }}</strong>
                     <span>Dueño</span>
                 </div>
-                <a href="{{ url_for('logout') }}" class="sidebar-logout" data-no-loading aria-label="Cerrar sesión" title="Cerrar sesión">
+                <a href="{{ url_for('logout') }}" class="sidebar-logout" data-no-loading aria-label="Cerrar sesión" data-tooltip="Cerrar sesión">
                     {{ icon('salir') }}
                 </a>
             </div>
@@ -186,17 +213,6 @@
                     <h2 class="page-title" style="margin: 0;">{% block page_title %}Dashboard{% endblock %}</h2>
                 </div>
 
-                <div class="top-bar-right">
-                    {% if current_user %}
-                    <div class="user-info top-user-info">
-                        <div class="user-name">{{ current_user.username or current_user.email }}</div>
-                    </div>
-                    {% endif %}
-                    <a href="{{ url_for('logout') }}" class="btn btn-secondary top-logout-link" data-no-loading>
-                        {{ icon('salir', 18) }}
-                        <span class="hide-mobile">Salir</span>
-                    </a>
-                </div>
             </header>
 
             <div class="content-area">
