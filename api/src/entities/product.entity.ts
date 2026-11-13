@@ -15,7 +15,10 @@ import { SaleLine } from './sale-line.entity';
 import { ProductReception } from './product-reception.entity';
 
 @Entity('products', { schema: 'market' })
-@Index('IDX_product_tenant_barcode', ['tenant_id', 'barcode'], { unique: true })
+// El índice único real es parcial (solo productos activos) y vive en la
+// migración ReleaseBarcodeOnDelete1782400000000, porque TypeORM no soporta
+// un WHERE en @Index. No se usa @Index aquí para evitar que una futura
+// sincronización intente recrear el índice completo (no parcial).
 @Index('IDX_product_tenant_active_stock', ['tenant_id', 'active', 'stock'])
 export class Product {
   @PrimaryGeneratedColumn('uuid')

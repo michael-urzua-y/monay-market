@@ -109,12 +109,11 @@ describe('TypeORM Entities', () => {
       );
     });
 
-    it('should have unique index on (tenant_id, barcode)', () => {
-      const indices = metadata.indices.filter(
-        (i) => i.target === Product && i.unique === true,
-      );
-      expect(indices.length).toBeGreaterThanOrEqual(1);
-    });
+    // El índice único (tenant_id, barcode) es parcial (solo active = true) y
+    // se crea con SQL crudo en la migración ReleaseBarcodeOnDelete1782400000000,
+    // porque TypeORM no soporta un WHERE en @Index. No aparece en los metadatos
+    // de la entidad a propósito: ver esa migración y
+    // products.service.spec.ts para la cobertura real de esta regla.
 
     it('should have composite index on (tenant_id, active, stock)', () => {
       const indices = metadata.indices.filter(

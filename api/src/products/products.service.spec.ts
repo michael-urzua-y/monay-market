@@ -117,6 +117,30 @@ describe('ProductsService', () => {
       );
     });
 
+    it('should reactivate and update the matching inactive (deleted) product instead of duplicating it', async () => {
+      const deletedProduct: Product = {
+        ...mockProduct,
+        id: 'product-uuid-old',
+        name: 'Nombre viejo',
+        price: 999,
+        stock: 1,
+        active: false,
+      };
+      mockProductRepo.findOne
+        .mockResolvedValueOnce(null) // assertBarcodeUnique: ningún activo con ese barcode
+        .mockResolvedValueOnce(deletedProduct); // match inactivo con el mismo barcode
+      mockProductRepo.save.mockImplementation((p: any) => Promise.resolve(p));
+
+      const result = await service.create(tenantId, createDto);
+
+      expect(mockProductRepo.create).not.toHaveBeenCalled();
+      expect(result.id).toBe('product-uuid-old');
+      expect(result.active).toBe(true);
+      expect(result.name).toBe(createDto.name);
+      expect(result.price).toBe(createDto.price);
+      expect(result.stock).toBe(createDto.stock);
+    });
+
     it('should allow creating product without barcode', async () => {
       const dto = { name: 'Pan', price: 500, stock: 100, critical_stock: 5 };
       mockProductRepo.create.mockReturnValue({ ...mockProduct, barcode: null });

@@ -97,6 +97,21 @@ export class ProductsService {
 
     if (payload.barcode) {
       await this.assertBarcodeUnique(tenantId, payload.barcode);
+
+      // Un producto eliminado (soft-delete) con el mismo código de barras no
+      // bloquea crear uno "nuevo" (assertBarcodeUnique solo mira activos),
+      // pero tampoco conviene duplicar el registro: se reactiva ese mismo
+      // producto con los datos del formulario, en vez de dejar uno inactivo
+      // y otro activo con el mismo código.
+      const inactiveMatch = await this.productRepository.findOne({
+        where: { tenant_id: tenantId, barcode: payload.barcode, active: false },
+      });
+
+      if (inactiveMatch) {
+        this.validateProductConfiguration(payload);
+        Object.assign(inactiveMatch, payload, { active: true });
+        return this.productRepository.save(inactiveMatch);
+      }
     }
 
     this.validateProductConfiguration(payload);
@@ -443,7 +458,9 @@ export class ProductsService {
     barcode: string,
     excludeProductId?: string,
   ): Promise<void> {
-    const query: any = { tenant_id: tenantId, barcode };
+    // Solo los productos activos bloquean el código de barras: uno eliminado
+    // (soft-delete, active = false) libera su código para reutilizarlo.
+    const query: any = { tenant_id: tenantId, barcode, active: true };
     const existing = await this.productRepository.findOne({ where: query });
 
     if (existing && existing.id !== excludeProductId) {
