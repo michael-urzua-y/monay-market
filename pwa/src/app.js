@@ -1213,7 +1213,27 @@ import { SumUp } from './sumup.js?v=41';
 
   // Resuelve el cobro con SumUp al volver (si la URL trae smp-status/smp-tx).
   // Se llama al arrancar el POS, antes de mostrar la pantalla de venta.
+  // Se llama SIEMPRE al arrancar, haya o no sesión activa: SumUp puede
+  // volver después de que Android descartó la sesión del cajero (vive en
+  // sessionStorage, que no sobrevive si Chrome recicla la pestaña mientras
+  // otra app estuvo encima). Si el dinero ya se cobró, no podemos perder
+  // ese resultado solo porque tocó volver a loguearse.
   function resolvePendingCardPayment() {
+    // Primero: ¿hay un cobro ya aprobado esperando desde una sesión
+    // anterior (se perdió la sesión antes de poder crear la venta)?
+    // Esto solo se puede resolver con sesión activa.
+    if (isCashierSession() && SumUp.hasApprovedPending()) {
+      var approved = SumUp.takeApprovedPending();
+      if (approved) {
+        var approvedBody = approved.saleBody;
+        if (approved.transactionCode) {
+          approvedBody.card_transaction_ref = approved.transactionCode;
+        }
+        submitSale(approvedBody, {});
+        return;
+      }
+    }
+
     var outcome = SumUp.consumePendingReturn();
     if (!outcome) return;
 
@@ -1228,7 +1248,21 @@ import { SumUp } from './sumup.js?v=41';
       return;
     }
 
-    // Pago aprobado: recién ahora se crea la venta en Monay.
+    // Pago aprobado.
+    if (!isCashierSession()) {
+      // Se perdió la sesión mientras SumUp estaba abierto. El cobro ya se
+      // hizo: no podemos dejarlo caer en silencio. Guardamos el resultado
+      // ya aprobado (con el código de transacción) para crear la venta
+      // apenas el cajero vuelva a entrar, y se lo avisamos de forma que no
+      // pueda ignorarlo por accidente.
+      SumUp.saveApprovedPending(outcome.saleBody, outcome.transactionCode);
+      window.alert(
+        'El cobro con tarjeta SÍ se realizó (' + formatCLP(outcome.amount) + ').\n\n' +
+        'Inicie sesión de nuevo para registrar la venta y emitir la boleta.'
+      );
+      return;
+    }
+
     var body = outcome.saleBody;
     if (outcome.transactionCode) {
       body.card_transaction_ref = outcome.transactionCode;
@@ -2675,13 +2709,17 @@ function initArqueo() {
       syncOfflineSales();
     }
 
+    // Se resuelve siempre, haya o no sesión: si SumUp ya cobró y la sesión
+    // se perdió mientras tanto, hay que avisarlo antes de mandar al login,
+    // no dejarlo pasar en silencio.
+    resolvePendingCardPayment();
+
     // If we have a token, go to sale screen; otherwise login
     if (isCashierSession()) {
       router.navigate('sale');
       finishActivity(startupActivity);
       releaseBootState();
       checkPrinterAtStart();
-      resolvePendingCardPayment();
     } else {
       api.clearToken();
       redirectToCentralLogin();

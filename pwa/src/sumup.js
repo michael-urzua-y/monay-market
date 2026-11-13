@@ -15,6 +15,7 @@
 // ============================================================
 
 var STORE_KEY = 'monay_pos_sumup_pending';
+var APPROVED_KEY = 'monay_pos_sumup_approved';
 var CONFIG_KEY = 'monay_pos_sumup_config';
 var DEFAULT_APP_ID = 'cl.monaymarket.pos';
 
@@ -88,6 +89,11 @@ function chargeAndRedirect(saleBody, totalAmount) {
     'callback': back + '?smp-tx=' + txId,
     'callbacksuccess': back + '?smp-tx=' + txId,
     'callbackfail': back + '?smp-tx=' + txId,
+    // Sin esto, SumUp muestra su propia pantalla "Enviar recibo" (SMS/correo)
+    // antes de volver a Monay. Al tocar "Omitir" ahí, SumUp puede no
+    // disparar el callback de vuelta y el cobro queda sin registrar en
+    // Monay aunque sí se haya hecho. Saltarla evita ese paso por completo.
+    'skip-screen-success': 'true',
   });
 
   location.href = 'sumupmerchant://pay/1.0?' + query.toString();
@@ -133,6 +139,32 @@ function discardPending() {
   writeJSON(STORE_KEY, null);
 }
 
+// ----------------------------------------------------------
+// Cobro ya aprobado por SumUp pero sin sesión de cajero para crear la
+// venta (ej: Android descartó la sesión mientras SumUp estaba abierto).
+// Queda guardado aparte para resolverlo apenas el cajero vuelva a entrar,
+// sin depender de los parámetros de la URL (que ya no estarán la segunda
+// vez que arranca la app).
+// ----------------------------------------------------------
+function saveApprovedPending(saleBody, transactionCode) {
+  writeJSON(APPROVED_KEY, {
+    saleBody: saleBody,
+    transactionCode: transactionCode,
+    createdAt: Date.now(),
+  });
+}
+
+function takeApprovedPending() {
+  var approved = readJSON(APPROVED_KEY);
+  if (!approved) return null;
+  writeJSON(APPROVED_KEY, null);
+  return approved;
+}
+
+function hasApprovedPending() {
+  return !!readJSON(APPROVED_KEY);
+}
+
 export var SumUp = {
   isConfigured: isConfigured,
   getConfig: getConfig,
@@ -142,4 +174,7 @@ export var SumUp = {
   consumePendingReturn: consumePendingReturn,
   hasStuckPending: hasStuckPending,
   discardPending: discardPending,
+  saveApprovedPending: saveApprovedPending,
+  takeApprovedPending: takeApprovedPending,
+  hasApprovedPending: hasApprovedPending,
 };
