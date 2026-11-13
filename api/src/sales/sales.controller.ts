@@ -44,10 +44,16 @@ export class SalesController {
       dto,
     );
 
-    if (
-      !result.idempotent_replay &&
-      dto.payment_method === PaymentMethod.EFECTIVO
-    ) {
+    // Emitimos boleta en efectivo y en tarjeta cobrada de verdad vía SumUp
+    // (confirmada por traer card_transaction_ref). Una venta "tarjeta" sin
+    // ese código es solo un registro contable contra una máquina POS externa
+    // (no hay confirmación de cobro desde Monay), así que no emite boleta
+    // automática: el dueño puede reintentarla manualmente si corresponde.
+    const shouldEmitBoleta =
+      dto.payment_method === PaymentMethod.EFECTIVO ||
+      (dto.payment_method === PaymentMethod.TARJETA && !!dto.card_transaction_ref);
+
+    if (!result.idempotent_replay && shouldEmitBoleta) {
       const boletaResult = await this.siiService.emitBoleta(
         user.tenant_id,
         result.sale.id,

@@ -1290,7 +1290,9 @@ import { SumUp } from './sumup.js?v=41';
   function handleSaleCompletion(receipt) {
     if (!receipt) return false;
 
-    if (receipt.payment_method === 'tarjeta') {
+    // Tarjeta sin cobro confirmado (sin boleta): solo un registro contable
+    // contra una máquina POS externa, no hay nada que imprimir.
+    if (receipt.payment_method === 'tarjeta' && !receipt.boleta_folio) {
       showToast('Venta con tarjeta registrada', 'success');
       router.navigate('sale');
       return true;
