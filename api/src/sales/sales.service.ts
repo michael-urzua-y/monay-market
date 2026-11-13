@@ -119,6 +119,10 @@ export class SalesService {
       amountReceived,
       changeAmount,
       clientSaleId: dto.client_sale_id ?? null,
+      cardTransactionRef:
+        dto.payment_method === PaymentMethod.TARJETA
+          ? dto.card_transaction_ref ?? null
+          : null,
     });
 
     const savedLines = await this.insertSaleLines(
@@ -242,6 +246,7 @@ export class SalesService {
       amountReceived: number | null;
       changeAmount: number | null;
       clientSaleId: string | null;
+      cardTransactionRef: string | null;
     },
   ): Promise<Sale> {
     const sale = manager.create(Sale, {
@@ -252,6 +257,7 @@ export class SalesService {
       payment_method: data.paymentMethod,
       amount_received: data.amountReceived,
       change_amount: data.changeAmount,
+      card_transaction_ref: data.cardTransactionRef,
       boleta_status: BoletaStatus.NO_APLICA,
     });
     return manager.save(Sale, sale);

@@ -8,13 +8,14 @@ import { OfflineDB } from './offline.js';
 import { Cart } from './cart.js';
 // Módulos de impresión con versión en la URL: nginx los cachea 7 días como inmutables.
 // Al cambiarlos, subir este número junto con APP_ASSET_VERSION (y en printer.js / service-worker.js).
-import { ThermalPrinter } from './printer.js?v=39';
-import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
+import { ThermalPrinter } from './printer.js?v=41';
+import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=41';
+import { SumUp } from './sumup.js?v=41';
 
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '40';
+  var APP_ASSET_VERSION = '41';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -973,6 +974,7 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
         } else {
           efectivoEl.classList.add('hidden');
           tarjetaEl.classList.remove('hidden');
+          updateTarjetaMessage();
         }
         updatePaymentState();
       });
@@ -1097,16 +1099,6 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
       connectPrinterThen(processSale, 'Conecte la impresora para cobrar en efectivo: la boleta se imprime al cobrar.');
       return;
     }
-    setButtonLoading(btnPay, true, { label: 'Procesando...' });
-    var processingMessage =
-      selectedPaymentMethod === 'tarjeta'
-        ? 'Registrando venta y actualizando stock...'
-        : 'Registrando venta y emitiendo boleta...';
-
-    var paymentActivity = startActivity('Procesando pago', {
-      message: processingMessage,
-      blocking: true,
-    });
 
     var lines = Cart.items.map(function (item) {
       return { product_id: item.product_id, quantity: item.quantity };
@@ -1124,15 +1116,51 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
       var cartTotal = Cart.getTotal();
 
       if (enteredAmount > 0 && enteredAmount < cartTotal) {
-        finishActivity(paymentActivity);
-        setButtonLoading(btnPay, false);
-        updatePaymentState();
         showToast('Monto recibido insuficiente', 'warning');
         return;
       }
 
       body.amount_received = enteredAmount > 0 ? enteredAmount : cartTotal;
+      submitSale(body, { btnPay: btnPay });
+      return;
     }
+
+    // Tarjeta: cobro real con SumUp desde el celular, no solo un registro.
+    processCardPayment(body, btnPay);
+  }
+
+  function processCardPayment(body, btnPay) {
+    if (!SumUp.isConfigured()) {
+      showToast('Configure SumUp antes de cobrar con tarjeta (menú ☰ → Cobro con tarjeta)', 'error');
+      return;
+    }
+    var total = Cart.getTotal();
+    setButtonLoading(btnPay, true, { label: 'Abriendo SumUp...' });
+    // El carrito queda guardado en el celular; SumUp abre otra app y vuelve
+    // sola a esta página con el resultado. La venta recién se crea al volver.
+    var started = SumUp.chargeAndRedirect(body, total);
+    if (!started.ok) {
+      setButtonLoading(btnPay, false);
+      showToast('No se pudo iniciar el cobro con SumUp', 'error');
+    }
+    // No hay "finally": la página navega fuera de Monay hacia la app de SumUp.
+  }
+
+  // Llamado al volver de SumUp (o directo, para efectivo) con el cuerpo de
+  // la venta ya armado. Único punto que efectivamente crea la venta en Monay.
+  function submitSale(body, options) {
+    options = options || {};
+    var btnPay = options.btnPay || document.getElementById('btn-pay');
+    setButtonLoading(btnPay, true, { label: 'Procesando...' });
+    var processingMessage =
+      body.payment_method === 'tarjeta'
+        ? 'Registrando venta y actualizando stock...'
+        : 'Registrando venta y emitiendo boleta...';
+
+    var paymentActivity = startActivity('Procesando pago', {
+      message: processingMessage,
+      blocking: true,
+    });
 
     if (!navigator.onLine) {
       finishActivity(paymentActivity);
@@ -1181,6 +1209,31 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
       setButtonLoading(btnPay, false);
       updatePaymentState();
     });
+  }
+
+  // Resuelve el cobro con SumUp al volver (si la URL trae smp-status/smp-tx).
+  // Se llama al arrancar el POS, antes de mostrar la pantalla de venta.
+  function resolvePendingCardPayment() {
+    var outcome = SumUp.consumePendingReturn();
+    if (!outcome) return;
+
+    if (outcome.status === 'orphan') {
+      // Volvimos de SumUp pero no había un cobro pendiente guardado
+      // (ej: se recargó la página antes). No hay nada que crear.
+      return;
+    }
+
+    if (outcome.status === 'declined') {
+      showToast('Pago con tarjeta no realizado' + (outcome.message ? ': ' + outcome.message : ''), 'error');
+      return;
+    }
+
+    // Pago aprobado: recién ahora se crea la venta en Monay.
+    var body = outcome.saleBody;
+    if (outcome.transactionCode) {
+      body.card_transaction_ref = outcome.transactionCode;
+    }
+    submitSale(body, {});
   }
 
   function shouldQueueOfflineSale(err) {
@@ -1551,6 +1604,90 @@ import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=39';
     }
 
     initPrinterModal();
+    initSumUpModal();
+  }
+
+  // ----------------------------------------------------------
+  // Panel de cobro con tarjeta (SumUp)
+  // ----------------------------------------------------------
+  function initSumUpModal() {
+    var modal = document.getElementById('sumup-modal');
+    if (!modal) return;
+
+    var keyInput = document.getElementById('sumup-affiliate-key');
+    var statusEl = document.getElementById('sumup-status');
+
+    function renderStatus() {
+      if (!statusEl) return;
+      if (SumUp.isConfigured()) {
+        statusEl.textContent = 'Clave configurada: ya puede cobrar con tarjeta desde este celular.';
+        statusEl.className = 'printer-status is-connected';
+      } else {
+        statusEl.textContent = 'Falta configurar la clave de afiliado de SumUp.';
+        statusEl.className = 'printer-status is-error';
+      }
+      updateSumUpHint();
+      updateTarjetaMessage();
+    }
+
+    var open = function () {
+      if (keyInput) keyInput.value = SumUp.getConfig().affiliateKey || '';
+      renderStatus();
+      modal.classList.remove('hidden');
+      modal.style.display = 'flex';
+    };
+    var close = function () {
+      modal.classList.add('hidden');
+      modal.style.display = 'none';
+    };
+
+    var btnOpen = document.getElementById('btn-open-sumup');
+    if (btnOpen) btnOpen.addEventListener('click', open);
+    var btnClose = document.getElementById('btn-close-sumup');
+    if (btnClose) btnClose.addEventListener('click', close);
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) close();
+    });
+
+    var form = document.getElementById('sumup-form');
+    if (form) {
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var value = keyInput ? keyInput.value.trim() : '';
+        if (!value) {
+          showToast('Ingrese la clave de afiliado', 'warning');
+          return;
+        }
+        SumUp.setAffiliateKey(value);
+        renderStatus();
+        showToast('Clave de SumUp guardada', 'success');
+      });
+    }
+
+    var btnForget = document.getElementById('btn-sumup-forget');
+    if (btnForget) {
+      btnForget.addEventListener('click', function () {
+        SumUp.clearConfig();
+        if (keyInput) keyInput.value = '';
+        renderStatus();
+        showToast('Clave de SumUp eliminada', 'success');
+      });
+    }
+
+    updateSumUpHint();
+  }
+
+  function updateSumUpHint() {
+    var hint = document.getElementById('nav-hint-sumup');
+    if (hint) hint.textContent = SumUp.isConfigured() ? 'Configurado' : 'SumUp';
+  }
+
+  function updateTarjetaMessage() {
+    var msg = document.getElementById('tarjeta-msg');
+    if (!msg) return;
+    msg.textContent = SumUp.isConfigured()
+      ? 'Al cobrar se abrirá SumUp para acercar la tarjeta al celular.'
+      : 'Configure SumUp (menú ☰ → Cobro con tarjeta) para cobrar con tarjeta desde este celular.';
   }
 
   // ----------------------------------------------------------
@@ -2542,6 +2679,7 @@ function initArqueo() {
       finishActivity(startupActivity);
       releaseBootState();
       checkPrinterAtStart();
+      resolvePendingCardPayment();
     } else {
       api.clearToken();
       redirectToCentralLogin();

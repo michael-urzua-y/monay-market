@@ -198,6 +198,35 @@ describe('SalesService', () => {
       expect(result.sale.change_amount).toBeNull();
       expect(result.sale.total).toBe(1500);
     });
+
+    it('should store card_transaction_ref when provided', async () => {
+      lockedProducts = [makeProduct()];
+
+      const dto: CreateSaleDto = {
+        lines: [{ product_id: productId1, quantity: 1 }],
+        payment_method: PaymentMethod.TARJETA,
+        card_transaction_ref: 'TAAA7F4LLNP',
+      };
+
+      const result = await service.create(tenantId, userId, dto);
+
+      expect(result.sale.card_transaction_ref).toBe('TAAA7F4LLNP');
+    });
+
+    it('should ignore card_transaction_ref when payment method is efectivo', async () => {
+      lockedProducts = [makeProduct()];
+
+      const dto: CreateSaleDto = {
+        lines: [{ product_id: productId1, quantity: 1 }],
+        payment_method: PaymentMethod.EFECTIVO,
+        amount_received: 1500,
+        card_transaction_ref: 'should-not-be-saved',
+      };
+
+      const result = await service.create(tenantId, userId, dto);
+
+      expect(result.sale.card_transaction_ref).toBeNull();
+    });
   });
 
   describe('stock validation', () => {

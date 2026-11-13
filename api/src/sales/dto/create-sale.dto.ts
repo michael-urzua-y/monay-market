@@ -42,4 +42,12 @@ export class CreateSaleDto {
   @IsInt()
   @Min(0)
   amount_received?: number;
+
+  // Código de transacción de un cobro con tarjeta hecho fuera de Monay
+  // (hoy, SumUp Tap to Pay desde el celular del cajero). Solo informativo:
+  // no se valida contra ningún proveedor, sirve para cuadrar después.
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  card_transaction_ref?: string;
 }

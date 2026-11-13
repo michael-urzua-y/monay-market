@@ -51,6 +51,9 @@ export class Sale {
   @Column({ name: 'change_amount', type: 'integer', nullable: true })
   change_amount: number | null;
 
+  @Column({ name: 'card_transaction_ref', type: 'varchar', length: 100, nullable: true })
+  card_transaction_ref: string | null;
+
   @Column({
     name: 'boleta_status',
     type: 'enum',

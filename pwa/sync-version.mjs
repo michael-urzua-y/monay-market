@@ -34,6 +34,13 @@ const edits = [
     replacement: `var APP_ASSET_VERSION = '${version}';`,
   },
   {
+    // Imports de módulos con cache-busting propio (nginx los cachea 7 días
+    // como inmutables): ./printer.js?v=39, ./sumup.js?v=39, etc.
+    file: 'src/app.js',
+    pattern: /(from '\.\/[\w-]+\.js)\?v=\d+(')/g,
+    replacement: `$1?v=${version}$2`,
+  },
+  {
     file: 'index.html',
     pattern: /\?v=\d+/g,
     replacement: `?v=${version}`,
