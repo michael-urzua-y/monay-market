@@ -1,0 +1,12 @@
+{
+  "appId": "cl.monaymarket.pos",
+  "appName": "Monay Market POS",
+  "webDir": "www",
+  "server": {
+    "url": "https://pos.serviciohyh.cl/pos/",
+    "cleartext": false
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}

@@ -1,1 +1,7 @@
 .vercel
+
+# Capacitor (app Android de la caja): fuentes temporales de íconos/splash y
+# el webDir placeholder (Capacitor lo exige, pero la app carga el POS en
+# vivo desde server.url en capacitor.config.json, no desde archivos locales).
+/assets
+/www
