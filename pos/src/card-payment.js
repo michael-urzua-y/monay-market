@@ -10,7 +10,7 @@
 // Quedan en memoria: nunca se guardan en el celular.
 
 import { api } from './api.js';
-import { isNativeApp, loadCapacitorCore } from './platform.js?v=54';
+import { isNativeApp, loadCapacitorCore } from './platform.js?v=55';
 
 var state = {
   ready: false,
@@ -169,7 +169,8 @@ function failureMessage(result) {
     return 'SumUp bloqueó el cobro por seguridad del celular: desactive las Opciones de desarrollador y la Depuración USB.';
   }
   if (code === 106) return 'SumUp pide actualizar la app de la caja.';
-  return 'No se pudo cobrar con tarjeta' + (result && result.message ? ': ' + result.message : '.');
+  return 'No se pudo cobrar con tarjeta' + (result && result.message ? ': ' + result.message : '') +
+    ' (código ' + ((result && result.code) || '?') + ').';
 }
 
 export var CardPayment = {
