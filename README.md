@@ -49,7 +49,7 @@ monay-market/
 - Pago efectivo (cálculo de vuelto) y tarjeta
 - Deducción de stock atómica (unidades y fracciones) con alertas de stock crítico
 - Cierre de caja: resumen diario desglosado y registro de cuadratura (arqueo)
-- Módulo SII opcional: emisión de boleta electrónica con reintentos (3 intentos, 15s timeout), soporte Haulmer/OpenFactura/Facturación.cl/SimpleAPI/BaseAPI/API Gateway eBoleta, IVA 19%
+- Módulo SII opcional: emisión de boleta electrónica vía API Gateway eBoleta (único proveedor), con reintentos (3 intentos, 15s timeout), IVA 19%
 - Reintento manual de boletas pendientes
 - Dashboard de métricas: ventas del día, acumulado mensual con variación %, gráfico diario con selector de mes, stock crítico, valorización inventario (plan Pro)
 - Comprobante visual estructurado con datos de tienda, productos, pago y boleta
@@ -69,7 +69,8 @@ monay-market/
 - Librerías frontend servidas localmente (`htmx`, `alpine`, `chart.js`) para no depender de CDN externos
 
 ### PWA Punto de Venta
-- Instalable en celular como app nativa (manifest.json + íconos PWA 192x192 y 512x512)
+- En el navegador: PWA instalable con el manifest unificado del sitio (`/manifest.webmanifest`)
+- En Android: app nativa del cajero con Capacitor (ver `pwa/android/README.md`), con login propio que solo admite cajeros
 - Service Worker: cache-first para assets, network-first para API, respuesta offline 503
 - Login con JWT efímero almacenado en `sessionStorage`
 - Búsqueda de productos por nombre o código de barras

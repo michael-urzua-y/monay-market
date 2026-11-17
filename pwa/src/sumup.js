@@ -130,15 +130,6 @@ function consumePendingReturn() {
   };
 }
 
-function hasStuckPending() {
-  var pending = readJSON(STORE_KEY);
-  return !!pending;
-}
-
-function discardPending() {
-  writeJSON(STORE_KEY, null);
-}
-
 // ----------------------------------------------------------
 // Cobro ya aprobado por SumUp pero sin sesión de cajero para crear la
 // venta (ej: Android descartó la sesión mientras SumUp estaba abierto).
@@ -172,8 +163,6 @@ export var SumUp = {
   clearConfig: clearConfig,
   chargeAndRedirect: chargeAndRedirect,
   consumePendingReturn: consumePendingReturn,
-  hasStuckPending: hasStuckPending,
-  discardPending: discardPending,
   saveApprovedPending: saveApprovedPending,
   takeApprovedPending: takeApprovedPending,
   hasApprovedPending: hasApprovedPending,

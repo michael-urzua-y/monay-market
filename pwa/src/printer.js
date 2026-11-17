@@ -17,7 +17,8 @@
 // sigue usando window.print() + RawBT (fuera de este módulo).
 // ============================================================
 
-import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=42'; // misma versión que en app.js
+import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=43'; // misma versión que en app.js
+import { isNativeApp } from './platform.js?v=43';
 
 // Servicios BLE "serial" de las térmicas chinas más comunes (Xprinter, Goojprt, Zjiang, MTP…)
 var SERVICES = [
@@ -148,10 +149,6 @@ function markDisconnected() {
 // ----------------------------------------------------------
 // Qué transporte usar: Web Bluetooth (Chrome) o el plugin nativo (Capacitor)
 // ----------------------------------------------------------
-function isNativeApp() {
-  return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
-}
-
 function hasWebBluetooth() {
   return !!(navigator.bluetooth && typeof navigator.bluetooth.requestDevice === 'function');
 }

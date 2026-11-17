@@ -7,7 +7,19 @@ requiere recompilar el APK**. Solo hay que recompilar cuando cambia algo nativo
 (permisos, ícono, y — cuando llegue el acceso de SumUp — el SDK de Tap to Pay).
 
 El **dashboard** (dueño/admin) sigue siendo un sitio web normal, sin cambios;
-esta app solo empaqueta el POS del cajero.
+esta app solo empaqueta el POS del cajero. Sin sesión, la app muestra su propio
+login de caja (no el login ni la portada del sitio) y **solo admite cajeros**:
+si entra un dueño o admin, el token se descarta y se le pide usar el navegador.
+Cerrar sesión vuelve a ese login sin recargar, así la impresora queda conectada
+para el siguiente cajero.
+
+## Íconos
+
+Generados con `@capacitor/assets` desde
+`dashboard/static/icons/icon-maskable-512x512.png` (fuente única del ícono de
+Monay). Para regenerarlos, copiarlo a `pwa/assets/icon.png` y
+`pwa/assets/icon-foreground.png` y ejecutar `npx @capacitor/assets generate --android`
+desde `pwa/`.
 
 ## Por qué existe
 

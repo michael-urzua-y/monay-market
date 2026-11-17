@@ -2316,3 +2316,104 @@ body.app-booting .global-loading-panel {
   background: #fef3f2;
   color: #b42318;
 }
+
+/* ============================================================
+   Login de la app nativa (solo cajeros)
+   ============================================================ */
+.pos-login {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+  background: radial-gradient(circle at 50% 0%, rgba(240, 185, 11, 0.12), transparent 60%), var(--color-ink);
+}
+
+.pos-login.hidden {
+  display: none;
+}
+
+.pos-login-card {
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  color: #f4f1e8;
+}
+
+.pos-login-logo {
+  align-self: center;
+  margin-bottom: 8px;
+}
+
+.pos-login-card h1 {
+  margin: 0;
+  text-align: center;
+  font-size: 1.75rem;
+  color: #fff;
+}
+
+.pos-login-lead {
+  margin: 4px 0 24px;
+  text-align: center;
+  color: #a9b3ad;
+}
+
+.pos-login-card label {
+  margin: 12px 0 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.pos-login-card input {
+  width: 100%;
+  min-height: 50px;
+  padding: 0 14px;
+  border: 1px solid #22302b;
+  border-radius: var(--radius);
+  background: #0d1a16;
+  color: #fff;
+  font: inherit;
+}
+
+.pos-login-card input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.pos-login-password {
+  position: relative;
+}
+
+.pos-login-password input {
+  padding-right: 52px;
+}
+
+.pos-login-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 50px;
+  height: 50px;
+  border: 0;
+  background: transparent;
+  color: #a9b3ad;
+  cursor: pointer;
+}
+
+.pos-login-error {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: rgba(180, 35, 24, 0.18);
+  color: #ffb4ab;
+  font-size: 0.875rem;
+}
+
+.pos-login-card .btn {
+  margin-top: 22px;
+  min-height: 52px;
+}

@@ -6,11 +6,6 @@ import { TenantConfig } from '../entities/tenant-config.entity';
 import { Sale } from '../entities/sale.entity';
 import { Boleta } from '../entities/boleta.entity';
 import { BoletaStatus, SiiProvider } from '../entities/enums';
-import { HaulmerProvider } from './providers/haulmer.provider';
-import { OpenFacturaProvider } from './providers/openfactura.provider';
-import { FacturacionClProvider } from './providers/facturacion-cl.provider';
-import { SimpleApiProvider } from './providers/simple-api.provider';
-import { BaseApiProvider } from './providers/base-api.provider';
 import { ApiGatewayProvider } from './providers/api-gateway.provider';
 import {
   SiiCredentialError,
@@ -23,7 +18,7 @@ describe('SiiService', () => {
   let configRepo: jest.Mocked<Repository<TenantConfig>>;
   let saleRepo: jest.Mocked<Repository<Sale>>;
   let boletaRepo: jest.Mocked<Repository<Boleta>>;
-  let haulmerProvider: jest.Mocked<HaulmerProvider>;
+  let apiGatewayProvider: jest.Mocked<ApiGatewayProvider>;
 
   const tenantId = '11111111-1111-1111-1111-111111111111';
   const saleId = '22222222-2222-2222-2222-222222222222';
@@ -33,7 +28,7 @@ describe('SiiService', () => {
       id: 'cfg-1',
       tenant_id: tenantId,
       sii_enabled: true,
-      sii_provider: SiiProvider.HAULMER,
+      sii_provider: SiiProvider.API_GATEWAY,
       sii_api_key: 'test-api-key',
       sii_rut_emisor: '76.000.000-0',
       sii_rut_autenticador: null,
@@ -109,26 +104,6 @@ describe('SiiService', () => {
           },
         },
         {
-          provide: HaulmerProvider,
-          useValue: { providerName: SiiProvider.HAULMER, emitBoleta: jest.fn() },
-        },
-        {
-          provide: OpenFacturaProvider,
-          useValue: { providerName: SiiProvider.OPENFACTURA, emitBoleta: jest.fn() },
-        },
-        {
-          provide: FacturacionClProvider,
-          useValue: { providerName: SiiProvider.FACTURACION_CL, emitBoleta: jest.fn() },
-        },
-        {
-          provide: SimpleApiProvider,
-          useValue: { providerName: SiiProvider.SIMPLE_API, emitBoleta: jest.fn() },
-        },
-        {
-          provide: BaseApiProvider,
-          useValue: { providerName: SiiProvider.BASE_API, emitBoleta: jest.fn() },
-        },
-        {
           provide: ApiGatewayProvider,
           useValue: { providerName: SiiProvider.API_GATEWAY, emitBoleta: jest.fn() },
         },
@@ -139,7 +114,7 @@ describe('SiiService', () => {
     configRepo = module.get(getRepositoryToken(TenantConfig));
     saleRepo = module.get(getRepositoryToken(Sale));
     boletaRepo = module.get(getRepositoryToken(Boleta));
-    haulmerProvider = module.get(HaulmerProvider);
+    apiGatewayProvider = module.get(ApiGatewayProvider);
 
     // Disable delay in tests
     jest.spyOn(service, 'delay').mockResolvedValue(undefined);
@@ -152,7 +127,7 @@ describe('SiiService', () => {
       const result = await service.emitBoleta(tenantId, saleId);
 
       expect(result.boleta_status).toBe(BoletaStatus.NO_APLICA);
-      expect(haulmerProvider.emitBoleta).not.toHaveBeenCalled();
+      expect(apiGatewayProvider.emitBoleta).not.toHaveBeenCalled();
       expect(saleRepo.update).not.toHaveBeenCalled();
     });
 
@@ -162,7 +137,7 @@ describe('SiiService', () => {
       const result = await service.emitBoleta(tenantId, saleId);
 
       expect(result.boleta_status).toBe(BoletaStatus.NO_APLICA);
-      expect(haulmerProvider.emitBoleta).not.toHaveBeenCalled();
+      expect(apiGatewayProvider.emitBoleta).not.toHaveBeenCalled();
     });
   });
 
@@ -170,7 +145,7 @@ describe('SiiService', () => {
     it('should emit boleta and return emitida on success', async () => {
       configRepo.findOne.mockResolvedValue(mockConfig());
       saleRepo.findOne.mockResolvedValue(mockSale());
-      haulmerProvider.emitBoleta.mockResolvedValue(mockEmitResult);
+      apiGatewayProvider.emitBoleta.mockResolvedValue(mockEmitResult);
 
       const result = await service.emitBoleta(tenantId, saleId);
 
@@ -191,11 +166,11 @@ describe('SiiService', () => {
       configRepo.findOne.mockResolvedValue(mockConfig());
       const sale = mockSale({ total: 11900 });
       saleRepo.findOne.mockResolvedValue(sale);
-      haulmerProvider.emitBoleta.mockResolvedValue(mockEmitResult);
+      apiGatewayProvider.emitBoleta.mockResolvedValue(mockEmitResult);
 
       await service.emitBoleta(tenantId, saleId);
 
-      expect(haulmerProvider.emitBoleta).toHaveBeenCalledWith(
+      expect(apiGatewayProvider.emitBoleta).toHaveBeenCalledWith(
         'test-api-key',
         expect.objectContaining({
           sale_id: saleId,
@@ -216,7 +191,7 @@ describe('SiiService', () => {
     it('should set pendiente after all retries fail', async () => {
       configRepo.findOne.mockResolvedValue(mockConfig());
       saleRepo.findOne.mockResolvedValue(mockSale());
-      haulmerProvider.emitBoleta.mockRejectedValue(
+      apiGatewayProvider.emitBoleta.mockRejectedValue(
         new Error('Connection timeout'),
       );
 
@@ -224,7 +199,7 @@ describe('SiiService', () => {
 
       expect(result.boleta_status).toBe(BoletaStatus.PENDIENTE);
       expect(result.error).toContain('No se pudo emitir');
-      expect(haulmerProvider.emitBoleta).toHaveBeenCalledTimes(MAX_RETRIES);
+      expect(apiGatewayProvider.emitBoleta).toHaveBeenCalledTimes(MAX_RETRIES);
       expect(saleRepo.update).toHaveBeenCalledWith(saleId, {
         boleta_status: BoletaStatus.PENDIENTE,
       });
@@ -235,7 +210,7 @@ describe('SiiService', () => {
     it('should set error status on credential error without retrying', async () => {
       configRepo.findOne.mockResolvedValue(mockConfig());
       saleRepo.findOne.mockResolvedValue(mockSale());
-      haulmerProvider.emitBoleta.mockRejectedValue(
+      apiGatewayProvider.emitBoleta.mockRejectedValue(
         new SiiCredentialError('API key inválida'),
       );
 
@@ -245,7 +220,7 @@ describe('SiiService', () => {
       expect(result.error).toContain('credenciales');
       expect(result.error).toContain('API key inválida');
       // Credential errors should NOT be retried
-      expect(haulmerProvider.emitBoleta).toHaveBeenCalledTimes(1);
+      expect(apiGatewayProvider.emitBoleta).toHaveBeenCalledTimes(1);
       expect(saleRepo.update).toHaveBeenCalledWith(saleId, {
         boleta_status: BoletaStatus.ERROR,
       });
@@ -256,7 +231,7 @@ describe('SiiService', () => {
     it('should set error status without retrying permanent errors', async () => {
       configRepo.findOne.mockResolvedValue(mockConfig());
       saleRepo.findOne.mockResolvedValue(mockSale());
-      haulmerProvider.emitBoleta.mockRejectedValue(
+      apiGatewayProvider.emitBoleta.mockRejectedValue(
         new SiiPermanentError('No tiene folios asignados'),
       );
 
@@ -264,7 +239,7 @@ describe('SiiService', () => {
 
       expect(result.boleta_status).toBe(BoletaStatus.ERROR);
       expect(result.error).toContain('No tiene folios asignados');
-      expect(haulmerProvider.emitBoleta).toHaveBeenCalledTimes(1);
+      expect(apiGatewayProvider.emitBoleta).toHaveBeenCalledTimes(1);
       expect(saleRepo.update).toHaveBeenCalledWith(saleId, {
         boleta_status: BoletaStatus.ERROR,
       });
@@ -283,20 +258,6 @@ describe('SiiService', () => {
     });
   });
 
-  describe('emitBoleta — provider not configured', () => {
-    it('should return error when provider is null', async () => {
-      configRepo.findOne.mockResolvedValue(
-        mockConfig({ sii_provider: null as any }),
-      );
-      saleRepo.findOne.mockResolvedValue(mockSale());
-
-      const result = await service.emitBoleta(tenantId, saleId);
-
-      expect(result.boleta_status).toBe(BoletaStatus.ERROR);
-      expect(result.error).toContain('no configurado');
-    });
-  });
-
   describe('retryBoleta', () => {
     it('should retry when sale is pendiente', async () => {
       saleRepo.findOne
@@ -304,7 +265,7 @@ describe('SiiService', () => {
         // Second call from emitBoleta
         .mockResolvedValueOnce(mockSale({ boleta_status: BoletaStatus.PENDIENTE }));
       configRepo.findOne.mockResolvedValue(mockConfig());
-      haulmerProvider.emitBoleta.mockResolvedValue(mockEmitResult);
+      apiGatewayProvider.emitBoleta.mockResolvedValue(mockEmitResult);
 
       const result = await service.retryBoleta(tenantId, saleId);
 
@@ -319,7 +280,7 @@ describe('SiiService', () => {
       const result = await service.retryBoleta(tenantId, saleId);
 
       expect(result.error).toContain('pendiente');
-      expect(haulmerProvider.emitBoleta).not.toHaveBeenCalled();
+      expect(apiGatewayProvider.emitBoleta).not.toHaveBeenCalled();
     });
 
     it('should return error when sale not found', async () => {
@@ -334,12 +295,12 @@ describe('SiiService', () => {
 
   describe('emitWithRetries', () => {
     it('should succeed on second attempt after first failure', async () => {
-      haulmerProvider.emitBoleta
+      apiGatewayProvider.emitBoleta
         .mockRejectedValueOnce(new Error('timeout'))
         .mockResolvedValueOnce(mockEmitResult);
 
       const result = await service.emitWithRetries(
-        haulmerProvider,
+        apiGatewayProvider,
         'key',
         {} as any,
         true,
@@ -349,15 +310,15 @@ describe('SiiService', () => {
       );
 
       expect(result).toEqual(mockEmitResult);
-      expect(haulmerProvider.emitBoleta).toHaveBeenCalledTimes(2);
+      expect(apiGatewayProvider.emitBoleta).toHaveBeenCalledTimes(2);
     });
 
     it('should throw after all retries exhausted', async () => {
-      haulmerProvider.emitBoleta.mockRejectedValue(new Error('fail'));
+      apiGatewayProvider.emitBoleta.mockRejectedValue(new Error('fail'));
 
       await expect(
         service.emitWithRetries(
-          haulmerProvider,
+          apiGatewayProvider,
           'key',
           {} as any,
           true,
@@ -367,17 +328,17 @@ describe('SiiService', () => {
         ),
       ).rejects.toThrow('fail');
 
-      expect(haulmerProvider.emitBoleta).toHaveBeenCalledTimes(3);
+      expect(apiGatewayProvider.emitBoleta).toHaveBeenCalledTimes(3);
     });
 
     it('should not retry on credential error', async () => {
-      haulmerProvider.emitBoleta.mockRejectedValue(
+      apiGatewayProvider.emitBoleta.mockRejectedValue(
         new SiiCredentialError('bad key'),
       );
 
       await expect(
         service.emitWithRetries(
-          haulmerProvider,
+          apiGatewayProvider,
           'key',
           {} as any,
           true,
@@ -387,7 +348,7 @@ describe('SiiService', () => {
         ),
       ).rejects.toThrow(SiiCredentialError);
 
-      expect(haulmerProvider.emitBoleta).toHaveBeenCalledTimes(1);
+      expect(apiGatewayProvider.emitBoleta).toHaveBeenCalledTimes(1);
     });
   });
 

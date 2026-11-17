@@ -15,7 +15,7 @@ var FS = 0x1c;
 var LF = 0x0a;
 
 /** Ancho de impresión por tamaño de papel (fuente A estándar, 8 puntos/mm). */
-export var PAPER = {
+var PAPER = {
   58: { chars: 32, dots: 384 },
   80: { chars: 48, dots: 576 },
 };
@@ -32,7 +32,7 @@ var PC850 = {
   '¿': 0xa8, '¡': 0xad, '°': 0xf8, 'º': 0xa7, 'ª': 0xa6,
 };
 
-export function encodeText(str) {
+function encodeText(str) {
   var out = [];
   var s = String(str == null ? '' : str);
   for (var i = 0; i < s.length; i++) {
@@ -51,7 +51,7 @@ export function encodeText(str) {
 }
 
 /** "TOTAL" ............ "$3.000" en una línea del ancho dado. */
-export function padColumns(left, right, width) {
+function padColumns(left, right, width) {
   left = String(left);
   right = String(right);
   var space = width - left.length - right.length;
@@ -64,7 +64,7 @@ export function padColumns(left, right, width) {
 }
 
 /** Corta un texto en líneas de hasta `width` caracteres, respetando palabras. */
-export function wrapText(text, width) {
+function wrapText(text, width) {
   var words = String(text == null ? '' : text).split(/\s+/).filter(Boolean);
   var lines = [];
   var current = '';
@@ -114,7 +114,7 @@ export function toMonochrome(image, targetDots) {
 }
 
 /** Escala una imagen RGBA por vecino más cercano (sin suavizado: los módulos quedan nítidos). */
-export function scaleNearest(image, factor) {
+function scaleNearest(image, factor) {
   var width = Math.max(1, Math.round(image.width * factor));
   var height = Math.max(1, Math.round(image.height * factor));
   var data = new Uint8ClampedArray(width * height * 4);
@@ -167,7 +167,7 @@ export function fitPdf417(render, maxDots) {
 }
 
 /** Comandos GS v 0 (imagen raster) en bloques de filas. */
-export function rasterCommands(mono) {
+function rasterCommands(mono) {
   var out = [];
   for (var y = 0; y < mono.height; y += RASTER_BAND_ROWS) {
     var rows = Math.min(RASTER_BAND_ROWS, mono.height - y);

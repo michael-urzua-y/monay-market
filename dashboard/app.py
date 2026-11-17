@@ -746,18 +746,6 @@ def htmx_category_delete(category_id):
     return jsonify({"ok": True})
 
 
-def _extract_categories(products_data):
-    """Extract unique categories dict {id: name} from products list."""
-    categories = {}
-    items = products_data if isinstance(products_data, list) else []
-    for p in items:
-        if isinstance(p, dict) and p.get("category_id") and p.get("category"):
-            cat = p["category"]
-            if isinstance(cat, dict):
-                categories[cat.get("id", "")] = cat.get("name", "")
-    return categories
-
-
 @app.route("/sales")
 @login_required
 def sales():

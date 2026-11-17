@@ -96,7 +96,9 @@ export const api = {
 
     return fetch(CONFIG.API_URL + path, opts)
       .then((res) => {
-        if (res.status === 401) {
+        // En el login un 401 es "credenciales inválidas", no una sesión vencida:
+        // se devuelve como error normal (con status) sin cerrar sesión.
+        if (res.status === 401 && !meta.isLogin) {
           this.clearToken();
           // Disparamos un evento global en vez de depender del router local
           window.dispatchEvent(new CustomEvent('monay-auth-expired'));

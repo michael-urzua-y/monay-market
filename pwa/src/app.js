@@ -8,14 +8,15 @@ import { OfflineDB } from './offline.js';
 import { Cart } from './cart.js';
 // Módulos de impresión con versión en la URL: nginx los cachea 7 días como inmutables.
 // Al cambiarlos, subir este número junto con APP_ASSET_VERSION (y en printer.js / service-worker.js).
-import { ThermalPrinter } from './printer.js?v=42';
-import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=42';
-import { SumUp } from './sumup.js?v=42';
+import { ThermalPrinter } from './printer.js?v=43';
+import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=43';
+import { SumUp } from './sumup.js?v=43';
+import { isNativeApp } from './platform.js?v=43';
 
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '42';
+  var APP_ASSET_VERSION = '43';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -30,18 +31,6 @@ import { SumUp } from './sumup.js?v=42';
     var parts = getChileDateParts(dateStr);
     if (!parts) return '—';
     return parts.hour24 + ':' + parts.minute;
-  }
-
-  function formatDate(dateStr) {
-    var parts = getChileDateParts(dateStr);
-    if (!parts) return '—';
-    return parts.day + '-' + parts.month + '-' + parts.year + ' ' + parts.hour24 + ':' + parts.minute;
-  }
-
-  function formatReceiptDate(dateStr) {
-    var parts = getChileDateParts(dateStr);
-    if (!parts) return '—';
-    return parts.day + '-' + parts.month + '-' + parts.year;
   }
 
   function formatReceiptDateTime(dateStr) {
@@ -2569,11 +2558,115 @@ function initArqueo() {
     if (btn) {
       btn.addEventListener('click', function () {
         if (authRedirectInFlight) return;
+        if (isNativeApp()) {
+          // Sin recargar la página: la impresora queda conectada para el siguiente cajero.
+          endNativeSession();
+          return;
+        }
         clearPosClientState().finally(function () {
           redirectToCentralLogin();
         });
       });
     }
+  }
+
+  // ----------------------------------------------------------
+  // Login propio de la app nativa (solo cajeros)
+  // ----------------------------------------------------------
+
+  /** Sin sesión: en la app, su propio login; en el navegador, el login central del sitio. */
+  function goToLogin() {
+    if (isNativeApp()) {
+      endNativeSession();
+      return;
+    }
+    redirectToCentralLogin();
+  }
+
+  function endNativeSession() {
+    api.clearToken();
+    Cart.clear();
+    resetPaymentForm();
+    showPosLogin();
+  }
+
+  function showPosLogin() {
+    var login = document.getElementById('pos-login');
+    if (!login) return;
+    document.getElementById('app-header').classList.add('hidden');
+    document.getElementById('app-header').classList.remove('menu-open');
+    router.screens.forEach(function (id) {
+      var el = document.getElementById('screen-' + id);
+      if (el) el.classList.add('hidden');
+    });
+    var form = document.getElementById('pos-login-form');
+    if (form) form.reset();
+    setPosLoginError('');
+    login.classList.remove('hidden');
+  }
+
+  function setPosLoginError(message) {
+    var el = document.getElementById('pos-login-error');
+    if (!el) return;
+    el.textContent = message;
+    el.hidden = !message;
+  }
+
+  function posLoginErrorMessage(err) {
+    if (err && err.status === 401) return 'Usuario o contraseña incorrectos.';
+    if (err && err.status === 429) return (err.data && err.data.message) || 'Demasiados intentos. Espere unos minutos.';
+    if (!navigator.onLine || (err && /fetch|network/i.test(err.message || ''))) return 'Sin conexión a internet.';
+    return 'No se pudo ingresar. Intente de nuevo.';
+  }
+
+  function initPosLogin() {
+    var form = document.getElementById('pos-login-form');
+    if (!form) return;
+    var toggle = document.getElementById('pos-login-toggle');
+    var passwordInput = document.getElementById('pos-login-password');
+    var submitBtn = document.getElementById('pos-login-submit');
+
+    toggle.addEventListener('click', function () {
+      var show = passwordInput.type === 'password';
+      passwordInput.type = show ? 'text' : 'password';
+      toggle.setAttribute('aria-pressed', show ? 'true' : 'false');
+      toggle.setAttribute('aria-label', show ? 'Ocultar contraseña' : 'Mostrar contraseña');
+    });
+
+    form.addEventListener('submit', function (event) {
+      event.preventDefault();
+      var username = form.username.value.trim();
+      var password = form.password.value;
+      if (!username || !password) {
+        setPosLoginError('Ingrese su usuario y contraseña.');
+        return;
+      }
+      setPosLoginError('');
+      setButtonLoading(submitBtn, true, { label: 'Ingresando...' });
+
+      api.post('/auth/login', { username: username, password: password }, {
+        label: 'Ingresando',
+        blocking: true,
+        isLogin: true,
+      }).then(function (result) {
+        var user = (result && result.user) || {};
+        if (!result || !result.accessToken || !isPosRole(getTokenRole(result.accessToken))) {
+          // El token nunca se guarda si no es de cajero: el dueño y el admin usan el panel web.
+          setPosLoginError('Esta app es solo para la caja. El dueño entra al panel desde el navegador.');
+          return;
+        }
+        api.setToken(result.accessToken);
+        api.setUser(user);
+        document.getElementById('pos-login').classList.add('hidden');
+        router.navigate('sale');
+        checkPrinterAtStart();
+      }).catch(function (err) {
+        setPosLoginError(posLoginErrorMessage(err));
+      }).finally(function () {
+        setButtonLoading(submitBtn, false);
+        passwordInput.value = '';
+      });
+    });
   }
 
   // ----------------------------------------------------------
@@ -2692,12 +2785,14 @@ function initArqueo() {
 
   window.addEventListener('online', syncOfflineSales);
 
+  // Al volver atrás en el navegador sin sesión no debe quedar la caja a la vista.
   window.addEventListener('pageshow', function () {
-    if (!isCashierSession()) {
-      clearPosClientState().finally(function () {
-        redirectToCentralLogin();
-      });
+    if (isCashierSession()) return;
+    if (isNativeApp()) {
+      goToLogin();
+      return;
     }
+    clearPosClientState().finally(redirectToCentralLogin);
   });
 
   // ----------------------------------------------------------
@@ -2724,10 +2819,10 @@ function initArqueo() {
     // Cuadratura oculta temporalmente en la UI.
     // initArqueo();
 
+    initPosLogin();
+
     // Global auth expiration listener
-    window.addEventListener('monay-auth-expired', function () {
-      redirectToCentralLogin();
-    });
+    window.addEventListener('monay-auth-expired', goToLogin);
 
     // Sync if online
     if (navigator.onLine) {
@@ -2747,7 +2842,9 @@ function initArqueo() {
       checkPrinterAtStart();
     } else {
       api.clearToken();
-      redirectToCentralLogin();
+      finishActivity(startupActivity);
+      releaseBootState();
+      goToLogin();
     }
   }
 

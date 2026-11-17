@@ -8,12 +8,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Monay Market">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=42">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=43">
   <title>Monay Market POS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="src/styles.css?v=42">
+  <link rel="stylesheet" href="src/styles.css?v=43">
   
   <!-- App única de Monay (login, panel y caja) e invitación a instalarla en celulares -->
   <link rel="manifest" href="/manifest.webmanifest">
@@ -23,6 +23,31 @@
 </head>
 <body class="app-booting">
   <div id="app">
+    <!-- Login de la app nativa (solo cajeros). En el navegador la caja usa el login central del sitio. -->
+    <section id="pos-login" class="pos-login hidden" aria-labelledby="pos-login-title">
+      <form id="pos-login-form" class="pos-login-card" novalidate>
+        <img class="pos-login-logo" src="icons/monay-market-logo.png" alt="Monay Market" width="96" height="96">
+        <h1 id="pos-login-title">Caja</h1>
+        <p class="pos-login-lead">Ingresa con tu usuario de cajero.</p>
+
+        <label for="pos-login-username">Usuario</label>
+        <input id="pos-login-username" name="username" type="text" autocomplete="username"
+               autocapitalize="off" spellcheck="false" required maxlength="100">
+
+        <label for="pos-login-password">Contraseña</label>
+        <div class="pos-login-password">
+          <input id="pos-login-password" name="password" type="password" autocomplete="current-password" required maxlength="200">
+          <button type="button" id="pos-login-toggle" class="pos-login-toggle" aria-label="Mostrar contraseña" aria-pressed="false">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+
+        <p id="pos-login-error" class="pos-login-error" role="alert" hidden></p>
+
+        <button type="submit" id="pos-login-submit" class="btn btn-primary btn-block">Ingresar</button>
+      </form>
+    </section>
+
     <!-- Header -->
     <header id="app-header" class="app-header hidden">
       <div class="header-left">
@@ -363,7 +388,7 @@
       </div>
 
       <p class="printer-help">
-        Necesita una impresora con <strong>Bluetooth 4.0 / BLE</strong> y Chrome en Android. En el celular la
+        Necesita una impresora con <strong>Bluetooth 4.0 / BLE</strong>. En el celular la
         impresora debe estar conectada para cobrar en efectivo; al volver a entrar a la caja se pide conectarla.
       </p>
     </div>
@@ -413,6 +438,6 @@
   </div>
 
   <script src="/runtime-config.js"></script>
-  <script type="module" src="src/app.js?v=42"></script>
+  <script type="module" src="src/app.js?v=43"></script>
 </body>
 </html>

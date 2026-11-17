@@ -13,11 +13,6 @@ import {
   SiiCredentialError,
   SiiPermanentError,
 } from './interfaces/sii-provider.interface';
-import { HaulmerProvider } from './providers/haulmer.provider';
-import { OpenFacturaProvider } from './providers/openfactura.provider';
-import { FacturacionClProvider } from './providers/facturacion-cl.provider';
-import { SimpleApiProvider } from './providers/simple-api.provider';
-import { BaseApiProvider } from './providers/base-api.provider';
 import { ApiGatewayProvider } from './providers/api-gateway.provider';
 
 /** IVA rate in Chile: 19% */
@@ -41,8 +36,9 @@ export interface EmitBoletaResult {
 @Injectable()
 export class SiiService {
   private readonly logger = new Logger(SiiService.name);
-  private readonly providers: Map<SiiProvider, ISiiProvider>;
 
+  // API Gateway es el único proveedor de boletas: la configuración del
+  // tenant lo fija siempre (ver NormalizeRutProviderPrinter1782300000000).
   constructor(
     @InjectRepository(TenantConfig)
     private readonly configRepository: Repository<TenantConfig>,
@@ -50,22 +46,8 @@ export class SiiService {
     private readonly saleRepository: Repository<Sale>,
     @InjectRepository(Boleta)
     private readonly boletaRepository: Repository<Boleta>,
-    haulmerProvider: HaulmerProvider,
-    openFacturaProvider: OpenFacturaProvider,
-    facturacionClProvider: FacturacionClProvider,
-    simpleApiProvider: SimpleApiProvider,
-    baseApiProvider: BaseApiProvider,
-    apiGatewayProvider: ApiGatewayProvider,
-  ) {
-    this.providers = new Map<SiiProvider, ISiiProvider>([
-      [SiiProvider.HAULMER, haulmerProvider],
-      [SiiProvider.OPENFACTURA, openFacturaProvider],
-      [SiiProvider.FACTURACION_CL, facturacionClProvider],
-      [SiiProvider.SIMPLE_API, simpleApiProvider],
-      [SiiProvider.BASE_API, baseApiProvider],
-      [SiiProvider.API_GATEWAY, apiGatewayProvider],
-    ]);
-  }
+    private readonly provider: ApiGatewayProvider,
+  ) {}
 
   /**
    * Main entry point: emit boleta for a sale.
@@ -89,23 +71,11 @@ export class SiiService {
       return { boleta_status: BoletaStatus.ERROR, error: 'Venta no encontrada' };
     }
 
-    const siiProvider = config.sii_provider;
-    const provider = siiProvider
-      ? this.providers.get(siiProvider)
-      : undefined;
-    if (!provider || !siiProvider) {
-      await this.updateSaleStatus(saleId, BoletaStatus.ERROR);
-      return {
-        boleta_status: BoletaStatus.ERROR,
-        error: `Proveedor SII no configurado: ${config.sii_provider}`,
-      };
-    }
-
     const saleData = this.buildSaleData(sale, config);
 
     try {
       const result = await this.emitWithRetries(
-        provider,
+        this.provider,
         config.sii_api_key || '',
         saleData,
         config.sii_sandbox_mode,
@@ -114,7 +84,7 @@ export class SiiService {
       const boleta = await this.storeBoleta(
         sale,
         tenantId,
-        siiProvider,
+        this.provider.providerName,
         result,
       );
 
