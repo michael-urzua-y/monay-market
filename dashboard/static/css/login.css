@@ -549,10 +549,3 @@ a[aria-disabled="true"] {
         color: var(--on-ink-muted);
     }
 }
-
-/* App instalada: solo el ingreso, sin volver a la portada */
-@media (display-mode: standalone) {
-    .auth-back {
-        display: none;
-    }
-}

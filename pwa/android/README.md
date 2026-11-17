@@ -15,11 +15,10 @@ para el siguiente cajero.
 
 ## Íconos
 
-Generados con `@capacitor/assets` desde
-`dashboard/static/icons/icon-maskable-512x512.png` (fuente única del ícono de
-Monay). Para regenerarlos, copiarlo a `pwa/assets/icon.png` y
-`pwa/assets/icon-foreground.png` y ejecutar `npx @capacitor/assets generate --android`
-desde `pwa/`.
+Generados con `@capacitor/assets` desde [`icon-source.png`](icon-source.png)
+(colibrí sobre fondo oscuro, 512×512). Para regenerarlos, copiarlo a
+`pwa/assets/icon.png` y `pwa/assets/icon-foreground.png` y ejecutar
+`npx @capacitor/assets generate --android` desde `pwa/`.
 
 ## Por qué existe
 

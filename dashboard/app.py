@@ -242,15 +242,6 @@ def parse_product_form():
     }
 
 
-# --- App instalable (PWA) ---
-# Se sirven desde la raíz para que la app abarque todo el sitio (login, panel y caja).
-
-
-@app.route("/manifest.webmanifest")
-def web_manifest():
-    return send_from_directory(app.static_folder, "manifest.webmanifest", mimetype="application/manifest+json")
-
-
 # --- Buscadores y asistentes de IA ---
 # Solo la portada y el ingreso son públicos; el panel, el admin y la caja quedan fuera.
 
@@ -299,9 +290,14 @@ def llms_txt():
     return Response(render_template("seo/llms.txt"), mimetype="text/plain")
 
 
+# El sitio ya no es una app instalable (el cajero usa la app Android). Los
+# navegadores que registraron el service worker antiguo lo vuelven a pedir aquí
+# y reciben uno que se desinstala solo; esta ruta puede quitarse más adelante.
 @app.route("/sw.js")
 def service_worker():
-    return send_from_directory(app.static_folder, "js/sw.js", mimetype="text/javascript")
+    response = send_from_directory(app.static_folder, "js/sw.js", mimetype="text/javascript")
+    response.headers["Cache-Control"] = "no-cache"
+    return response
 
 
 # --- Auth routes ---

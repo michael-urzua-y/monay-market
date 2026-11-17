@@ -27,10 +27,7 @@
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='monay-market-logo.png', v=asset_version) }}">
     <link rel="preload" as="image" href="{{ url_for('static', filename='monay-market-logo-horizontal.png', v=asset_version) }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css', v=asset_version) }}">
-    <link rel="manifest" href="/manifest.webmanifest">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png', v=2) }}">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Monay Market">
 </head>
 <body class="login-page">
     {% set whatsapp_message = "Hola, los estoy contactando desde el sitio web de Monay Market porque tengo problemas para ingresar." %}
@@ -240,7 +237,5 @@
             });
         })();
     </script>
-
-    <script defer src="{{ url_for('static', filename='js/install.js', v=asset_version) }}"></script>
 </body>
 </html>

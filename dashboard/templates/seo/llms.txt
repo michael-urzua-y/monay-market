@@ -18,7 +18,7 @@
 - Productos a granel (por kilo) creados en segundos desde la caja.
 - Carga de productos uno por uno o masiva desde Excel.
 - Panel del dueño: ventas del día y del mes, productos más vendidos, horas punta, mermas y usuarios cajeros.
-- Se instala como app en el celular (aplicación web instalable).
+- App Android para el cajero; el dueño administra el negocio desde el navegador.
 
 ## Planes y contacto
 

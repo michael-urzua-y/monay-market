@@ -69,7 +69,7 @@ monay-market/
 - Librerías frontend servidas localmente (`htmx`, `alpine`, `chart.js`) para no depender de CDN externos
 
 ### PWA Punto de Venta
-- En el navegador: PWA instalable con el manifest unificado del sitio (`/manifest.webmanifest`)
+- En el navegador: funciona como página web (no se ofrece instalarla); en PC se usa con el login central del sitio
 - En Android: app nativa del cajero con Capacitor (ver `pwa/android/README.md`), con login propio que solo admite cajeros
 - Service Worker: cache-first para assets, network-first para API, respuesta offline 503
 - Login con JWT efímero almacenado en `sessionStorage`

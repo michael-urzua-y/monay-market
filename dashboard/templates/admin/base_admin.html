@@ -14,11 +14,7 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css', v=asset_version) }}">
     <script defer src="{{ url_for('static', filename='js/rut.js') }}"></script>
-    <link rel="manifest" href="/manifest.webmanifest">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png', v=2) }}">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="Monay Market">
-    <script defer src="{{ url_for('static', filename='js/install.js') }}"></script>
     <style>
         /* Admin-specific overrides using the same design tokens as main dashboard */
         .admin-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 22px; }
