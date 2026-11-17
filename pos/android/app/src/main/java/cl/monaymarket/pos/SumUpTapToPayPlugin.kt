@@ -93,7 +93,9 @@ class SumUpTapToPayPlugin : Plugin() {
 
     @PluginMethod
     fun startPayment(call: PluginCall) {
-        val amount = call.getLong("amount")
+        // No usar call.getLong: devuelve null si el número llega como Integer
+        // (lo normal para montos en pesos que vienen de JavaScript).
+        val amount = (call.data.opt("amount") as? Number)?.toLong()
         val affiliateKey = call.getString("affiliateKey")?.trim()
         val cardType = call.getString("processCardAs")
         val instalments = call.getInt("instalments") ?: 1
