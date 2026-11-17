@@ -10,7 +10,7 @@
 // Quedan en memoria: nunca se guardan en el celular.
 
 import { api } from './api.js';
-import { isNativeApp, loadCapacitorCore } from './platform.js?v=53';
+import { isNativeApp, loadCapacitorCore } from './platform.js?v=54';
 
 var state = {
   ready: false,
@@ -23,18 +23,19 @@ var state = {
 var INIT_TIMEOUT_MS = 60000;
 
 var NOT_ENABLED = 'El cobro con tarjeta no está activo. El dueño debe activarlo en el panel: Configuración → Cobro con tarjeta.';
-var pluginPromise = null;
+var sumUpPlugin = null;
 
-function plugin() {
-  if (!pluginPromise) {
-    pluginPromise = loadCapacitorCore().then(function (core) {
-      return core.registerPlugin('SumUpTapToPay');
-    }).catch(function (err) {
-      pluginPromise = null;
-      throw err;
-    });
-  }
-  return pluginPromise;
+/**
+ * Ejecuta fn con el plugin nativo SumUpTapToPay. Ojo: el plugin es un Proxy de
+ * Capacitor que responde a cualquier nombre, incluido "then"; si se devuelve
+ * como resultado de una promesa, JavaScript lo trata como otra promesa y queda
+ * esperando para siempre. Por eso se guarda aparte y nunca se resuelve con él.
+ */
+function withPlugin(fn) {
+  return loadCapacitorCore().then(function (core) {
+    if (!sumUpPlugin) sumUpPlugin = core.registerPlugin('SumUpTapToPay');
+    return fn(sumUpPlugin);
+  });
 }
 
 function notifyChange() {
@@ -65,7 +66,7 @@ function prepare() {
         state.unavailableReason = NOT_ENABLED;
         return false;
       }
-      return plugin().then(function (SumUp) {
+      return withPlugin(function (SumUp) {
         return withTimeout(SumUp.init({ accessToken: config.access_token }), INIT_TIMEOUT_MS);
       }).then(function () {
         state.affiliateKey = config.affiliate_key;
@@ -106,7 +107,7 @@ function charge(options) {
   if (!state.ready) {
     return Promise.reject(new Error('El cobro con tarjeta no está disponible'));
   }
-  return plugin().then(function (SumUp) {
+  return withPlugin(function (SumUp) {
     return SumUp.startPayment({
       amount: Math.round(options.amount),
       processCardAs: options.cardType,
@@ -125,7 +126,7 @@ function reset() {
   state.unavailableReason = NOT_ENABLED;
   notifyChange();
   if (!wasReady) return Promise.resolve();
-  return plugin().then(function (SumUp) { return SumUp.tearDown(); }).catch(function () {});
+  return withPlugin(function (SumUp) { return SumUp.tearDown(); }).catch(function () {});
 }
 
 function withTimeout(promise, ms) {
