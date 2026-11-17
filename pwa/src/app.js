@@ -8,15 +8,15 @@ import { OfflineDB } from './offline.js';
 import { Cart } from './cart.js';
 // Módulos de impresión con versión en la URL: nginx los cachea 7 días como inmutables.
 // Al cambiarlos, subir este número junto con APP_ASSET_VERSION (y en printer.js / service-worker.js).
-import { ThermalPrinter } from './printer.js?v=43';
-import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=43';
-import { SumUp } from './sumup.js?v=43';
-import { isNativeApp } from './platform.js?v=43';
+import { ThermalPrinter } from './printer.js?v=44';
+import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=44';
+import { SumUp } from './sumup.js?v=44';
+import { isNativeApp } from './platform.js?v=44';
 
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '43';
+  var APP_ASSET_VERSION = '44';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -2602,14 +2602,26 @@ function initArqueo() {
     var form = document.getElementById('pos-login-form');
     if (form) form.reset();
     setPosLoginError('');
+    var greeting = document.getElementById('pos-login-greeting');
+    if (greeting) greeting.textContent = greetingForNow();
     login.classList.remove('hidden');
   }
 
+  /** Saludo según la hora de Chile (mismo criterio que el panel del dueño). */
+  function greetingForNow() {
+    var hour = Number(new Intl.DateTimeFormat('es-CL', {
+      timeZone: RECEIPT_TIME_ZONE, hour: '2-digit', hour12: false,
+    }).format(new Date())) % 24;
+    if (hour < 12) return 'Buenos días';
+    if (hour < 20) return 'Buenas tardes';
+    return 'Buenas noches';
+  }
+
   function setPosLoginError(message) {
-    var el = document.getElementById('pos-login-error');
-    if (!el) return;
-    el.textContent = message;
-    el.hidden = !message;
+    var text = document.getElementById('pos-login-error');
+    if (!text) return;
+    text.textContent = message;
+    text.parentElement.hidden = !message;
   }
 
   function posLoginErrorMessage(err) {
@@ -2642,7 +2654,7 @@ function initArqueo() {
         return;
       }
       setPosLoginError('');
-      setButtonLoading(submitBtn, true, { label: 'Ingresando...' });
+      setButtonLoading(submitBtn, true, { label: 'Ingresando…' });
 
       api.post('/auth/login', { username: username, password: password }, {
         label: 'Ingresando',

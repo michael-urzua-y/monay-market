@@ -8,12 +8,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Monay Market">
-  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=43">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png?v=44">
   <title>Monay Market POS</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="src/styles.css?v=43">
+  <link rel="preload" href="src/fonts/plus-jakarta-sans.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="src/styles.css?v=44">
   
   <!-- App única de Monay (login, panel y caja) e invitación a instalarla en celulares -->
   <link rel="manifest" href="/manifest.webmanifest">
@@ -25,27 +23,52 @@
   <div id="app">
     <!-- Login de la app nativa (solo cajeros). En el navegador la caja usa el login central del sitio. -->
     <section id="pos-login" class="pos-login hidden" aria-labelledby="pos-login-title">
-      <form id="pos-login-form" class="pos-login-card" novalidate>
-        <img class="pos-login-logo" src="icons/monay-market-logo.png" alt="Monay Market" width="96" height="96">
-        <h1 id="pos-login-title">Caja</h1>
-        <p class="pos-login-lead">Ingresa con tu usuario de cajero.</p>
+      <div class="pos-login-body">
+        <form id="pos-login-form" class="pos-login-card" novalidate>
+          <img class="pos-login-logo" src="icons/monay-market-logo.png" alt="Monay Market" width="230" height="230">
+          <p id="pos-login-greeting" class="pos-login-greeting">Hola</p>
+          <h1 id="pos-login-title">Bienvenido a tu caja</h1>
+          <p class="pos-login-lead">Inicia sesión para empezar a vender.</p>
 
-        <label for="pos-login-username">Usuario</label>
-        <input id="pos-login-username" name="username" type="text" autocomplete="username"
-               autocapitalize="off" spellcheck="false" required maxlength="100">
+          <div class="pos-login-field">
+            <label for="pos-login-username">Usuario</label>
+            <div class="pos-login-control">
+              <svg class="pos-login-icon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
+              <input id="pos-login-username" name="username" type="text" placeholder="Tu usuario" autocomplete="username"
+                     autocapitalize="off" spellcheck="false" required maxlength="100">
+            </div>
+          </div>
 
-        <label for="pos-login-password">Contraseña</label>
-        <div class="pos-login-password">
-          <input id="pos-login-password" name="password" type="password" autocomplete="current-password" required maxlength="200">
-          <button type="button" id="pos-login-toggle" class="pos-login-toggle" aria-label="Mostrar contraseña" aria-pressed="false">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+          <div class="pos-login-field">
+            <label for="pos-login-password">Contraseña</label>
+            <div class="pos-login-control">
+              <svg class="pos-login-icon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+              <input id="pos-login-password" name="password" type="password" placeholder="Tu contraseña" autocomplete="current-password" required maxlength="200">
+              <button type="button" id="pos-login-toggle" class="pos-login-toggle" aria-label="Mostrar contraseña" aria-pressed="false">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <p class="pos-login-error" role="alert" hidden>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+            <span id="pos-login-error"></span>
+          </p>
+
+          <button type="submit" id="pos-login-submit" class="pos-login-submit">
+            <span>Abrir caja</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </button>
-        </div>
+        </form>
+      </div>
 
-        <p id="pos-login-error" class="pos-login-error" role="alert" hidden></p>
-
-        <button type="submit" id="pos-login-submit" class="btn btn-primary btn-block">Ingresar</button>
-      </form>
+      <p class="pos-login-foot">
+        <span class="pos-login-secure">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Acceso solo para cajeros
+        </span>
+        ¿Olvidaste tu contraseña? Pídele al dueño que la restablezca.
+      </p>
     </section>
 
     <!-- Header -->
@@ -438,6 +461,6 @@
   </div>
 
   <script src="/runtime-config.js"></script>
-  <script type="module" src="src/app.js?v=43"></script>
+  <script type="module" src="src/app.js?v=44"></script>
 </body>
 </html>
