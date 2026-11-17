@@ -41,6 +41,15 @@ que la PWA en Chrome.
 - Android SDK con `platforms;android-36` y `build-tools;36.0.0` (o superior).
   `local.properties` (no versionado) apunta a tu `sdk.dir` local.
 
+## Archivos de Capacitor que usa la caja
+
+La caja carga sus módulos sin empaquetador, y el WebView solo inyecta el
+puente nativo. Por eso la impresora Bluetooth necesita dos archivos copiados
+desde `node_modules` en `src/vendor/`: `capacitor-core.js` (`@capacitor/core`)
+y `capacitor-bluetooth-le.js` (el plugin). **Deben ser de la misma versión que
+la parte nativa del APK.** Al actualizar paquetes de Capacitor, ejecutar
+`npm run cap:sync` (incluye `npm run vendor:sync`) y recompilar.
+
 ## Compilar
 
 ```bash

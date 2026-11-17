@@ -17,8 +17,8 @@
 // sigue usando window.print() + RawBT (fuera de este módulo).
 // ============================================================
 
-import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=46'; // misma versión que en app.js
-import { isNativeApp } from './platform.js?v=46';
+import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=47'; // misma versión que en app.js
+import { isNativeApp } from './platform.js?v=47';
 
 // Servicios BLE "serial" de las térmicas chinas más comunes (Xprinter, Goojprt, Zjiang, MTP…)
 var SERVICES = [
@@ -166,30 +166,42 @@ function isSupported() {
 
 var bleLoadPromise = null;
 
-/** Carga src/vendor/capacitor-bluetooth-le.js bajo demanda (solo dentro de la app nativa). */
-function loadBleClient() {
-  if (window.capacitorCommunityBluetoothLe && window.capacitorCommunityBluetoothLe.BleClient) {
-    return Promise.resolve(window.capacitorCommunityBluetoothLe.BleClient);
-  }
-  if (bleLoadPromise) return bleLoadPromise;
-  bleLoadPromise = new Promise(function (resolve, reject) {
+/** Carga un archivo de src/vendor/ con la misma versión (?v=) con que se cargó este módulo. */
+function loadVendorScript(file) {
+  return new Promise(function (resolve, reject) {
     var script = document.createElement('script');
-    script.src = 'src/vendor/capacitor-bluetooth-le.js';
-    script.async = true;
-    script.addEventListener('load', function () {
-      if (window.capacitorCommunityBluetoothLe && window.capacitorCommunityBluetoothLe.BleClient) {
-        resolve(window.capacitorCommunityBluetoothLe.BleClient);
-      } else {
-        bleLoadPromise = null;
-        reject(new Error('No se pudo cargar el plugin de Bluetooth'));
-      }
-    }, { once: true });
-    script.addEventListener('error', function () {
-      bleLoadPromise = null;
-      reject(new Error('No se pudo cargar el plugin de Bluetooth'));
-    }, { once: true });
+    script.src = new URL('vendor/' + file + new URL(import.meta.url).search, import.meta.url).href;
+    script.async = false;
+    script.addEventListener('load', resolve, { once: true });
+    script.addEventListener('error', reject, { once: true });
     document.head.appendChild(script);
   });
+}
+
+/**
+ * Carga el plugin Bluetooth bajo demanda (solo dentro de la app nativa).
+ * El plugin necesita @capacitor/core (global capacitorExports). Una app con
+ * empaquetador lo incluye sola; la caja carga módulos sin empaquetador y el
+ * WebView solo inyecta el puente nativo, así que se carga capacitor-core.js
+ * antes. Ambos se copian desde node_modules con `npm run vendor:sync`.
+ */
+function loadBleClient() {
+  var loaded = function () {
+    var plugin = window.capacitorCommunityBluetoothLe;
+    return plugin && plugin.BleClient;
+  };
+  if (loaded()) return Promise.resolve(loaded());
+  if (bleLoadPromise) return bleLoadPromise;
+  bleLoadPromise = (window.capacitorExports ? Promise.resolve() : loadVendorScript('capacitor-core.js'))
+    .then(function () { return loadVendorScript('capacitor-bluetooth-le.js'); })
+    .then(function () {
+      if (!loaded()) throw new Error('plugin sin registrar');
+      return loaded();
+    })
+    .catch(function () {
+      bleLoadPromise = null;
+      throw PrinterError('No se pudo cargar el Bluetooth de la app. Cierre la app y vuelva a abrirla.');
+    });
   return bleLoadPromise;
 }
 

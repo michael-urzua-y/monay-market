@@ -4,7 +4,8 @@
   "private": true,
   "description": "Caja (POS) de Monay Market: PWA servida por el dashboard, empaquetada como app Android con Capacitor para integrar el SDK nativo de SumUp Tap to Pay.",
   "scripts": {
-    "cap:sync": "node sync-version.mjs && cap sync android",
+    "vendor:sync": "cp node_modules/@capacitor/core/dist/capacitor.js src/vendor/capacitor-core.js && cp node_modules/@capacitor-community/bluetooth-le/dist/plugin.js src/vendor/capacitor-bluetooth-le.js",
+    "cap:sync": "npm run vendor:sync && node sync-version.mjs && cap sync android",
     "cap:open:android": "cap open android"
   },
   "license": "UNLICENSED",
