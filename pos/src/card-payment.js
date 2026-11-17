@@ -10,7 +10,7 @@
 // Quedan en memoria: nunca se guardan en el celular.
 
 import { api } from './api.js';
-import { isNativeApp, loadCapacitorCore } from './platform.js?v=52';
+import { isNativeApp, loadCapacitorCore } from './platform.js?v=53';
 
 var state = {
   ready: false,
@@ -18,6 +18,9 @@ var state = {
   preparing: null,
   unavailableReason: 'El cobro con tarjeta no está activo en este negocio.',
 };
+
+// La primera vez SumUp registra el celular y puede tardar; si pasa de esto, se avisa
+var INIT_TIMEOUT_MS = 60000;
 
 var NOT_ENABLED = 'El cobro con tarjeta no está activo. El dueño debe activarlo en el panel: Configuración → Cobro con tarjeta.';
 var pluginPromise = null;
@@ -63,7 +66,7 @@ function prepare() {
         return false;
       }
       return plugin().then(function (SumUp) {
-        return SumUp.init({ accessToken: config.access_token });
+        return withTimeout(SumUp.init({ accessToken: config.access_token }), INIT_TIMEOUT_MS);
       }).then(function () {
         state.affiliateKey = config.affiliate_key;
         state.unavailableReason = null;
@@ -125,8 +128,23 @@ function reset() {
   return plugin().then(function (SumUp) { return SumUp.tearDown(); }).catch(function () {});
 }
 
+function withTimeout(promise, ms) {
+  return new Promise(function (resolve, reject) {
+    var timer = setTimeout(function () {
+      var err = new Error('SumUp no respondió');
+      err.code = 'TIMEOUT';
+      reject(err);
+    }, ms);
+    promise.then(function (value) { clearTimeout(timer); resolve(value); },
+      function (err) { clearTimeout(timer); reject(err); });
+  });
+}
+
 /** Error al preparar SumUp (init). El código va al final para diagnosticar. */
 function initFailureMessage(err) {
+  if (err && err.code === 'TIMEOUT') {
+    return 'SumUp no respondió al preparar el cobro. Revise internet, cierre y abra la app, y vuelva a tocar "Tarjeta".';
+  }
   var code = Number(err && err.code);
   var detail = ' (código ' + ((err && err.code) || '?') + ')';
   if (code === 105 || code === 202) {
