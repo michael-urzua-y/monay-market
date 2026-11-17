@@ -10,7 +10,7 @@
 // Quedan en memoria: nunca se guardan en el celular.
 
 import { api } from './api.js';
-import { isNativeApp, loadCapacitorCore } from './platform.js?v=56';
+import { isNativeApp, loadCapacitorCore } from './platform.js?v=57';
 
 var state = {
   ready: false,
@@ -162,15 +162,19 @@ function initFailureMessage(err) {
 /** Mensaje para el cajero según el código de error del SDK (docs: Exceptions and Error Codes). */
 function failureMessage(result) {
   var code = Number(result && result.code);
-  if (code === 1025 || code === 1029) return 'Tarjeta rechazada. Pida otro medio de pago.';
-  if (code === 1003) return 'Se acabó el tiempo para acercar la tarjeta.';
-  if (code >= 201 && code <= 206) return 'Sin conexión con SumUp. Revise internet y vuelva a intentar.';
+  // Siempre con el código y el detalle de SumUp: es lo que permite diagnosticar
+  var detail = ' (código ' + ((result && result.code) || '?') +
+    (result && result.message ? ': ' + result.message : '') + ')';
+  if (code === 1025 || code === 1029) return 'Tarjeta rechazada. Pida otro medio de pago' + detail + '.';
+  if (code === 1003) return 'Se acabó el tiempo para acercar la tarjeta' + detail + '.';
+  if (code === 201) return 'Sin conexión con SumUp. Revise internet y vuelva a intentar' + detail + '.';
+  if (code === 202) return 'SumUp rechazó las credenciales del negocio. Revise las claves en el panel' + detail + '.';
+  if (code >= 204 && code <= 206) return 'SumUp rechazó la solicitud de cobro' + detail + '.';
   if (code >= 301 && code <= 305) {
-    return 'SumUp bloqueó el cobro por seguridad del celular: desactive las Opciones de desarrollador y la Depuración USB.';
+    return 'SumUp bloqueó el cobro por seguridad del celular: desactive las Opciones de desarrollador y la Depuración USB' + detail + '.';
   }
-  if (code === 106) return 'SumUp pide actualizar la app de la caja.';
-  return 'No se pudo cobrar con tarjeta' + (result && result.message ? ': ' + result.message : '') +
-    ' (código ' + ((result && result.code) || '?') + ').';
+  if (code === 106) return 'SumUp pide actualizar la app de la caja' + detail + '.';
+  return 'No se pudo cobrar con tarjeta' + detail + '.';
 }
 
 export var CardPayment = {
