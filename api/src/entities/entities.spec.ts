@@ -74,7 +74,8 @@ describe('TypeORM Entities', () => {
           'sii_codigo_sucursal', 'sii_sandbox_mode',
           'sii_razon_social', 'sii_giro', 'sii_certificado_path',
           'sii_certificado_password',
-          'printer_enabled', 'updated_at',
+          'printer_enabled', 'card_payment_enabled',
+          'sumup_api_key', 'sumup_affiliate_key', 'updated_at',
         ]),
       );
     });

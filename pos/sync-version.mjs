@@ -35,7 +35,7 @@ const edits = [
   },
   // Imports de módulos con cache-busting propio (nginx los cachea 7 días
   // como inmutables): ./printer.js?v=41, ./receipt-escpos.js?v=41, etc.
-  ...['src/app.js', 'src/printer.js'].map((file) => ({
+  ...['src/app.js', 'src/printer.js', 'src/card-payment.js'].map((file) => ({
     file,
     pattern: /(from '\.\/[\w-]+\.js)\?v=\d+(')/g,
     replacement: `$1?v=${version}$2`,

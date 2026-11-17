@@ -30,6 +30,9 @@ describe('TenantsService', () => {
     sii_certificado_password: null,
     sii_sandbox_mode: true,
     printer_enabled: false,
+    card_payment_enabled: false,
+    sumup_api_key: null,
+    sumup_affiliate_key: null,
     updated_at: new Date(),
     tenant: null as any,
   };
@@ -136,6 +139,173 @@ describe('TenantsService', () => {
       // El proveedor queda siempre en API Gateway, aunque no se envíe
       expect(result.sii_provider).toBe(SiiProvider.API_GATEWAY);
       expect(result.sii_api_key).toBeNull();
+    });
+  });
+
+  describe('getConfig — claves de SumUp', () => {
+    it('enmascara las claves de SumUp como configured', async () => {
+      configFindOne.mockResolvedValue({
+        ...mockConfig,
+        card_payment_enabled: true,
+        sumup_api_key: 'sup_sk_secreto',
+        sumup_affiliate_key: 'afiliado-secreto',
+      });
+      const result = await service.getConfig(tenantId);
+      expect(result.card_payment_enabled).toBe(true);
+      expect(result.sumup_api_key).toBe('configured');
+      expect(result.sumup_affiliate_key).toBe('configured');
+      expect(JSON.stringify(result)).not.toContain('sup_sk_secreto');
+      expect(JSON.stringify(result)).not.toContain('afiliado-secreto');
+    });
+
+    it('devuelve null cuando las claves no están configuradas', async () => {
+      configFindOne.mockResolvedValue({ ...mockConfig });
+      const result = await service.getConfig(tenantId);
+      expect(result.sumup_api_key).toBeNull();
+      expect(result.sumup_affiliate_key).toBeNull();
+    });
+  });
+
+  describe('updateCardPaymentConfig', () => {
+    beforeEach(() => {
+      configSave.mockImplementation(async (entity: any) => entity);
+    });
+
+    it('guarda las claves recortadas y responde enmascarado', async () => {
+      configFindOne.mockResolvedValue({ ...mockConfig });
+
+      const result = await service.updateCardPaymentConfig(tenantId, {
+        card_payment_enabled: true,
+        sumup_api_key: '  sup_sk_nueva  ',
+        sumup_affiliate_key: 'afiliado-nuevo',
+      });
+
+      expect(configSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          card_payment_enabled: true,
+          sumup_api_key: 'sup_sk_nueva',
+          sumup_affiliate_key: 'afiliado-nuevo',
+        }),
+      );
+      expect(result.card_payment_enabled).toBe(true);
+      expect(result.sumup_api_key).toBe('configured');
+      expect(result.sumup_affiliate_key).toBe('configured');
+    });
+
+    it('un texto vacío borra la clave', async () => {
+      configFindOne.mockResolvedValue({
+        ...mockConfig,
+        sumup_api_key: 'sup_sk_vieja',
+        sumup_affiliate_key: 'afiliado-viejo',
+      });
+
+      const result = await service.updateCardPaymentConfig(tenantId, {
+        sumup_api_key: '   ',
+      });
+
+      expect(configSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sumup_api_key: null,
+          sumup_affiliate_key: 'afiliado-viejo',
+        }),
+      );
+      expect(result.sumup_api_key).toBeNull();
+      expect(result.sumup_affiliate_key).toBe('configured');
+    });
+
+    it('no toca las claves si no se envían', async () => {
+      configFindOne.mockResolvedValue({
+        ...mockConfig,
+        sumup_api_key: 'sup_sk_vieja',
+        sumup_affiliate_key: 'afiliado-viejo',
+      });
+
+      await service.updateCardPaymentConfig(tenantId, { card_payment_enabled: false });
+
+      expect(configSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          card_payment_enabled: false,
+          sumup_api_key: 'sup_sk_vieja',
+          sumup_affiliate_key: 'afiliado-viejo',
+        }),
+      );
+    });
+
+    it('lanza NotFoundException si no hay configuración', async () => {
+      configFindOne.mockResolvedValue(null);
+      await expect(
+        service.updateCardPaymentConfig(tenantId, { card_payment_enabled: true }),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getCardPaymentCredentials', () => {
+    it('entrega las claves cuando está activo y completo', async () => {
+      configFindOne.mockResolvedValue({
+        ...mockConfig,
+        card_payment_enabled: true,
+        sumup_api_key: 'sup_sk_secreto',
+        sumup_affiliate_key: 'afiliado-secreto',
+      });
+
+      const result = await service.getCardPaymentCredentials(tenantId);
+
+      expect(result).toEqual({
+        enabled: true,
+        access_token: 'sup_sk_secreto',
+        affiliate_key: 'afiliado-secreto',
+      });
+      expect(configFindOne).toHaveBeenCalledWith({ where: { tenant_id: tenantId } });
+    });
+
+    it('no entrega claves si el cobro con tarjeta está desactivado', async () => {
+      configFindOne.mockResolvedValue({
+        ...mockConfig,
+        card_payment_enabled: false,
+        sumup_api_key: 'sup_sk_secreto',
+        sumup_affiliate_key: 'afiliado-secreto',
+      });
+
+      await expect(service.getCardPaymentCredentials(tenantId)).resolves.toEqual({
+        enabled: false,
+        access_token: null,
+        affiliate_key: null,
+      });
+    });
+
+    it('no entrega claves si falta la clave de afiliado', async () => {
+      configFindOne.mockResolvedValue({
+        ...mockConfig,
+        card_payment_enabled: true,
+        sumup_api_key: 'sup_sk_secreto',
+        sumup_affiliate_key: null,
+      });
+
+      await expect(service.getCardPaymentCredentials(tenantId)).resolves.toEqual({
+        enabled: false,
+        access_token: null,
+        affiliate_key: null,
+      });
+    });
+
+    it('no entrega claves si falta la clave de API', async () => {
+      configFindOne.mockResolvedValue({
+        ...mockConfig,
+        card_payment_enabled: true,
+        sumup_api_key: null,
+        sumup_affiliate_key: 'afiliado-secreto',
+      });
+
+      await expect(service.getCardPaymentCredentials(tenantId)).resolves.toEqual({
+        enabled: false,
+        access_token: null,
+        affiliate_key: null,
+      });
+    });
+
+    it('lanza NotFoundException si no hay configuración', async () => {
+      configFindOne.mockResolvedValue(null);
+      await expect(service.getCardPaymentCredentials(tenantId)).rejects.toThrow(NotFoundException);
     });
   });
 

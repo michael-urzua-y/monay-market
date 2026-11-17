@@ -5,7 +5,15 @@ import { Repository } from 'typeorm';
 import { TenantConfig } from '../entities/tenant-config.entity';
 import { Subscription } from '../entities/subscription.entity';
 import { UpdateSiiConfigDto } from './dto/update-sii-config.dto';
+import { UpdateCardPaymentConfigDto } from './dto/update-card-payment-config.dto';
 import { SiiProvider } from '../entities/enums';
+
+/** Lo que recibe la app de la caja para cobrar con tarjeta (SumUp). */
+export interface CardPaymentCredentials {
+  enabled: boolean;
+  access_token: string | null;
+  affiliate_key: string | null;
+}
 
 @Injectable()
 export class TenantsService {
@@ -57,6 +65,41 @@ export class TenantsService {
     return this.sanitizeConfig(savedConfig);
   }
 
+  async updateCardPaymentConfig(
+    tenantId: string,
+    dto: UpdateCardPaymentConfigDto,
+  ): Promise<Partial<TenantConfig>> {
+    const config = await this.findConfigOrFail(tenantId);
+
+    if (dto.card_payment_enabled !== undefined) config.card_payment_enabled = dto.card_payment_enabled;
+    if (dto.sumup_api_key !== undefined) config.sumup_api_key = this.normalizeOptionalString(dto.sumup_api_key);
+    if (dto.sumup_affiliate_key !== undefined) config.sumup_affiliate_key = this.normalizeOptionalString(dto.sumup_affiliate_key);
+
+    const savedConfig = await this.configRepository.save(config);
+    return this.sanitizeConfig(savedConfig);
+  }
+
+  /**
+   * Único punto donde las claves de SumUp salen del servidor: solo se
+   * entregan si el cobro con tarjeta está activo y ambas claves existen.
+   */
+  async getCardPaymentCredentials(tenantId: string): Promise<CardPaymentCredentials> {
+    const config = await this.findConfigOrFail(tenantId);
+    const enabled = Boolean(
+      config.card_payment_enabled && config.sumup_api_key && config.sumup_affiliate_key,
+    );
+
+    if (!enabled) {
+      return { enabled: false, access_token: null, affiliate_key: null };
+    }
+
+    return {
+      enabled: true,
+      access_token: config.sumup_api_key,
+      affiliate_key: config.sumup_affiliate_key,
+    };
+  }
+
   async getSubscription(tenantId: string): Promise<Subscription> {
     const subscription = await this.subscriptionRepository.findOne({
       where: { tenant_id: tenantId },
@@ -76,6 +119,8 @@ export class TenantsService {
       sii_clave_tributaria: config.sii_clave_tributaria ? 'configured' : null,
       sii_certificado_path: config.sii_certificado_path ? 'configured' : null,
       sii_certificado_password: null,
+      sumup_api_key: config.sumup_api_key ? 'configured' : null,
+      sumup_affiliate_key: config.sumup_affiliate_key ? 'configured' : null,
     };
   }
 

@@ -493,3 +493,163 @@ class TestSearchAndAi:
         assert {"Organization", "SoftwareApplication", "FAQPage"} <= types
         assert '<link rel="canonical"' in body
         assert 'property="og:image"' in body
+
+
+class TestCardPaymentSettings:
+    """Cobro con tarjeta (SumUp): el panel guarda claves sin volver a mostrarlas."""
+
+    def post_card_payment(self, client, data):
+        return client.post(
+            "/settings/card-payment",
+            data={"_csrf_token": CSRF_TOKEN, **data},
+            base_url="http://localhost:5000",
+            headers={"Origin": "http://localhost:5000"},
+        )
+
+    @patch("app.api")
+    def test_settings_shows_card_section_with_configured_keys(self, mock_api, client):
+        """Con claves guardadas se muestra «Configurada» y nunca la clave misma."""
+        login_owner_session(client)
+        mock_api.get.side_effect = lambda endpoint, *a, **k: (
+            {
+                "card_payment_enabled": True,
+                "sumup_api_key": "configured",
+                "sumup_affiliate_key": "configured",
+            }
+            if endpoint == "/tenant/config"
+            else {}
+        )
+
+        resp = client.get("/settings")
+
+        assert resp.status_code == 200
+        body = resp.data.decode("utf-8")
+        assert "Cobro con tarjeta (SumUp)" in body
+        assert "Activar cobro con tarjeta en la caja" in body
+        assert "Cobro con tarjeta: activo" in body
+        assert body.count("Configurada") >= 2
+        assert 'value="sumup_api_key"' in body
+        assert 'value="sumup_affiliate_key"' in body
+        assert "cl.monaymarket.pos" in body
+        assert "Opciones de desarrollador" in body
+
+    @patch("app.api")
+    def test_settings_without_keys_shows_inputs(self, mock_api, client):
+        """Sin claves se muestran los campos para ingresarlas."""
+        login_owner_session(client)
+        mock_api.get.return_value = {}
+
+        resp = client.get("/settings")
+
+        body = resp.data.decode("utf-8")
+        assert 'name="sumup_api_key"' in body
+        assert 'name="sumup_affiliate_key"' in body
+        assert "Cobro con tarjeta: desactivado" in body
+
+    @patch("app.api")
+    def test_save_sends_toggle_and_new_keys(self, mock_api, client):
+        """Guardar envía el interruptor y solo las claves escritas."""
+        login_owner_session(client)
+        seed_csrf(client)
+        mock_api.patch.return_value = {"card_payment_enabled": True}
+
+        resp = self.post_card_payment(client, {
+            "card_payment_enabled": "on",
+            "sumup_api_key": "  sup_sk_nueva  ",
+            "sumup_affiliate_key": "",
+        })
+
+        assert resp.status_code == 302
+        assert "success=Cobro+con+tarjeta+actualizado" in resp.headers["Location"]
+        mock_api.patch.assert_called_once_with(
+            "/tenant/config/card-payment",
+            data={"card_payment_enabled": True, "sumup_api_key": "sup_sk_nueva"},
+        )
+
+    @patch("app.api")
+    def test_save_without_toggle_disables(self, mock_api, client):
+        """Sin el interruptor marcado se desactiva y no se tocan las claves."""
+        login_owner_session(client)
+        seed_csrf(client)
+        mock_api.patch.return_value = {}
+
+        self.post_card_payment(client, {})
+
+        mock_api.patch.assert_called_once_with(
+            "/tenant/config/card-payment",
+            data={"card_payment_enabled": False},
+        )
+
+    @patch("app.api")
+    def test_remove_key_via_post_only_clears_that_key(self, mock_api, client):
+        """«Quitar» borra solo esa clave y no cambia el interruptor."""
+        login_owner_session(client)
+        seed_csrf(client)
+        mock_api.patch.return_value = {}
+
+        resp = self.post_card_payment(client, {"clear_key": "sumup_affiliate_key"})
+
+        assert resp.status_code == 302
+        assert "success=Clave+de+SumUp+eliminada" in resp.headers["Location"]
+        mock_api.patch.assert_called_once_with(
+            "/tenant/config/card-payment",
+            data={"sumup_affiliate_key": ""},
+        )
+
+    @patch("app.api")
+    def test_remove_unknown_key_is_rejected(self, mock_api, client):
+        """No se puede usar «Quitar» para otros campos."""
+        login_owner_session(client)
+        seed_csrf(client)
+
+        resp = self.post_card_payment(client, {"clear_key": "sii_api_key"})
+
+        assert resp.status_code == 302
+        assert "error=" in resp.headers["Location"]
+        mock_api.patch.assert_not_called()
+
+    @patch("app.api")
+    def test_get_query_params_never_clear_keys(self, mock_api, client):
+        """Un GET con parámetros no borra claves de SumUp."""
+        login_owner_session(client)
+        mock_api.get.return_value = {}
+
+        client.get("/settings?clear_key=sumup_api_key&clear_sumup_api_key=1")
+
+        mock_api.patch.assert_not_called()
+
+    @patch("app.api")
+    def test_api_error_redirects_with_message(self, mock_api, client):
+        """Un error de la API se muestra en la página de configuración."""
+        login_owner_session(client)
+        seed_csrf(client)
+        mock_api.patch.return_value = {
+            "status_code": 400,
+            "message": ["sumup_api_key must be shorter than or equal to 512 characters"],
+        }
+
+        resp = self.post_card_payment(client, {"sumup_api_key": "x"})
+
+        assert resp.status_code == 302
+        assert "error=sumup_api_key" in resp.headers["Location"]
+
+    @patch("app.api")
+    def test_requires_csrf(self, mock_api, client):
+        """Sin token CSRF el POST se rechaza."""
+        login_owner_session(client)
+        resp = client.post("/settings/card-payment", data={"clear_key": "sumup_api_key"})
+        assert resp.status_code == 403
+        mock_api.patch.assert_not_called()
+
+    @patch("app.api")
+    def test_cashier_cannot_update(self, mock_api, client):
+        """Un cajero no puede cambiar el cobro con tarjeta desde el panel."""
+        with client.session_transaction() as sess:
+            sess["jwt_token"] = "valid-token"
+            sess["user"] = {"username": "juan.perez", "role": "cajero"}
+            sess["_csrf_token"] = CSRF_TOKEN
+
+        resp = self.post_card_payment(client, {"card_payment_enabled": "on"})
+
+        assert resp.status_code == 302
+        mock_api.patch.assert_not_called()

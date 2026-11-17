@@ -1,4 +1,11 @@
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+
+// Firma de la versión "release". SumUp Tap to Pay solo cobra con un APK no
+// depurable (release). La llave y sus claves viven fuera del repositorio, en
+// ~/.gradle/gradle.properties: MONAY_POS_KEYSTORE_FILE, MONAY_POS_KEYSTORE_PASSWORD,
+// MONAY_POS_KEY_ALIAS y MONAY_POS_KEY_PASSWORD. Ver android/README.md.
+def releaseKeystore = findProperty('MONAY_POS_KEYSTORE_FILE')
 
 android {
     namespace = "cl.monaymarket.pos"
@@ -15,8 +22,25 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (releaseKeystore) {
+            release {
+                storeFile file(releaseKeystore)
+                storePassword findProperty('MONAY_POS_KEYSTORE_PASSWORD')
+                keyAlias findProperty('MONAY_POS_KEY_ALIAS')
+                keyPassword findProperty('MONAY_POS_KEY_PASSWORD')
+            }
+        }
+    }
+    compileOptions {
+        // El SDK de SumUp lo exige (usa APIs de java.time en Android 11)
+        coreLibraryDesugaringEnabled true
+    }
     buildTypes {
         release {
+            // No depurable: requisito de SumUp para que el cobro pase la verificación del equipo
+            debuggable false
+            if (releaseKeystore) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -36,6 +60,15 @@ dependencies {
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
     implementation project(':capacitor-cordova-android-plugins')
+
+    // Cobro con tarjeta en el celular (SumUp Tap to Pay)
+    implementation "com.sumup.tap-to-pay:utopia-sdk:$sumupTapToPayVersion"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$kotlinxCoroutinesVersion"
+    coreLibraryDesugaring "com.android.tools:desugar_jdk_libs:$desugarJdkLibsVersion"
+}
+
+kotlin {
+    jvmToolchain(21) // igual que capacitor-android (Java 21)
 }
 
 apply from: 'capacitor.build.gradle'

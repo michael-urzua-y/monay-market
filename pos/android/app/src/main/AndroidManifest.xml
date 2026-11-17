@@ -7,7 +7,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/AppTheme">
+        android:theme="@style/AppTheme"
+        tools:replace="android:theme">
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode|navigation|density"
             android:name=".MainActivity"
@@ -44,19 +45,19 @@
     <!-- Impresora Bluetooth. La app no usa el Bluetooth para ubicar a nadie
          (neverForLocation): en Android 12+ solo pide "Dispositivos cercanos",
          sin ubicación. En Android 11 (el mínimo de la app) Android sí exige la
-         ubicación para buscar Bluetooth, por eso se mantiene hasta la API 30.
-         Va junto con initialize({ androidNeverForLocation: true }) en printer.js. -->
-    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30" />
+         ubicación para buscar Bluetooth, por eso FINE se mantiene hasta la API 30.
+         Va junto con initialize({ androidNeverForLocation: true }) en printer.js.
+         COARSE no tiene tope: el SDK de SumUp Tap to Pay la exige en todas las
+         versiones para el cobro con tarjeta (la declara en su propio manifest). -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
         android:usesPermissionFlags="neverForLocation"
         tools:targetApi="s" />
 
-    <!-- Para el cobro con tarjeta vía SumUp Tap to Pay (SDK nativo, pendiente
-         de acceso de SumUp). required="false" porque hoy la app también se
-         usa solo para pagar en efectivo, sin NFC: así no se bloquea la
-         instalación en celulares sin NFC. Cuando se integre el SDK, revisar
-         si conviene pasar a required="true" según cómo se distribuya. -->
+    <!-- Cobro con tarjeta vía SumUp Tap to Pay (el cliente acerca la tarjeta
+         al celular). required="false": en un celular sin NFC la app igual se
+         instala y cobra en efectivo; la caja deja "Tarjeta" deshabilitado. -->
     <uses-permission android:name="android.permission.NFC" />
     <uses-feature android:name="android.hardware.nfc" android:required="false" />
 </manifest>

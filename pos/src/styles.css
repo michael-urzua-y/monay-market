@@ -951,7 +951,7 @@ body.app-booting .global-loading-panel {
   font-weight: 700;
 }
 
-/* Tarjeta deshabilitada en index.html hasta integrar el Tap-to-Pay SDK de SumUp */
+/* Tarjeta deshabilitada si el negocio no la activó, no hay internet o el celular no puede cobrar */
 .payment-method-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -1323,6 +1323,34 @@ body.app-booting .global-loading-panel {
 .btn-clear-amount:hover {
   background: #cfd8c2;
   color: var(--color-text);
+}
+
+/* Débito / Crédito: SumUp exige indicarlo en cada cobro en Chile */
+.card-type-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.card-type-btn {
+  min-height: 44px;
+  border: 1.5px solid var(--color-surface-3);
+  border-radius: 10px;
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.card-type-btn.active {
+  border-color: var(--color-ink);
+  background: var(--color-surface-2);
+  color: var(--color-ink);
+  font-weight: 700;
 }
 
 .tarjeta-msg {

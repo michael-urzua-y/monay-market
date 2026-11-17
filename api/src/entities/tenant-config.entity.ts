@@ -81,6 +81,30 @@ export class TenantConfig {
   @Column({ name: 'printer_enabled', type: 'boolean', default: true })
   printer_enabled: boolean;
 
+  /** Cobro con tarjeta en la caja (SumUp Tap to Pay). */
+  @Column({ name: 'card_payment_enabled', type: 'boolean', default: false })
+  card_payment_enabled: boolean;
+
+  /** Clave secreta de API de SumUp (sup_sk_...): el SDK la usa como token de acceso. */
+  @Column({
+    name: 'sumup_api_key',
+    type: 'varchar',
+    length: 512,
+    nullable: true,
+    transformer: encryptedStringTransformer,
+  })
+  sumup_api_key: string | null;
+
+  /** Clave de afiliado de SumUp, creada para el app id cl.monaymarket.pos. */
+  @Column({
+    name: 'sumup_affiliate_key',
+    type: 'varchar',
+    length: 512,
+    nullable: true,
+    transformer: encryptedStringTransformer,
+  })
+  sumup_affiliate_key: string | null;
+
   @UpdateDateColumn({ name: 'updated_at' })
   updated_at: Date;
 

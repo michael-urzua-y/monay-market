@@ -1,7 +1,7 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
 
 buildscript {
-    
+    ext.kotlin_version = '2.2.21' // la que exige el SDK de SumUp Tap to Pay (1.1.6+)
     repositories {
         google()
         mavenCentral()
@@ -9,6 +9,8 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:8.13.0'
         classpath 'com.google.gms:google-services:4.4.4'
+        // Plugin nativo de cobro con tarjeta (SumUp Tap to Pay) escrito en Kotlin
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
@@ -21,6 +23,21 @@ allprojects {
     repositories {
         google()
         mavenCentral()
+        // SDK de SumUp Tap to Pay. El repositorio privado usa las credenciales
+        // que entrega SumUp: van en ~/.gradle/gradle.properties (o variables de
+        // entorno), nunca en el repositorio. Ver android/README.md.
+        maven {
+            url = uri('https://maven.sumup.com/releases')
+            content { includeGroupByRegex 'com\\.sumup.*' }
+        }
+        maven {
+            url = uri('https://tap-to-pay-sdk.fleet.live.sumup.net/')
+            credentials {
+                username = findProperty('SUMUP_TTP_MAVEN_USER') ?: System.getenv('SUMUP_TTP_MAVEN_USER') ?: ''
+                password = findProperty('SUMUP_TTP_MAVEN_PASSWORD') ?: System.getenv('SUMUP_TTP_MAVEN_PASSWORD') ?: ''
+            }
+            content { includeGroupByRegex '(com\\.sumup|ca\\.amadis).*' }
+        }
     }
 }
 

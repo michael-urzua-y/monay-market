@@ -4,7 +4,7 @@ App nativa de la **caja (cajero)**. Carga en vivo `https://pos.serviciohyh.cl/po
 dentro de un WebView (ver `server.url` en [`../capacitor.config.json`](../capacitor.config.json));
 no empaqueta los archivos del POS, así que **actualizar la UI/JS del POS no
 requiere recompilar el APK**. Solo hay que recompilar cuando cambia algo nativo
-(permisos, ícono, y — cuando llegue el acceso de SumUp — el SDK de Tap to Pay).
+(permisos, ícono, plugins nativos o el SDK de SumUp Tap to Pay).
 
 El **dashboard** (dueño/admin) sigue siendo un sitio web normal, sin cambios;
 esta app solo empaqueta el POS del cajero. Sin sesión, la app muestra su propio
@@ -21,17 +21,40 @@ Generados con `@capacitor/assets` desde [`icon-source.png`](icon-source.png)
 `pos/assets/icon.png` y `pos/assets/icon-foreground.png` y ejecutar
 `npx @capacitor/assets generate --android` desde `pos/`.
 
-## Cobro con tarjeta (pendiente)
+## Cobro con tarjeta (SumUp Tap to Pay)
 
-El cobro con SumUp por el esquema `sumupmerchant://` (Payment Switch) se probó
-y se descartó: SumUp lo documenta como legado y sin garantía de volver a la app
-que lo abre (en las pruebas hubo cobros que no volvieron). El camino soportado
-es su **Tap-to-Pay SDK nativo para Android**, que se integra en esta app.
-Mientras se gestiona el acceso al SDK (solicitado a `integration@sumup.com`),
-la caja vende en **efectivo** y el botón "Tarjeta" está deshabilitado.
+El cliente acerca su tarjeta al celular del cajero e ingresa su PIN en la
+pantalla de SumUp. Piezas:
+
+- **SDK** `com.sumup.tap-to-pay:utopia-sdk` (versión en
+  [`variables.gradle`](variables.gradle)), desde el Maven privado de SumUp.
+- **Plugin nativo** [`SumUpTapToPayPlugin.kt`](app/src/main/java/cl/monaymarket/pos/SumUpTapToPayPlugin.kt)
+  (`init`, `startPayment`, `tearDown`), registrado en `MainActivity`.
+- **Caja**: [`src/card-payment.js`](../src/card-payment.js) y `chargeCard()` en
+  `src/app.js`. La venta se registra **solo** si SumUp aprueba, con
+  `card_transaction_ref` = código de SumUp (así el servidor emite la boleta).
+  Si el resultado es incierto no se registra y se pide revisar en SumUp.
+- **Claves por negocio**: el dueño las ingresa en el panel (Configuración →
+  Cobro con tarjeta). Se guardan cifradas y la app las pide al entrar el
+  cajero (`GET /tenant/card-payment`); quedan solo en memoria.
+
+Requisitos de SumUp para cobrar:
+
+- APK **release** (no depurable): `sh build-release.sh`. El de debug no cobra.
+- En el celular: **Opciones de desarrollador y Depuración USB desactivadas**
+  (si no, SumUp bloquea el cobro y no muestra el PIN). NFC encendido.
+- Chile: `processCardAs` en cada cobro (la caja pregunta Débito / Crédito) y
+  PIN siempre. Monto en CLP × 100 (lo hace el plugin).
+- Avisar a SumUp (`integration@sumup.com`) antes de pasar a producción.
 
 ## Requisitos para compilar
 
+- **Credenciales del Maven de SumUp** en `~/.gradle/gradle.properties`
+  (nunca en el repo):
+  ```
+  SUMUP_TTP_MAVEN_USER=...
+  SUMUP_TTP_MAVEN_PASSWORD=...
+  ```
 - **Java 21** (el módulo `capacitor-android` lo exige; Java 17 no alcanza,
   aunque cumple el mínimo que pide el SDK de SumUp). Instalar con:
   ```
@@ -52,8 +75,15 @@ la parte nativa del APK.** Al actualizar paquetes de Capacitor, ejecutar
 ## Compilar
 
 ```bash
-sh build-debug.sh
+sh build-release.sh   # el que se instala en la caja (cobra con tarjeta)
+sh build-debug.sh     # pruebas sin tarjeta
 ```
+
+**Firma del release**: la llave está en `~/.monay-market/monay-pos-release.jks`
+y sus claves en `~/.gradle/gradle.properties` (`MONAY_POS_KEYSTORE_FILE`,
+`MONAY_POS_KEYSTORE_PASSWORD`, `MONAY_POS_KEY_ALIAS`, `MONAY_POS_KEY_PASSWORD`).
+**Respaldar ambos**: sin la misma llave no se puede actualizar la app ya
+instalada (habría que desinstalar, y se pierde lo guardado en el celular).
 
 Genera `app/build/outputs/apk/debug/app-debug.apk`. Ese script fija
 `JAVA_HOME` a Java 21 por la ruta de Homebrew, para no depender de que el
@@ -62,7 +92,7 @@ shell ya lo tenga bien apuntado.
 ## Instalar en un celular (sin Play Store)
 
 ```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
 O copia el `.apk` al celular y ábrelo desde ahí (hay que permitir "instalar
@@ -75,16 +105,6 @@ apps de orígenes desconocidos" la primera vez).
   acá, hay que cambiarlo también en SumUp.
 - Servidor remoto: `capacitor.config.json` → `server.url`. Apunta hoy al
   VPS de prueba `pos.serviciohyh.cl`. Cuando exista un dominio/servidor de
-  producción propio, cambiar esa URL y recompilar (`sh build-debug.sh`).
+  producción propio, cambiar esa URL y recompilar (`sh build-release.sh`).
 - `minSdkVersion = 30` (Android 11), por el mínimo que exige el SDK de
   SumUp Tap to Pay — ver [`variables.gradle`](variables.gradle).
-
-## Pendiente (cuando llegue el acceso de SumUp)
-
-1. Agregar las credenciales Maven de SumUp a `build.gradle` / `settings.gradle`.
-2. Escribir un plugin nativo de Capacitor (Kotlin) que exponga `startPayment`
-   del Tap-to-Pay SDK a la caja, y conectarlo donde `processSale` deja el comentario
-   de tarjeta. Habilitar el botón "Tarjeta" en `index.html` (hoy `disabled`).
-3. Revisar `android:required` de `android.hardware.nfc` en el manifest según
-   cómo se termine distribuyendo la app.
-4. Confirmar requisitos de Chile con SumUp: PIN obligatorio y `processCardAs`.

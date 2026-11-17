@@ -3,7 +3,7 @@
 
 {% block title %}Configuración{% endblock %}
 {% block page_title %}Configuración{% endblock %}
-{% block page_subtitle %}Boleta electrónica y suscripción de tu negocio{% endblock %}
+{% block page_subtitle %}Boleta electrónica, cobro con tarjeta y suscripción de tu negocio{% endblock %}
 
 {% block head %}
 <style>
@@ -188,6 +188,26 @@
         color: var(--color-error);
     }
 
+    button.settings-clear-link {
+        border: 0;
+        font-family: inherit;
+        cursor: pointer;
+    }
+
+    .settings-locked-actions {
+        display: inline-flex;
+        gap: 6px;
+        flex-shrink: 0;
+    }
+
+    .settings-help {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 0.8125rem;
+        color: var(--color-text-muted);
+        line-height: 1.55;
+    }
+
     .settings-form-footer {
         display: flex;
         justify-content: flex-end;
@@ -214,6 +234,7 @@
 
 {% block content %}
 {% set sii_ready = config.get('sii_enabled') and config.get('sii_api_key') and config.get('sii_rut_emisor') and config.get('sii_rut_autenticador') and config.get('sii_clave_tributaria') and config.get('sii_codigo_sucursal') is not none %}
+{% set card_ready = config.get('card_payment_enabled') and config.get('sumup_api_key') and config.get('sumup_affiliate_key') %}
 {% set business_ready = config.get('sii_razon_social') and config.get('sii_giro') and config.get('sii_rut_emisor') %}
 {% set sub_status = subscription.get('status', '') if subscription else '' %}
 {% set sub_plan = subscription.get('plan', '') if subscription else '' %}
@@ -253,6 +274,27 @@
             <div class="settings-status-text">
                 <strong>Boleta electrónica: desactivada</strong>
                 <span>Las ventas se registran sin emitir boleta</span>
+            </div>
+            {% endif %}
+        </div>
+        <div class="settings-status">
+            {% if card_ready %}
+            <span class="settings-status-icon is-ok">{{ icon('tarjeta', 22) }}</span>
+            <div class="settings-status-text">
+                <strong>Cobro con tarjeta: activo</strong>
+                <span>SumUp Tap to Pay en la app de la caja</span>
+            </div>
+            {% elif config.get('card_payment_enabled') %}
+            <span class="settings-status-icon is-warn">{{ icon('alerta', 22) }}</span>
+            <div class="settings-status-text">
+                <strong>Cobro con tarjeta: faltan claves</strong>
+                <span>Ingresa ambas claves de SumUp para activarlo</span>
+            </div>
+            {% else %}
+            <span class="settings-status-icon">{{ icon('tarjeta', 22) }}</span>
+            <div class="settings-status-text">
+                <strong>Cobro con tarjeta: desactivado</strong>
+                <span>La caja cobra solo en efectivo</span>
             </div>
             {% endif %}
         </div>
@@ -389,6 +431,73 @@
             <button type="button" class="btn btn-secondary" x-show="!editBusiness" @click="editBusiness = true">{{ icon('editar', 16) }} Editar datos de la empresa</button>
             {% endif %}
             <button type="submit" class="btn btn-dark">Guardar configuración</button>
+        </div>
+    </form>
+
+    {# Quitar una clave va en su propio formulario (POST + CSRF): así «Enter» en el formulario principal nunca borra una clave. #}
+    <form method="post" action="{{ url_for('settings_card_payment') }}" id="card-payment-clear-form" hidden>
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    </form>
+
+    <form method="post" action="{{ url_for('settings_card_payment') }}" class="card settings-form" x-data="{ replaceApi: {{ 'false' if config.get('sumup_api_key') else 'true' }}, replaceAffiliate: {{ 'false' if config.get('sumup_affiliate_key') else 'true' }} }">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+        <div class="settings-form-head">
+            <div>
+                <h2>Cobro con tarjeta (SumUp)</h2>
+                <p>El cajero cobra con tarjeta acercándola al celular (SumUp Tap to Pay), desde la app de la caja.</p>
+            </div>
+            <label class="settings-switch">
+                <input type="checkbox" name="card_payment_enabled" {% if config.get('card_payment_enabled') %}checked{% endif %}>
+                Activar cobro con tarjeta en la caja
+            </label>
+        </div>
+
+        <section class="settings-group">
+            <h3>Claves de SumUp</h3>
+            <div class="settings-fields">
+                <div class="form-group">
+                    <label for="sumup_api_key">Clave secreta de API (sup_sk_…)</label>
+                    {% if config.get('sumup_api_key') %}
+                    <div class="settings-locked" x-show="!replaceApi">
+                        <span class="settings-locked-value">{{ icon('candado', 16) }} Configurada</span>
+                        <span class="settings-locked-actions">
+                            <button type="button" class="settings-clear-link" @click="replaceApi = true; $nextTick(() => $refs.apiKey.focus())">Reemplazar</button>
+                            <button type="submit" class="settings-clear-link" form="card-payment-clear-form" name="clear_key" value="sumup_api_key" formnovalidate onclick="return confirm('¿Quitar la clave secreta de API? La caja dejará de cobrar con tarjeta.')">Quitar</button>
+                        </span>
+                    </div>
+                    {% endif %}
+                    <input type="password" id="sumup_api_key" name="sumup_api_key" value="" placeholder="sup_sk_…" autocomplete="off" maxlength="512" x-ref="apiKey" x-show="replaceApi" :disabled="!replaceApi"{% if config.get('sumup_api_key') %} x-cloak{% endif %}>
+                    <small class="settings-muted">En SumUp: Panel → Ajustes → API keys. No se muestra nuevamente después de guardar.</small>
+                </div>
+                <div class="form-group">
+                    <label for="sumup_affiliate_key">Clave de afiliado</label>
+                    {% if config.get('sumup_affiliate_key') %}
+                    <div class="settings-locked" x-show="!replaceAffiliate">
+                        <span class="settings-locked-value">{{ icon('candado', 16) }} Configurada</span>
+                        <span class="settings-locked-actions">
+                            <button type="button" class="settings-clear-link" @click="replaceAffiliate = true; $nextTick(() => $refs.affiliateKey.focus())">Reemplazar</button>
+                            <button type="submit" class="settings-clear-link" form="card-payment-clear-form" name="clear_key" value="sumup_affiliate_key" formnovalidate onclick="return confirm('¿Quitar la clave de afiliado? La caja dejará de cobrar con tarjeta.')">Quitar</button>
+                        </span>
+                    </div>
+                    {% endif %}
+                    <input type="password" id="sumup_affiliate_key" name="sumup_affiliate_key" value="" placeholder="Clave de afiliado de SumUp" autocomplete="off" maxlength="512" x-ref="affiliateKey" x-show="replaceAffiliate" :disabled="!replaceAffiliate"{% if config.get('sumup_affiliate_key') %} x-cloak{% endif %}>
+                    <small class="settings-muted">En SumUp: Panel → Ajustes → Affiliate keys, creada para el app id <code>cl.monaymarket.pos</code>.</small>
+                </div>
+            </div>
+        </section>
+
+        <section class="settings-group" style="border-bottom: 0;">
+            <h3>Antes de cobrar</h3>
+            <ul class="settings-help">
+                <li>Las dos claves se sacan del panel de SumUp (API keys y Affiliate keys).</li>
+                <li>La clave de afiliado debe crearse para el app id <code>cl.monaymarket.pos</code>.</li>
+                <li>En el celular de la caja deben estar desactivadas las «Opciones de desarrollador»; si no, SumUp no permite cobrar con tarjeta.</li>
+            </ul>
+        </section>
+
+        <div class="settings-form-footer">
+            <button type="submit" class="btn btn-dark">Guardar cobro con tarjeta</button>
         </div>
     </form>
 </div>

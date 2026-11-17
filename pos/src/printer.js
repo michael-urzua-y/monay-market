@@ -12,7 +12,8 @@
 // Bluetooth "clásico" no aparecen al vincular.
 // ============================================================
 
-import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=50'; // misma versión que en app.js
+import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=51'; // misma versión que en app.js
+import { loadCapacitorCore, loadVendorScript } from './platform.js?v=51';
 
 // Servicios BLE "serial" de las térmicas chinas más comunes (Xprinter, Goojprt, Zjiang, MTP…)
 var SERVICES = [
@@ -92,23 +93,7 @@ var bleLoadPromise = null;
 var bleInitPromise = null;
 
 /** Carga un archivo de src/vendor/ con la misma versión (?v=) con que se cargó este módulo. */
-function loadVendorScript(file) {
-  return new Promise(function (resolve, reject) {
-    var script = document.createElement('script');
-    script.src = new URL('vendor/' + file + new URL(import.meta.url).search, import.meta.url).href;
-    script.async = false;
-    script.addEventListener('load', resolve, { once: true });
-    script.addEventListener('error', reject, { once: true });
-    document.head.appendChild(script);
-  });
-}
-
-/**
- * El plugin necesita @capacitor/core (global capacitorExports). Una app con
- * empaquetador lo incluye sola; la caja carga módulos sin empaquetador y el
- * WebView solo inyecta el puente nativo, así que se carga capacitor-core.js
- * antes. Ambos se copian desde node_modules con `npm run vendor:sync`.
- */
+/** El plugin Bluetooth (vendor/capacitor-bluetooth-le.js) necesita antes @capacitor/core. */
 function loadBleClient() {
   var loaded = function () {
     var plugin = window.capacitorCommunityBluetoothLe;
@@ -116,7 +101,7 @@ function loadBleClient() {
   };
   if (loaded()) return Promise.resolve(loaded());
   if (bleLoadPromise) return bleLoadPromise;
-  bleLoadPromise = (window.capacitorExports ? Promise.resolve() : loadVendorScript('capacitor-core.js'))
+  bleLoadPromise = loadCapacitorCore()
     .then(function () { return loadVendorScript('capacitor-bluetooth-le.js'); })
     .then(function () {
       if (!loaded()) throw new Error('plugin sin registrar');

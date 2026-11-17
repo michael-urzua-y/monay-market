@@ -1026,6 +1026,48 @@ def settings_sii():
     return redirect(url_for("settings", success="Configuración SII actualizada"))
 
 
+SUMUP_KEY_FIELDS = ("sumup_api_key", "sumup_affiliate_key")
+
+
+@app.route("/settings/card-payment", methods=["POST"])
+@login_required
+def settings_card_payment():
+    """Actualiza el cobro con tarjeta (SumUp Tap to Pay) vía API.
+
+    Las claves nunca vuelven al panel: la API solo indica si están
+    configuradas. Quitar una clave también va por POST (con CSRF), nunca
+    por parámetros GET.
+    """
+    user = session.get("user", {})
+    if user.get("role") != "dueno":
+        return redirect(url_for("dashboard"))
+
+    clear_key = request.form.get("clear_key", "")
+    if clear_key:
+        if clear_key not in SUMUP_KEY_FIELDS:
+            return redirect(url_for("settings", error="Clave no válida"))
+        data = {clear_key: ""}
+        success_msg = "Clave de SumUp eliminada"
+    else:
+        data = {"card_payment_enabled": request.form.get("card_payment_enabled") == "on"}
+        # Un campo vacío no borra la clave guardada: para eso está «Quitar».
+        for field in SUMUP_KEY_FIELDS:
+            value = request.form.get(field, "").strip()
+            if value:
+                data[field] = value
+        success_msg = "Cobro con tarjeta actualizado"
+
+    result = api.patch("/tenant/config/card-payment", data=data)
+
+    if isinstance(result, dict) and result.get("status_code", 200) >= 400:
+        error_msg = result.get("message", "Error al actualizar el cobro con tarjeta")
+        if isinstance(error_msg, list):
+            error_msg = ", ".join(error_msg)
+        return redirect(url_for("settings", error=error_msg))
+
+    return redirect(url_for("settings", success=success_msg))
+
+
 @app.route("/settings/change-password", methods=["POST"])
 @login_required
 def settings_change_password():

@@ -8,14 +8,15 @@ import { OfflineDB } from './offline.js';
 import { Cart } from './cart.js';
 // Módulos de impresión con versión en la URL: nginx los cachea 7 días como inmutables.
 // Al cambiarlos, subir este número junto con APP_ASSET_VERSION (y en printer.js / service-worker.js).
-import { ThermalPrinter } from './printer.js?v=50';
-import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=50';
-import { isNativeApp } from './platform.js?v=50';
+import { ThermalPrinter } from './printer.js?v=51';
+import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=51';
+import { isNativeApp } from './platform.js?v=51';
+import { CardPayment } from './card-payment.js?v=51';
 
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '50';
+  var APP_ASSET_VERSION = '51';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -947,27 +948,57 @@ import { isNativeApp } from './platform.js?v=50';
   // Payment Processing
   // ----------------------------------------------------------
   var selectedPaymentMethod = 'efectivo';
+  var selectedCardType = 'debit';
+
+  /** "Tarjeta" solo se puede elegir con el cobro listo y con internet (SumUp cobra en línea). */
+  function updateCardAvailability() {
+    var btn = document.querySelector('.payment-method-btn[data-method="tarjeta"]');
+    if (!btn) return;
+    var available = CardPayment.isReady() && navigator.onLine;
+    btn.disabled = !available;
+    btn.title = available ? '' : (CardPayment.isReady()
+      ? 'Sin internet: el cobro con tarjeta necesita conexión'
+      : 'El cobro con tarjeta no está activo en este negocio');
+    if (!available && selectedPaymentMethod === 'tarjeta') selectPaymentMethod('efectivo');
+  }
+
+  function selectPaymentMethod(method) {
+    selectedPaymentMethod = method;
+    document.querySelectorAll('.payment-method-btn').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.method === method);
+    });
+    document.getElementById('payment-efectivo').classList.toggle('hidden', method !== 'efectivo');
+    document.getElementById('payment-tarjeta').classList.toggle('hidden', method !== 'tarjeta');
+    updatePaymentState();
+  }
+
+  function selectCardType(type) {
+    selectedCardType = type === 'credit' ? 'credit' : 'debit';
+    document.querySelectorAll('.card-type-btn').forEach(function (b) {
+      var active = b.dataset.cardType === selectedCardType;
+      b.classList.toggle('active', active);
+      b.setAttribute('aria-checked', active ? 'true' : 'false');
+    });
+  }
 
   function initPayment() {
     // Payment method selector
     document.querySelectorAll('.payment-method-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        document.querySelectorAll('.payment-method-btn').forEach(function (b) { b.classList.remove('active'); });
-        btn.classList.add('active');
-        selectedPaymentMethod = btn.dataset.method;
-
-        var efectivoEl = document.getElementById('payment-efectivo');
-        var tarjetaEl = document.getElementById('payment-tarjeta');
-        if (selectedPaymentMethod === 'efectivo') {
-          efectivoEl.classList.remove('hidden');
-          tarjetaEl.classList.add('hidden');
-        } else {
-          efectivoEl.classList.add('hidden');
-          tarjetaEl.classList.remove('hidden');
-        }
-        updatePaymentState();
+        if (!btn.disabled) selectPaymentMethod(btn.dataset.method);
       });
     });
+    document.querySelectorAll('.card-type-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () { selectCardType(btn.dataset.cardType); });
+    });
+    window.addEventListener('monay-card-payment-change', updateCardAvailability);
+    window.addEventListener('offline', updateCardAvailability);
+    window.addEventListener('online', function () {
+      // Si al abrir la caja no había internet, se vuelve a preparar el cobro con tarjeta
+      if (!CardPayment.isReady() && isCashierSession()) CardPayment.prepare();
+      updateCardAvailability();
+    });
+    updateCardAvailability();
 
     // Amount received input
     var amountInput = document.getElementById('amount-received');
@@ -1083,9 +1114,10 @@ import { isNativeApp } from './platform.js?v=50';
   function processSale() {
     var btnPay = document.getElementById('btn-pay');
     if (isButtonLoading(btnPay)) return;
-    // La boleta se imprime al cobrar en efectivo: en el celular primero se asegura la impresora
-    if (selectedPaymentMethod === 'efectivo' && navigator.onLine && !ThermalPrinter.isConnected()) {
-      connectPrinterThen(processSale, 'Conecte la impresora para cobrar en efectivo: la boleta se imprime al cobrar.');
+    // La boleta se imprime al cobrar: primero se asegura la impresora (con
+    // tarjeta, antes de pasar la tarjeta, para no cobrar sin poder imprimir).
+    if (navigator.onLine && !ThermalPrinter.isConnected()) {
+      connectPrinterThen(processSale, 'Conecte la impresora para cobrar: la boleta se imprime al cobrar.');
       return;
     }
 
@@ -1111,8 +1143,56 @@ import { isNativeApp } from './platform.js?v=50';
 
       body.amount_received = enteredAmount > 0 ? enteredAmount : cartTotal;
       submitSale(body, { btnPay: btnPay });
+      return;
     }
-    // Tarjeta: deshabilitada hasta integrar el Tap-to-Pay SDK de SumUp en la app.
+
+    if (selectedPaymentMethod === 'tarjeta') chargeCard(body, btnPay);
+  }
+
+  /**
+   * Cobra con SumUp y, solo si el cobro se aprueba, registra la venta con el
+   * código de transacción (así el servidor emite la boleta). Si no se sabe el
+   * resultado no se registra nada: el cajero debe revisarlo en SumUp antes de
+   * volver a cobrar, para no cobrarle dos veces al cliente.
+   */
+  function chargeCard(body, btnPay) {
+    if (!CardPayment.isReady() || !navigator.onLine) {
+      showToast('El cobro con tarjeta no está disponible. Cobre en efectivo.', 'warning');
+      updateCardAvailability();
+      return;
+    }
+    var total = Cart.getTotal();
+    setButtonLoading(btnPay, true, { label: 'Esperando tarjeta...' });
+
+    CardPayment.charge({ amount: total, cardType: selectedCardType, saleId: body.client_sale_id })
+      .then(function (result) {
+        var status = result && result.status;
+        if (status === 'approved' && result.txCode) {
+          body.card_transaction_ref = result.txCode;
+          setButtonLoading(btnPay, false);
+          submitSale(body, { btnPay: btnPay, cardTxCode: result.txCode });
+          return;
+        }
+        setButtonLoading(btnPay, false);
+        updatePaymentState();
+        if (status === 'canceled') {
+          showToast('Cobro con tarjeta cancelado', 'warning');
+        } else if (status === 'failed') {
+          showToast(CardPayment.failureMessage(result), 'error');
+        } else {
+          window.alert(
+            'No se pudo confirmar si el cobro con tarjeta se realizó' +
+            (result && result.txCode ? ' (código ' + result.txCode + ')' : '') + '.\n\n' +
+            'Antes de volver a cobrar, revise en la app o el panel de SumUp si el pago aparece. ' +
+            'La venta NO se registró en Monay.'
+          );
+        }
+      })
+      .catch(function (err) {
+        setButtonLoading(btnPay, false);
+        updatePaymentState();
+        showToast((err && err.message) || 'No se pudo iniciar el cobro con tarjeta', 'error');
+      });
   }
 
   /** Registra la venta en Monay (o la deja en cola si no hay conexión). */
@@ -1156,6 +1236,15 @@ import { isNativeApp } from './platform.js?v=50';
         return;
       }
       if (btnPay) btnPay.disabled = false;
+      if (options.cardTxCode) {
+        // La tarjeta ya se cobró: el cajero necesita el código para resolverlo en SumUp.
+        window.alert(
+          'El cobro con tarjeta se APROBÓ (código ' + options.cardTxCode + '), pero la venta no se pudo registrar: ' +
+          ((err && err.data && err.data.message) || (err && err.message) || 'error del servidor') + '.\n\n' +
+          'No vuelva a cobrar. Avise al dueño con este código para registrarla o devolver el pago en SumUp.'
+        );
+        return;
+      }
       var msg = 'Error al procesar la venta';
       if (err.data && err.data.error === 'INSUFFICIENT_STOCK') {
         msg = 'Stock insuficiente para uno o más productos';
@@ -1212,14 +1301,8 @@ import { isNativeApp } from './platform.js?v=50';
     if (amountInput) amountInput.value = '';
     var changeDisplay = document.getElementById('change-display');
     if (changeDisplay) changeDisplay.classList.add('hidden');
-    selectedPaymentMethod = 'efectivo';
-    document.querySelectorAll('.payment-method-btn').forEach(function (btn) {
-      btn.classList.toggle('active', btn.dataset.method === 'efectivo');
-    });
-    var efectivoEl = document.getElementById('payment-efectivo');
-    var tarjetaEl = document.getElementById('payment-tarjeta');
-    if (efectivoEl) efectivoEl.classList.remove('hidden');
-    if (tarjetaEl) tarjetaEl.classList.add('hidden');
+    selectCardType('debit');
+    selectPaymentMethod('efectivo');
   }
 
   // ----------------------------------------------------------
@@ -1228,8 +1311,8 @@ import { isNativeApp } from './platform.js?v=50';
   function handleSaleCompletion(receipt) {
     if (!receipt) return false;
 
-    // Tarjeta sin cobro confirmado (sin boleta): solo un registro contable
-    // contra una máquina POS externa, no hay nada que imprimir.
+    // Tarjeta sin boleta (el negocio no tiene el SII activo): la venta queda
+    // registrada con el código de SumUp, pero no hay boleta que imprimir.
     if (receipt.payment_method === 'tarjeta' && !receipt.boleta_folio) {
       showToast('Venta con tarjeta registrada', 'success');
       router.navigate('sale');
@@ -2195,8 +2278,15 @@ function initArqueo() {
   // Login de la caja (solo cajeros; la caja se usa solo desde la app)
   // ----------------------------------------------------------
 
+  /** Al abrir la caja con sesión: impresora y cobro con tarjeta. */
+  function startSessionServices() {
+    checkPrinterAtStart();
+    if (navigator.onLine) CardPayment.prepare();
+  }
+
   /** Cierra la sesión del cajero y vuelve al login de la caja. */
   function endSession() {
+    CardPayment.reset();
     api.clearToken();
     Cart.clear();
     resetPaymentForm();
@@ -2284,7 +2374,7 @@ function initArqueo() {
         api.setUser(user);
         document.getElementById('pos-login').classList.add('hidden');
         router.navigate('sale');
-        checkPrinterAtStart();
+        startSessionServices();
       }).catch(function (err) {
         setPosLoginError(posLoginErrorMessage(err));
       }).finally(function () {
@@ -2454,7 +2544,7 @@ function initArqueo() {
       router.navigate('sale');
       finishActivity(startupActivity);
       releaseBootState();
-      checkPrinterAtStart();
+      startSessionServices();
     } else {
       api.clearToken();
       finishActivity(startupActivity);
