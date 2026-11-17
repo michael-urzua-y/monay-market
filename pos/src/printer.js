@@ -12,8 +12,8 @@
 // Bluetooth "clásico" no aparecen al vincular.
 // ============================================================
 
-import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=55'; // misma versión que en app.js
-import { loadCapacitorCore, loadVendorScript } from './platform.js?v=55';
+import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=56'; // misma versión que en app.js
+import { loadCapacitorCore, loadVendorScript } from './platform.js?v=56';
 
 // Servicios BLE "serial" de las térmicas chinas más comunes (Xprinter, Goojprt, Zjiang, MTP…)
 var SERVICES = [

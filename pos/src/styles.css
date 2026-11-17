@@ -1354,6 +1354,17 @@ body.app-booting .global-loading-panel {
   font-weight: 700;
 }
 
+.card-payment-error {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: #fef3f2;
+  color: var(--color-error);
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
 .tarjeta-msg {
   padding: 12px;
   background: var(--color-surface-2);

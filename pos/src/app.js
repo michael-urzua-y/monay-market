@@ -8,15 +8,15 @@ import { OfflineDB } from './offline.js';
 import { Cart } from './cart.js';
 // Módulos de impresión con versión en la URL: nginx los cachea 7 días como inmutables.
 // Al cambiarlos, subir este número junto con APP_ASSET_VERSION (y en printer.js / service-worker.js).
-import { ThermalPrinter } from './printer.js?v=55';
-import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=55';
-import { isNativeApp } from './platform.js?v=55';
-import { CardPayment } from './card-payment.js?v=55';
+import { ThermalPrinter } from './printer.js?v=56';
+import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=56';
+import { isNativeApp } from './platform.js?v=56';
+import { CardPayment } from './card-payment.js?v=56';
 
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '55';
+  var APP_ASSET_VERSION = '56';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -1177,6 +1177,18 @@ import { CardPayment } from './card-payment.js?v=55';
    * resultado no se registra nada: el cajero debe revisarlo en SumUp antes de
    * volver a cobrar, para no cobrarle dos veces al cliente.
    */
+  /**
+   * Motivo del último cobro con tarjeta fallido, fijo bajo Débito/Crédito. Un
+   * toast no sirve: SumUp avisa el resultado con su pantalla aún abierta y el
+   * toast desaparece antes de que el cajero vuelva a la caja.
+   */
+  function setCardPaymentError(message) {
+    var el = document.getElementById('card-payment-error');
+    if (!el) return;
+    el.textContent = message || '';
+    el.hidden = !message;
+  }
+
   function chargeCard(body, btnPay) {
     if (!CardPayment.isReady() || !navigator.onLine) {
       showToast('El cobro con tarjeta no está disponible. Cobre en efectivo.', 'warning');
@@ -1184,6 +1196,7 @@ import { CardPayment } from './card-payment.js?v=55';
       return;
     }
     var total = Cart.getTotal();
+    setCardPaymentError('');
     setButtonLoading(btnPay, true, { label: 'Esperando tarjeta...' });
 
     CardPayment.charge({ amount: total, cardType: selectedCardType, saleId: body.client_sale_id })
@@ -1200,6 +1213,7 @@ import { CardPayment } from './card-payment.js?v=55';
         if (status === 'canceled') {
           showToast('Cobro con tarjeta cancelado', 'warning');
         } else if (status === 'failed') {
+          setCardPaymentError(CardPayment.failureMessage(result));
           showToast(CardPayment.failureMessage(result), 'error');
         } else {
           window.alert(
@@ -1213,7 +1227,9 @@ import { CardPayment } from './card-payment.js?v=55';
       .catch(function (err) {
         setButtonLoading(btnPay, false);
         updatePaymentState();
-        showToast((err && err.message) || 'No se pudo iniciar el cobro con tarjeta', 'error');
+        var message = (err && err.message) || 'No se pudo iniciar el cobro con tarjeta';
+        setCardPaymentError(message + (err && err.code ? ' (código ' + err.code + ')' : ''));
+        showToast(message, 'error');
       });
   }
 
@@ -1324,6 +1340,7 @@ import { CardPayment } from './card-payment.js?v=55';
     var changeDisplay = document.getElementById('change-display');
     if (changeDisplay) changeDisplay.classList.add('hidden');
     selectCardType('debit');
+    setCardPaymentError('');
     selectPaymentMethod('efectivo');
   }
 

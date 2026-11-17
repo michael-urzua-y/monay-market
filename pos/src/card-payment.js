@@ -10,7 +10,7 @@
 // Quedan en memoria: nunca se guardan en el celular.
 
 import { api } from './api.js';
-import { isNativeApp, loadCapacitorCore } from './platform.js?v=55';
+import { isNativeApp, loadCapacitorCore } from './platform.js?v=56';
 
 var state = {
   ready: false,
