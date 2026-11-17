@@ -21,6 +21,13 @@ dashboard/.venv
 dashboard/uploads
 
 pwa/.vercel
+# Dependencias de Capacitor (app Android de la caja): no se usan en runtime
+# del API/dashboard, solo para compilar el APK. Los archivos vendor que sí
+# se sirven al POS van copiados a mano en pwa/src/vendor/.
+pwa/node_modules
+pwa/android
+pwa/assets
+pwa/www
 proxy-squid
 **/.DS_Store
 

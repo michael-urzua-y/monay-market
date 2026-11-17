@@ -33,13 +33,13 @@ const edits = [
     pattern: /var APP_ASSET_VERSION = '[^']*';/,
     replacement: `var APP_ASSET_VERSION = '${version}';`,
   },
-  {
-    // Imports de módulos con cache-busting propio (nginx los cachea 7 días
-    // como inmutables): ./printer.js?v=39, ./sumup.js?v=39, etc.
-    file: 'src/app.js',
+  // Imports de módulos con cache-busting propio (nginx los cachea 7 días
+  // como inmutables): ./printer.js?v=41, ./receipt-escpos.js?v=41, etc.
+  ...['src/app.js', 'src/printer.js'].map((file) => ({
+    file,
     pattern: /(from '\.\/[\w-]+\.js)\?v=\d+(')/g,
     replacement: `$1?v=${version}$2`,
-  },
+  })),
   {
     file: 'index.html',
     pattern: /\?v=\d+/g,

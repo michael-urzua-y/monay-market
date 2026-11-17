@@ -8,14 +8,14 @@ import { OfflineDB } from './offline.js';
 import { Cart } from './cart.js';
 // Módulos de impresión con versión en la URL: nginx los cachea 7 días como inmutables.
 // Al cambiarlos, subir este número junto con APP_ASSET_VERSION (y en printer.js / service-worker.js).
-import { ThermalPrinter } from './printer.js?v=41';
-import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=41';
-import { SumUp } from './sumup.js?v=41';
+import { ThermalPrinter } from './printer.js?v=42';
+import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=42';
+import { SumUp } from './sumup.js?v=42';
 
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '41';
+  var APP_ASSET_VERSION = '42';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -959,6 +959,8 @@ import { SumUp } from './sumup.js?v=41';
   var selectedPaymentMethod = 'efectivo';
 
   function initPayment() {
+    disableCardPaymentsUntilReady();
+
     // Payment method selector
     document.querySelectorAll('.payment-method-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -1129,7 +1131,30 @@ import { SumUp } from './sumup.js?v=41';
     processCardPayment(body, btnPay);
   }
 
+  // Cobro con tarjeta en pausa: Payment Switch de SumUp (sumupmerchant://) no
+  // garantiza volver a Monay y ya hubo cobros que no quedaron registrados. Se
+  // reactiva cuando la app nativa integre el Tap-to-Pay SDK (acceso pedido a
+  // integration@sumup.com). Mientras tanto la caja vende solo en efectivo.
+  var CARD_PAYMENTS_ENABLED = false;
+
+  function disableCardPaymentsUntilReady() {
+    if (CARD_PAYMENTS_ENABLED) return;
+    var cardBtn = document.querySelector('.payment-method-btn[data-method="tarjeta"]');
+    if (cardBtn) {
+      cardBtn.disabled = true;
+      cardBtn.setAttribute('aria-disabled', 'true');
+      cardBtn.title = 'Cobro con tarjeta disponible próximamente';
+    }
+    var sumupMenuItem = document.getElementById('btn-open-sumup');
+    if (sumupMenuItem) sumupMenuItem.hidden = true;
+  }
+
   function processCardPayment(body, btnPay) {
+    // Defensa extra: aunque el botón esté deshabilitado, nunca abrir SumUp en pausa
+    if (!CARD_PAYMENTS_ENABLED) {
+      showToast('El cobro con tarjeta estará disponible próximamente', 'warning');
+      return;
+    }
     if (!SumUp.isConfigured()) {
       showToast('Configure SumUp antes de cobrar con tarjeta (menú ☰ → Cobro con tarjeta)', 'error');
       return;

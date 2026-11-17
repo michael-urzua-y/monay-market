@@ -31,6 +31,15 @@
     return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   }
 
+  // Dentro de la app Android nativa (Capacitor) no tiene sentido ofrecer
+  // "instalar la app": ya se instaló. Capacitor inyecta window.Capacitor en
+  // toda página que carga en su WebView, a diferencia de Chrome normal
+  // donde ese modo "standalone" de la PWA no aplica (es un WebView aparte,
+  // no el navegador del sistema).
+  function isNativeApp() {
+    return !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+  }
+
   function isIos() {
     var ua = navigator.userAgent;
     // iPadOS se presenta como "Macintosh", pero con pantalla táctil
@@ -127,7 +136,7 @@
   });
   window.addEventListener('appinstalled', hide);
 
-  if (!isMobileOrTablet() || isStandalone() || isDismissed()) return;
+  if (!isMobileOrTablet() || isStandalone() || isNativeApp() || isDismissed()) return;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', render);
   else render();
 })();

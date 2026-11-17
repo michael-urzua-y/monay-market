@@ -931,6 +931,12 @@ body.app-booting .global-loading-panel {
   font-weight: 700;
 }
 
+/* Tarjeta en pausa hasta integrar el SDK de SumUp (ver CARD_PAYMENTS_ENABLED en app.js) */
+.payment-method-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .payment-details {
   margin-bottom: 12px;
 }
