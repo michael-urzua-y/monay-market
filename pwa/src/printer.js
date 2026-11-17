@@ -17,8 +17,8 @@
 // sigue usando window.print() + RawBT (fuera de este módulo).
 // ============================================================
 
-import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=44'; // misma versión que en app.js
-import { isNativeApp } from './platform.js?v=44';
+import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=45'; // misma versión que en app.js
+import { isNativeApp } from './platform.js?v=45';
 
 // Servicios BLE "serial" de las térmicas chinas más comunes (Xprinter, Goojprt, Zjiang, MTP…)
 var SERVICES = [
@@ -358,7 +358,30 @@ function pairNative() {
       storage(STORAGE_DEVICE, device.deviceId);
       return connectNative(BleClient, device.deviceId);
     });
+  }).catch(function (err) {
+    throw nativePairError(err);
   });
+}
+
+/** Traduce los errores del plugin Bluetooth (en inglés) a instrucciones para el cajero. */
+function nativePairError(err) {
+  var message = (err && err.message) || '';
+  if (/requestDevice cancelled/i.test(message)) {
+    // Cerró la lista sin elegir: mismo nombre que usa Chrome, la app no muestra aviso
+    var cancelled = new Error('Selección cancelada');
+    cancelled.name = 'NotFoundError';
+    return cancelled;
+  }
+  if (/permission/i.test(message)) {
+    return PrinterError('Falta el permiso "Dispositivos cercanos". Actívelo en Ajustes > Apps > Monay Market POS > Permisos y vuelva a intentar.');
+  }
+  if (/not available|not enabled/i.test(message)) {
+    return PrinterError('Active el Bluetooth del celular y vuelva a intentar.');
+  }
+  if (/no device found/i.test(message)) {
+    return PrinterError('No se encontró ninguna impresora cerca. ¿Está encendida?');
+  }
+  return err && err.name === 'PrinterError' ? err : PrinterError(message || 'No se pudo vincular la impresora');
 }
 
 function connectNative(BleClient, deviceId) {

@@ -33,6 +33,13 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Escáner de códigos de barras de la caja. Capacitor solo entrega la
+         cámara al WebView si la app declara este permiso; Android lo pide la
+         primera vez que se abre el escáner. required="false": la app se puede
+         instalar en equipos sin cámara (el código se escribe en el buscador). -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <!-- Para el cobro con tarjeta vía SumUp Tap to Pay (SDK nativo, pendiente
          de acceso de SumUp). required="false" porque hoy la app también se
          usa solo para pagar en efectivo, sin NFC: así no se bloquea la
