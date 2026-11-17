@@ -18,8 +18,8 @@ para el siguiente cajero.
 
 Generados con `@capacitor/assets` desde [`icon-source.png`](icon-source.png)
 (colibrí sobre fondo oscuro, 512×512). Para regenerarlos, copiarlo a
-`pwa/assets/icon.png` y `pwa/assets/icon-foreground.png` y ejecutar
-`npx @capacitor/assets generate --android` desde `pwa/`.
+`pos/assets/icon.png` y `pos/assets/icon-foreground.png` y ejecutar
+`npx @capacitor/assets generate --android` desde `pos/`.
 
 ## Cobro con tarjeta (pendiente)
 

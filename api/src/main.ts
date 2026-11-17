@@ -49,7 +49,7 @@ async function bootstrap() {
   app.use(
     helmet({
       contentSecurityPolicy: false, // Managed by Nginx in production
-      crossOriginEmbedderPolicy: false, // Allow loading PWA resources
+      crossOriginEmbedderPolicy: false, // Allow loading POS resources
     }),
   );
 
@@ -72,9 +72,9 @@ async function bootstrap() {
     origin: parseAllowedOrigins(corsOrigin),
   });
 
-  // Serve the POS PWA only under /pos/. The unified Flask login owns /login and /.
-  const pwaPath = process.env.PWA_PATH || join(__dirname, '..', '..', 'pwa');
-  app.useStaticAssets(pwaPath, { prefix: '/pos/' });
+  // Archivos de la caja (app Android del cajero) bajo /pos/. El panel Flask atiende /login y /.
+  const posPath = process.env.POS_PATH || join(__dirname, '..', '..', 'pos');
+  app.useStaticAssets(posPath, { prefix: '/pos/' });
 
   // WebSocket multi-réplica: solo si WS_REDIS_URL está configurada.
   // Sin ella, se usa el adapter en memoria por defecto (una sola instancia).

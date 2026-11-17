@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /**
- * Única fuente de verdad para la versión de assets de la PWA.
+ * Única fuente de verdad para la versión de los archivos de la caja.
  *
  * Uso en cada release:
- *   1. Editar pwa/VERSION con el nuevo número (ej: 32).
- *   2. Ejecutar: node pwa/sync-version.mjs
+ *   1. Editar pos/VERSION con el nuevo número (ej: 32).
+ *   2. Ejecutar: node pos/sync-version.mjs
  *
  * Propaga el número a service-worker.js, src/app.js e index.html para que el
  * cache-busting quede consistente en los 3 sin editarlos a mano. La salida en
@@ -68,4 +68,4 @@ for (const { file, pattern, replacement } of edits) {
 if (hadError) {
   process.exit(1);
 }
-console.log(`Listo. Versión de assets PWA: ${version}`);
+console.log(`Listo. Versión de archivos de la caja: ${version}`);

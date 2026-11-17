@@ -8,7 +8,7 @@ Sistema SaaS de punto de venta (POS) y gestión de inventario para almacenes de 
 monay-market/
 ├── api/               → Backend NestJS + TypeScript
 ├── dashboard/         → Panel Admin Flask + HTMX + Alpine.js
-├── pwa/               → PWA Punto de Venta (vanilla JS)
+├── pos/               → Caja del cajero (JS sin framework) + app Android (pos/android, Capacitor)
 ├── docker/            → Nginx y entrypoints del stack unificado
 ├── proxy-squid/       → Proxy HTTP opcional para integraciones SII vía API Gateway
 ├── postgres/          → Variables de entorno y persistencia local de PostgreSQL
@@ -24,7 +24,7 @@ monay-market/
 | ORM | TypeORM |
 | Autenticación | JWT + Passport + bcrypt |
 | Panel Admin | Flask + Jinja2 + HTMX + Alpine.js |
-| POS | PWA con JavaScript vanilla + Service Worker + IndexedDB |
+| Caja (POS) | App Android (Capacitor) que carga la caja en JavaScript sin framework + Service Worker + IndexedDB (ventas sin internet) |
 | Testing | Jest + fast-check (property-based testing) |
 
 ## Características implementadas
@@ -68,8 +68,8 @@ monay-market/
 - Mermas: registro de pérdidas de inventario (causa, cantidad, valor), estadísticas mensuales, paginación
 - Librerías frontend servidas localmente (`htmx`, `alpine`, `chart.js`) para no depender de CDN externos
 
-### PWA Punto de Venta
-- Se usa **solo desde la app Android** del cajero (Capacitor, ver `pwa/android/README.md`), con login propio que solo admite cajeros
+### Caja (punto de venta)
+- Se usa **solo desde la app Android** del cajero (Capacitor, ver `pos/android/README.md`), con login propio que solo admite cajeros
 - Abierta en un navegador muestra un aviso para usar la app (y un enlace al panel del dueño)
 - Service Worker: cache-first para assets, network-first para API, respuesta offline 503
 - Login con JWT efímero almacenado en `sessionStorage`
@@ -133,15 +133,14 @@ cp .env.example .env
 # Editar .env con API_URL y SECRET_KEY
 python app.py
 
-# --- PWA ---
-# Servir la carpeta pwa/ con cualquier servidor estático
-# Ejemplo: npx serve pwa/ -l 8080
-# Abrir en el celular y agregar a pantalla de inicio para instalar
+# --- Caja (app Android del cajero) ---
+# La API sirve la carpeta pos/ en /pos/. La app se compila desde pos/android:
+# ver pos/android/README.md
 ```
 
 ## Setup con Docker
 
-El stack Docker levanta PostgreSQL, API NestJS, PWA, Dashboard Flask y un proxy Nginx para usar un solo dominio/puerto.
+El stack Docker levanta PostgreSQL, API NestJS (que también sirve la caja en /pos/), Dashboard Flask y un proxy Nginx para usar un solo dominio/puerto.
 
 ```bash
 cp postgres/.env.example postgres/.env
@@ -200,17 +199,17 @@ docker compose exec postgres /scripts/backup-db.sh
 docker compose exec postgres /scripts/restore-db.sh
 ```
 
-### Versionado de assets de la PWA
+### Versionado de archivos de la caja
 
-La versión de assets (cache-busting del Service Worker) vive en un único lugar: `pwa/VERSION`. En cada release, editar ese número y sincronizarlo a `service-worker.js`, `src/app.js` e `index.html`:
+La versión de assets (cache-busting del Service Worker) vive en un único lugar: `pos/VERSION`. En cada release, editar ese número y sincronizarlo a `service-worker.js`, `src/app.js` e `index.html`:
 
 ```bash
-node pwa/sync-version.mjs
+node pos/sync-version.mjs
 ```
 
-### Escáner de código de barras en la PWA
+### Escáner de código de barras en la caja
 
-El POS usa la API nativa `BarcodeDetector` cuando está disponible (Chrome/Edge). En navegadores sin soporte (ej: Safari en iOS) cae automáticamente a un decodificador ZXing (`pwa/src/vendor/zxing.min.js`) que se carga bajo demanda; si tampoco es posible, el cajero puede ingresar el código manualmente desde el buscador.
+El POS usa la API nativa `BarcodeDetector` cuando está disponible (Chrome/Edge). En navegadores sin soporte (ej: Safari en iOS) cae automáticamente a un decodificador ZXing (`pos/src/vendor/zxing.min.js`) que se carga bajo demanda; si tampoco es posible, el cajero puede ingresar el código manualmente desde el buscador.
 
 ## Endurecimiento y seguridad
 
@@ -288,7 +287,8 @@ Esto no reemplaza al stack principal de Monay Market; es un componente opcional 
 | `CORS_ORIGIN` | Orígenes permitidos para HTTP API |
 | `WS_CORS_ORIGIN` | Orígenes permitidos para WebSocket |
 | `WS_REDIS_URL` | Opcional. URL de Redis para escalar WebSocket a múltiples réplicas (ej: `redis://redis:6379`). Vacío = adapter en memoria (una sola instancia) |
-| `PWA_API_URL` | Override opcional expuesto a la PWA por `/runtime-config.js` |
+| `POS_PATH` | Carpeta de la caja que sirve la API en `/pos/` (en Docker: `/app/pos`) |
+| `POS_API_URL` | Override opcional de la URL de la API expuesto a la caja por `/runtime-config.js` |
 | `LOGIN_RATE_LIMIT_*` | Ventana, intentos máximos y bloqueo del login |
 | `SII_APIGATEWAY_BASE_URL` | URL base de API Gateway V2 (default: `https://app.apigateway.cl/api/v2`) |
 | `BARCODE_LOOKUP_*` | Overrides opcionales para las URLs de lookup de código de barras |
@@ -313,7 +313,7 @@ Esto no reemplaza al stack principal de Monay Market; es un componente opcional 
 ```
 # Runtime / health
 GET    /health                        → Healthcheck simple del API
-GET    /runtime-config.js             → Configuración pública consumida por la PWA
+GET    /runtime-config.js             → Configuración pública consumida por la caja
 
 # Autenticación
 POST   /auth/login                    → Login con email + contraseña
@@ -401,7 +401,7 @@ La migración `1775941896491-AddIsWeighedToProducts.ts`:
 ### Estructura de módulos
 - **API**: NestJS con TypeScript, TypeORM, PostgreSQL
 - **Dashboard**: Flask con HTMX para interacciones sin JavaScript pesado
-- **PWA**: Vanilla JavaScript con Service Worker para funcionamiento offline
+- **Caja**: JavaScript sin framework con Service Worker para vender sin internet, empaquetada como app Android (Capacitor)
 
 ### Pruebas
 ```bash

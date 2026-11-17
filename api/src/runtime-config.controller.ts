@@ -18,7 +18,7 @@ export class RuntimeConfigController {
   @Header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0')
   getRuntimeConfig(): string {
     const config: RuntimeConfig = {
-      MONAY_API_URL: process.env.PWA_API_URL || '',
+      MONAY_API_URL: process.env.POS_API_URL || '',
     };
 
     return [

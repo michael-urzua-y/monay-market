@@ -14,14 +14,14 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-ENV PWA_PATH=/app/pwa
+ENV POS_PATH=/app/pos
 ENV NODE_ENV=production
 
 COPY api/package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=builder /app/dist ./dist
-COPY pwa ./pwa
+COPY pos ./pos
 COPY docker/api-entrypoint.sh /usr/local/bin/api-entrypoint
 
 RUN chmod +x /usr/local/bin/api-entrypoint
