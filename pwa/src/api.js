@@ -6,18 +6,13 @@ function getDefaultApiUrl() {
     : window.location.origin;
 }
 
-function getDefaultLoginUrl() {
-  return window.location.origin + '/login';
-}
-
 function getRuntimeConfigValue(name) {
   const runtimeConfig = window.MONAY_RUNTIME_CONFIG || {};
   return window[name] || runtimeConfig[name] || '';
 }
 
-export const CONFIG = {
+const CONFIG = {
   API_URL: getRuntimeConfigValue('MONAY_API_URL') || getDefaultApiUrl(),
-  LOGIN_URL: getRuntimeConfigValue('MONAY_LOGIN_URL') || getDefaultLoginUrl(),
 };
 
 function getAuthStorage() {

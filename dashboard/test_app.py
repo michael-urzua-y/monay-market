@@ -17,8 +17,6 @@ def client():
     app.config["TESTING"] = True
     app.config["SECRET_KEY"] = "test-secret"
     app.config["PUBLIC_APP_URL"] = "http://localhost:8080"
-    app.config["LOGIN_URL"] = None
-    app.config["POS_URL"] = "/pos/"
     with app.test_client() as c:
         yield c
 
@@ -55,28 +53,16 @@ class TestLoginRoute:
         assert resp.status_code == 302
         assert "/dashboard" in resp.headers["Location"]
 
-    def test_get_login_redirects_cashier_session_to_pos(self, client):
-        """GET /login should redirect POS operators to the POS URL."""
+    def test_get_login_with_cashier_session_shows_form(self, client):
+        """Una sesión de cajero en el panel no lleva a la caja: se descarta y se muestra el login."""
         with client.session_transaction() as sess:
             sess["jwt_token"] = "some-token"
             sess["user"] = {"username": "juan.perez", "email": "cajero@example.com", "role": "cajero"}
-        resp = client.get("/login", base_url="http://localhost:5000")
-        assert resp.status_code == 302
-        assert resp.headers["Location"].endswith("/pos/")
-        assert any(
-            "monay_pos_token=some-token" in value
-            for value in resp.headers.getlist("Set-Cookie")
-        )
-        assert any(
-            "monay_login_url=http%3A//localhost%3A8080/login" in value
-            for value in resp.headers.getlist("Set-Cookie")
-        )
-
-    def test_direct_pos_route_redirects_to_unified_pos(self, client):
-        """Direct dashboard port /pos should redirect to the unified POS route."""
-        resp = client.get("/pos/", base_url="http://localhost:5000")
-        assert resp.status_code == 302
-        assert resp.headers["Location"] == "http://localhost:8080/pos/"
+        resp = client.get("/login")
+        assert resp.status_code == 200
+        assert not any("monay_pos" in value for value in resp.headers.getlist("Set-Cookie"))
+        with client.session_transaction() as sess:
+            assert "jwt_token" not in sess
 
     @patch("app.api")
     def test_post_login_success(self, mock_api, client):
@@ -98,8 +84,8 @@ class TestLoginRoute:
             assert sess["user"]["username"] == "admin"
 
     @patch("app.api")
-    def test_post_login_redirects_cashier_to_pos(self, mock_api, client):
-        """POST /login should send POS operators to the POS session."""
+    def test_post_login_rejects_cashier(self, mock_api, client):
+        """El cajero no entra por el sitio: se le indica usar la app y no se guarda su token."""
         mock_api.post.return_value = {
             "status_code": 201,
             "accessToken": "jwt-cajero-123",
@@ -109,16 +95,14 @@ class TestLoginRoute:
         resp = client.post(
             "/login",
             data={"username": "juan.perez", "password": "secret123", "_csrf_token": CSRF_TOKEN},
-            base_url="http://localhost:5000",
         )
         assert resp.status_code == 302
-        assert resp.headers["Location"].endswith("/pos/")
-        set_cookie_headers = resp.headers.getlist("Set-Cookie")
-        assert any("monay_pos_token=jwt-cajero-123" in value for value in set_cookie_headers)
-        assert any("monay_pos_user=" in value for value in set_cookie_headers)
-        assert any("monay_login_url=" in value for value in set_cookie_headers)
+        assert resp.headers["Location"].endswith("/login")
+        assert not any("monay_pos" in value for value in resp.headers.getlist("Set-Cookie"))
         with client.session_transaction() as sess:
             assert "jwt_token" not in sess
+        page = client.get("/login").data.decode("utf-8")
+        assert "desde la app Monay Market POS" in page
 
     @patch("app.api")
     def test_post_login_failure_shows_error(self, mock_api, client):

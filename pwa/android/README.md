@@ -9,7 +9,8 @@ requiere recompilar el APK**. Solo hay que recompilar cuando cambia algo nativo
 El **dashboard** (dueño/admin) sigue siendo un sitio web normal, sin cambios;
 esta app solo empaqueta el POS del cajero. Sin sesión, la app muestra su propio
 login de caja (no el login ni la portada del sitio) y **solo admite cajeros**:
-si entra un dueño o admin, el token se descarta y se le pide usar el navegador.
+si entra un dueño o admin, el token se descarta y se le pide usar el panel web.
+La caja se usa solo desde esta app: abierta en un navegador muestra un aviso.
 Cerrar sesión vuelve a ese login sin recargar, así la impresora queda conectada
 para el siguiente cajero.
 
@@ -20,15 +21,14 @@ Generados con `@capacitor/assets` desde [`icon-source.png`](icon-source.png)
 `pwa/assets/icon.png` y `pwa/assets/icon-foreground.png` y ejecutar
 `npx @capacitor/assets generate --android` desde `pwa/`.
 
-## Por qué existe
+## Cobro con tarjeta (pendiente)
 
-El cobro con tarjeta vía SumUp (ver [`../src/sumup.js`](../src/sumup.js)) usa
-hoy el esquema `sumupmerchant://` (Payment Switch), que SumUp documenta como
-legado y sin garantía de volver a un navegador web. El camino soportado es su
-**Tap-to-Pay SDK nativo para Android**, que exige una app Android de verdad.
-Mientras se gestiona el acceso al SDK con SumUp (solicitado a
-`integration@sumup.com`), esta app ya sirve para **pagos en efectivo**, igual
-que la PWA en Chrome.
+El cobro con SumUp por el esquema `sumupmerchant://` (Payment Switch) se probó
+y se descartó: SumUp lo documenta como legado y sin garantía de volver a la app
+que lo abre (en las pruebas hubo cobros que no volvieron). El camino soportado
+es su **Tap-to-Pay SDK nativo para Android**, que se integra en esta app.
+Mientras se gestiona el acceso al SDK (solicitado a `integration@sumup.com`),
+la caja vende en **efectivo** y el botón "Tarjeta" está deshabilitado.
 
 ## Requisitos para compilar
 
@@ -83,7 +83,8 @@ apps de orígenes desconocidos" la primera vez).
 
 1. Agregar las credenciales Maven de SumUp a `build.gradle` / `settings.gradle`.
 2. Escribir un plugin nativo de Capacitor (Kotlin) que exponga `startPayment`
-   del Tap-to-Pay SDK a `sumup.js`, reemplazando el esquema `sumupmerchant://`.
+   del Tap-to-Pay SDK a la caja, y conectarlo donde `processSale` deja el comentario
+   de tarjeta. Habilitar el botón "Tarjeta" en `index.html` (hoy `disabled`).
 3. Revisar `android:required` de `android.hardware.nfc` en el manifest según
    cómo se termine distribuyendo la app.
 4. Confirmar requisitos de Chile con SumUp: PIN obligatorio y `processCardAs`.

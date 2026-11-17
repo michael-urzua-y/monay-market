@@ -1,24 +1,18 @@
 // ============================================================
 // Monay Market POS — Impresora térmica por Bluetooth directo
 //
-// Reemplaza a RawBT: la app se conecta sola a la impresora y le envía la
-// boleta en ESC/POS (ver receipt-escpos.js), sin diálogo de impresión.
+// La app se conecta sola a la impresora y le envía la boleta en ESC/POS
+// (ver receipt-escpos.js), sin diálogo de impresión ni apps intermedias.
 //
-// Dos transportes, misma interfaz pública (ThermalPrinter.*), según dónde
-// corre la página:
-//   - Chrome en Android (PWA): Web Bluetooth (navigator.bluetooth).
-//   - App nativa (Capacitor): navigator.bluetooth NO existe dentro del
-//     WebView de Android, así que se usa el plugin
-//     @capacitor-community/bluetooth-le (src/vendor/capacitor-bluetooth-le.js,
-//     cargado bajo demanda) sobre BLE nativo.
+// Usa el plugin @capacitor-community/bluetooth-le sobre BLE nativo de Android
+// (dentro del WebView de la app no existe navigator.bluetooth). El plugin se
+// carga bajo demanda desde src/vendor/.
 //
-// Requisito en ambos casos: una impresora con Bluetooth LE (4.0+). Las que
-// solo tienen Bluetooth "clásico" no aparecen al vincular: para esas la app
-// sigue usando window.print() + RawBT (fuera de este módulo).
+// Requisito: una impresora con Bluetooth LE (4.0+). Las que solo tienen
+// Bluetooth "clásico" no aparecen al vincular.
 // ============================================================
 
-import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=48'; // misma versión que en app.js
-import { isNativeApp } from './platform.js?v=48';
+import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=49'; // misma versión que en app.js
 
 // Servicios BLE "serial" de las térmicas chinas más comunes (Xprinter, Goojprt, Zjiang, MTP…)
 var SERVICES = [
@@ -38,27 +32,19 @@ var CHUNK_SAFE = 20;
 // Pausa entre envíos sin confirmación: las impresoras baratas pierden bytes si se les satura.
 var PACE_MS = 12;
 var CONNECT_TIMEOUT_MS = 8000;
-var CONNECT_TIMEOUT_MESSAGE = 'La impresora no responde. ¿Está encendida y cerca?';
 var WRITE_TIMEOUT_MS = 5000;
 
 var state = {
-  // Transporte activo: se decide una vez, al primer uso (ver getTransport()).
-  transport: null,
   deviceId: null,
   deviceName: '',
-  // Solo lo usa el transporte Web Bluetooth (objeto BluetoothDevice real).
-  webDevice: null,
-  // Característica escribible encontrada (forma depende del transporte).
+  // Servicio y característica escribibles de la impresora conectada
   writable: null,
   connected: false,
-  connecting: null,
   chunkSize: CHUNK_LARGE,
-  // Hay una impresora guardada pero no se puede recuperar sin elegirla de nuevo
-  lost: false,
 };
 
 /** Error de impresión. `started` indica si alcanzó a enviarse algo (posible ticket a medias). */
-export function PrinterError(message, started) {
+function PrinterError(message, started) {
   var err = new Error(message);
   err.name = 'PrinterError';
   err.started = !!started;
@@ -99,72 +85,11 @@ function withTimeout(promise, ms, message) {
   ]).finally(function () { clearTimeout(timer); });
 }
 
-/** Primero los servicios "serial" conocidos de impresoras térmicas, después el resto. */
-function orderServices(services, uuidOf) {
-  var known = function (s) { return SERVICES.indexOf(uuidOf(s).toLowerCase()) >= 0; };
-  return services.filter(known).concat(services.filter(function (s) { return !known(s); }));
-}
-
-/**
- * Envía los bytes en fragmentos con `writeChunk(chunk) → Promise`. Común a
- * ambos transportes: si el primer fragmento se rechaza (MTU chico), baja al
- * tamaño mínimo garantizado y lo recuerda; si se corta a mitad, lo marca
- * como `started` para que la app no reintente sola (evita tickets dobles).
- */
-function sendChunked(bytes, writeChunk) {
-  var offset = 0;
-  function next() {
-    if (offset >= bytes.length) return Promise.resolve();
-    var chunk = bytes.slice(offset, offset + state.chunkSize);
-    return writeChunk(chunk).then(
-      function () {
-        offset += chunk.length;
-        return next();
-      },
-      function (err) {
-        if (offset === 0 && state.chunkSize > CHUNK_SAFE) {
-          state.chunkSize = CHUNK_SAFE;
-          return next();
-        }
-        throw PrinterError('Se cortó la conexión con la impresora', offset > 0 || !!(err && err.started));
-      },
-    );
-  }
-  return next();
-}
-
-function markConnected(writable) {
-  state.writable = writable;
-  state.connected = true;
-  notifyChange();
-  return writable;
-}
-
-function markDisconnected() {
-  state.connected = false;
-  state.writable = null;
-  notifyChange();
-}
-
 // ----------------------------------------------------------
-// Qué transporte usar: Web Bluetooth (Chrome) o el plugin nativo (Capacitor)
+// Plugin Bluetooth (carga bajo demanda)
 // ----------------------------------------------------------
-function hasWebBluetooth() {
-  return !!(navigator.bluetooth && typeof navigator.bluetooth.requestDevice === 'function');
-}
-
-/** 'web' (Web Bluetooth), 'native' (plugin BLE de Capacitor) o null si ninguno aplica. */
-function getTransportKind() {
-  if (isNativeApp()) return 'native';
-  if (hasWebBluetooth()) return 'web';
-  return null;
-}
-
-function isSupported() {
-  return getTransportKind() !== null;
-}
-
 var bleLoadPromise = null;
+var bleInitPromise = null;
 
 /** Carga un archivo de src/vendor/ con la misma versión (?v=) con que se cargó este módulo. */
 function loadVendorScript(file) {
@@ -179,7 +104,6 @@ function loadVendorScript(file) {
 }
 
 /**
- * Carga el plugin Bluetooth bajo demanda (solo dentro de la app nativa).
  * El plugin necesita @capacitor/core (global capacitorExports). Una app con
  * empaquetador lo incluye sola; la caja carga módulos sin empaquetador y el
  * WebView solo inyecta el puente nativo, así que se carga capacitor-core.js
@@ -205,21 +129,21 @@ function loadBleClient() {
   return bleLoadPromise;
 }
 
-var bleInitPromise = null;
-
-function nativeBle() {
+/** BleClient listo para usar (cargado e inicializado; la primera vez Android pide el permiso). */
+function ble() {
   return loadBleClient().then(function (BleClient) {
-    if (bleInitPromise) return bleInitPromise.then(function () { return BleClient; });
-    bleInitPromise = BleClient.initialize().catch(function (err) {
-      bleInitPromise = null;
-      throw err;
-    });
+    if (!bleInitPromise) {
+      bleInitPromise = BleClient.initialize().catch(function (err) {
+        bleInitPromise = null;
+        throw err;
+      });
+    }
     return bleInitPromise.then(function () { return BleClient; });
   });
 }
 
 // ----------------------------------------------------------
-// Estado y preferencias (comunes a ambos transportes)
+// Estado y preferencias
 // ----------------------------------------------------------
 
 /** Hay una impresora vinculada en este dispositivo. */
@@ -240,146 +164,63 @@ function setPaper(mm) {
 }
 
 /**
- * La impresora está vinculada pero hay que volver a elegirla en la lista.
- * Pasa al recargar la página (p. ej. al cerrar sesión): ni Chrome ni el
- * plugin nativo dejan recuperar el dispositivo sin que el usuario lo elija
- * otra vez (salvo que Web Bluetooth sí lo recuerde vía getDevices()).
+ * La impresora está vinculada pero hay que volver a elegirla en la lista: el
+ * plugin no puede recuperar el dispositivo tras reabrir la app sin que el
+ * cajero lo elija otra vez.
  */
 function needsReselect() {
-  if (!isPaired() || state.deviceId) return false;
-  if (state.lost) return true;
-  var kind = getTransportKind();
-  if (kind === 'web') return !navigator.bluetooth || typeof navigator.bluetooth.getDevices !== 'function';
-  // El plugin nativo no tiene equivalente a getDevices(): siempre hay que
-  // volver a elegir la impresora tras recargar la página.
-  return kind === 'native';
+  return isPaired() && !state.deviceId;
 }
 
 function deviceName() {
   return state.deviceName || '';
 }
 
+function markConnected(writable) {
+  state.writable = writable;
+  state.connected = true;
+  notifyChange();
+  return writable;
+}
+
+function markDisconnected() {
+  state.connected = false;
+  state.writable = null;
+  notifyChange();
+}
+
 function forget() {
   disconnect();
   state.deviceId = null;
   state.deviceName = '';
-  state.webDevice = null;
-  state.lost = false;
   storage(STORAGE_DEVICE, null);
   notifyChange();
 }
 
 // ----------------------------------------------------------
-// Conexión — Web Bluetooth (Chrome)
+// Conexión
 // ----------------------------------------------------------
-function pairWeb() {
-  return navigator.bluetooth
-    .requestDevice({
-      // Se listan todos: muchas impresoras no anuncian su servicio y no aparecerían con filtros
-      acceptAllDevices: true,
-      optionalServices: SERVICES,
-    })
-    .then(function (device) {
-      disconnect();
-      state.webDevice = device;
-      state.deviceId = device.id;
-      state.deviceName = device.name || '';
-      state.lost = false;
-      storage(STORAGE_DEVICE, device.id);
-      return connectWeb(device);
-    });
-}
 
-function connectWeb(device) {
-  if (!device.__monayListener) {
-    device.addEventListener('gattserverdisconnected', markDisconnected);
-    device.__monayListener = true;
-  }
-  return withTimeout(device.gatt.connect(), CONNECT_TIMEOUT_MS, CONNECT_TIMEOUT_MESSAGE)
-    .then(findWritableWeb)
-    .then(markConnected);
-}
-
-function findWritableWeb(server) {
-  return server.getPrimaryServices().then(function (services) {
-    var ordered = orderServices(services, function (s) { return s.uuid; });
-    var tryService = function (i) {
-      if (i >= ordered.length) {
-        throw PrinterError('Este dispositivo no parece una impresora compatible');
-      }
-      return ordered[i]
-        .getCharacteristics()
-        .then(function (chars) {
-          var writable = chars.filter(function (c) {
-            return c.properties.writeWithoutResponse || c.properties.write;
-          })[0];
-          return writable || tryService(i + 1);
-        })
-        .catch(function () { return tryService(i + 1); });
-    };
-    return tryService(0);
-  });
-}
-
-/** Busca la impresora vinculada sin pedir permiso de nuevo (Chrome recuerda el permiso). */
-function rememberedWebDevice() {
-  if (state.webDevice) return Promise.resolve(state.webDevice);
-  var lost = function () {
-    state.lost = true;
-    return PrinterError('Toque "Conectar impresora" y elíjala en la lista');
-  };
-  if (typeof navigator.bluetooth.getDevices !== 'function') return Promise.reject(lost());
-  var savedId = storage(STORAGE_DEVICE);
-  return navigator.bluetooth.getDevices().then(function (devices) {
-    var device = devices.filter(function (d) { return d.id === savedId; })[0];
-    if (!device) throw lost();
-    state.webDevice = device;
-    return device;
-  });
-}
-
-function ensureConnectedWeb() {
-  if (isConnected()) return Promise.resolve(state.writable);
-  if (!isPaired()) return Promise.reject(PrinterError('No hay impresora vinculada'));
-  return rememberedWebDevice().then(connectWeb);
-}
-
-function sendWeb(bytes) {
-  var characteristic = state.writable;
-  return sendChunked(bytes, function (chunk) {
-    if (characteristic.properties.writeWithoutResponse) {
-      // Sin confirmación: pausa para no saturar el búfer de impresoras baratas
-      return characteristic.writeValueWithoutResponse(chunk).then(function () { return delay(PACE_MS); });
-    }
-    return characteristic.writeValueWithResponse
-      ? characteristic.writeValueWithResponse(chunk)
-      : characteristic.writeValue(chunk);
-  });
-}
-
-// ----------------------------------------------------------
-// Conexión — plugin nativo (Capacitor, @capacitor-community/bluetooth-le)
-// ----------------------------------------------------------
-function pairNative() {
-  return nativeBle().then(function (BleClient) {
+/** Vincula una impresora (abre la lista de dispositivos; requiere un toque del cajero). */
+function pair() {
+  return ble().then(function (BleClient) {
     return BleClient.requestDevice({ optionalServices: SERVICES }).then(function (device) {
       disconnect();
       state.deviceId = device.deviceId;
       state.deviceName = device.name || '';
-      state.lost = false;
       storage(STORAGE_DEVICE, device.deviceId);
-      return connectNative(BleClient, device.deviceId);
+      return connect(BleClient, device.deviceId);
     });
   }).catch(function (err) {
-    throw nativePairError(err);
+    throw pairError(err);
   });
 }
 
 /** Traduce los errores del plugin Bluetooth (en inglés) a instrucciones para el cajero. */
-function nativePairError(err) {
+function pairError(err) {
   var message = (err && err.message) || '';
   if (/requestDevice cancelled/i.test(message)) {
-    // Cerró la lista sin elegir: mismo nombre que usa Chrome, la app no muestra aviso
+    // Cerró la lista sin elegir: no es un error, la app no muestra aviso
     var cancelled = new Error('Selección cancelada');
     cancelled.name = 'NotFoundError';
     return cancelled;
@@ -396,19 +237,20 @@ function nativePairError(err) {
   return err && err.name === 'PrinterError' ? err : PrinterError(message || 'No se pudo vincular la impresora');
 }
 
-function connectNative(BleClient, deviceId) {
-  return withTimeout(BleClient.connect(deviceId, markDisconnected), CONNECT_TIMEOUT_MS, CONNECT_TIMEOUT_MESSAGE)
+/** Conecta y busca dónde escribir: primero los servicios "serial" conocidos de impresoras. */
+function connect(BleClient, deviceId) {
+  return withTimeout(BleClient.connect(deviceId, markDisconnected), CONNECT_TIMEOUT_MS, 'La impresora no responde. ¿Está encendida y cerca?')
     .then(function () { return BleClient.getServices(deviceId); })
     .then(function (services) {
-      var ordered = orderServices(services, function (s) { return s.uuid; });
+      var known = function (s) { return SERVICES.indexOf(s.uuid.toLowerCase()) >= 0; };
+      var ordered = services.filter(known).concat(services.filter(function (s) { return !known(s); }));
       for (var i = 0; i < ordered.length; i++) {
-        var service = ordered[i];
-        var characteristic = (service.characteristics || []).filter(function (c) {
+        var characteristic = (ordered[i].characteristics || []).filter(function (c) {
           return c.properties && (c.properties.writeWithoutResponse || c.properties.write);
         })[0];
         if (characteristic) {
           return {
-            serviceUuid: service.uuid,
+            serviceUuid: ordered[i].uuid,
             characteristicUuid: characteristic.uuid,
             writeWithoutResponse: !!characteristic.properties.writeWithoutResponse,
           };
@@ -419,84 +261,76 @@ function connectNative(BleClient, deviceId) {
     .then(markConnected);
 }
 
-function ensureConnectedNative() {
+/** Deja la conexión lista. Se puede llamar antes de cobrar para que imprimir sea inmediato. */
+function ensureConnected() {
   if (isConnected()) return Promise.resolve(state.writable);
   if (!isPaired()) return Promise.reject(PrinterError('No hay impresora vinculada'));
   if (!state.deviceId) {
-    // No queda registro del dispositivo elegido en esta sesión de la app
-    // (p. ej. tras cerrar sesión): el plugin nativo no tiene equivalente a
-    // getDevices(), así que no hay forma de reconectar sin elegirlo de nuevo.
-    state.lost = true;
+    // Tras reabrir la app no queda registro del dispositivo: hay que elegirlo de nuevo.
     return Promise.reject(PrinterError('Toque "Conectar impresora" y elíjala en la lista'));
   }
-  return nativeBle().then(function (BleClient) {
-    return connectNative(BleClient, state.deviceId);
+  return ble().then(function (BleClient) {
+    return connect(BleClient, state.deviceId);
   });
-}
-
-function sendNative(bytes) {
-  return nativeBle().then(function (BleClient) {
-    var writable = state.writable;
-    return sendChunked(bytes, function (chunk) {
-      var array = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk);
-      var value = new DataView(array.buffer, array.byteOffset, array.byteLength);
-      if (writable.writeWithoutResponse) {
-        return BleClient
-          .writeWithoutResponse(state.deviceId, writable.serviceUuid, writable.characteristicUuid, value, { timeout: WRITE_TIMEOUT_MS })
-          .then(function () { return delay(PACE_MS); });
-      }
-      return BleClient.write(state.deviceId, writable.serviceUuid, writable.characteristicUuid, value, { timeout: WRITE_TIMEOUT_MS });
-    });
-  });
-}
-
-// ----------------------------------------------------------
-// Interfaz pública — despacha al transporte correspondiente
-// ----------------------------------------------------------
-
-/** Vincula una impresora (abre el selector; requiere un toque del usuario). */
-function pair() {
-  var kind = getTransportKind();
-  if (kind === 'web') return pairWeb();
-  if (kind === 'native') return pairNative();
-  return Promise.reject(PrinterError('Este dispositivo no permite Bluetooth directo'));
-}
-
-/** Deja la conexión lista. Se puede llamar antes de cobrar para que imprimir sea inmediato. */
-function ensureConnected() {
-  var kind = getTransportKind();
-  if (kind === 'web') return ensureConnectedWeb();
-  if (kind === 'native') return ensureConnectedNative();
-  return Promise.reject(PrinterError('No hay impresora vinculada'));
-}
-
-/** Conecta en segundo plano sin mostrar errores (al abrir el POS o al empezar a cobrar). */
-function warmUp() {
-  if (isSupported() && isPaired() && !isConnected()) ensureConnected().catch(function () {});
 }
 
 function disconnect() {
-  var kind = getTransportKind();
-  if (kind === 'web' && state.webDevice && state.webDevice.gatt && state.webDevice.gatt.connected) {
-    state.webDevice.gatt.disconnect();
-  } else if (kind === 'native' && state.deviceId && state.connected) {
-    nativeBle().then(function (BleClient) {
-      BleClient.disconnect(state.deviceId).catch(function () {});
+  if (state.deviceId && state.connected) {
+    var deviceId = state.deviceId;
+    ble().then(function (BleClient) {
+      BleClient.disconnect(deviceId).catch(function () {});
     });
   }
   state.connected = false;
   state.writable = null;
 }
 
+// ----------------------------------------------------------
+// Envío
+// ----------------------------------------------------------
+
+/**
+ * Envía los bytes en fragmentos. Si el primero se rechaza (MTU chico) baja al
+ * tamaño mínimo garantizado y lo recuerda; si se corta a mitad, lo marca como
+ * `started` para que la app no reintente sola (evita tickets dobles).
+ */
 function sendBytes(bytes) {
   return ensureConnected()
     .catch(function (err) {
       throw err.name === 'PrinterError' ? err : PrinterError(err.message || 'No se pudo conectar con la impresora');
     })
-    .then(function () {
-      var kind = getTransportKind();
-      var sender = kind === 'native' ? sendNative : sendWeb;
-      return sender(bytes);
+    .then(ble)
+    .then(function (BleClient) {
+      var writable = state.writable;
+      var write = function (chunk) {
+        var array = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk);
+        var value = new DataView(array.buffer, array.byteOffset, array.byteLength);
+        if (writable.writeWithoutResponse) {
+          return BleClient
+            .writeWithoutResponse(state.deviceId, writable.serviceUuid, writable.characteristicUuid, value, { timeout: WRITE_TIMEOUT_MS })
+            .then(function () { return delay(PACE_MS); });
+        }
+        return BleClient.write(state.deviceId, writable.serviceUuid, writable.characteristicUuid, value, { timeout: WRITE_TIMEOUT_MS });
+      };
+      var offset = 0;
+      var next = function () {
+        if (offset >= bytes.length) return Promise.resolve();
+        var chunk = bytes.slice(offset, offset + state.chunkSize);
+        return write(chunk).then(
+          function () {
+            offset += chunk.length;
+            return next();
+          },
+          function (err) {
+            if (offset === 0 && state.chunkSize > CHUNK_SAFE) {
+              state.chunkSize = CHUNK_SAFE;
+              return next();
+            }
+            throw PrinterError('Se cortó la conexión con la impresora', offset > 0 || !!(err && err.started));
+          },
+        );
+      };
+      return next();
     });
 }
 
@@ -519,7 +353,6 @@ function paperDots() {
 }
 
 export var ThermalPrinter = {
-  isSupported: isSupported,
   isPaired: isPaired,
   isConnected: isConnected,
   needsReselect: needsReselect,
@@ -530,7 +363,6 @@ export var ThermalPrinter = {
   pair: pair,
   connect: ensureConnected,
   forget: forget,
-  warmUp: warmUp,
   printReceipt: printReceipt,
   printTest: printTest,
 };

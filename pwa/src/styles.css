@@ -951,7 +951,7 @@ body.app-booting .global-loading-panel {
   font-weight: 700;
 }
 
-/* Tarjeta en pausa hasta integrar el SDK de SumUp (ver CARD_PAYMENTS_ENABLED en app.js) */
+/* Tarjeta deshabilitada en index.html hasta integrar el Tap-to-Pay SDK de SumUp */
 .payment-method-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -1915,66 +1915,6 @@ body.app-booting .global-loading-panel {
   max-width: 520px;
 }
 
-@media print {
-  body {
-    background: #fff;
-  }
-
-  .app-header,
-  .bottom-nav,
-  .receipt-actions,
-  .receipt-pdf-link,
-  .toast,
-  .confirm-overlay,
-  .global-loading-overlay {
-    display: none !important;
-  }
-
-  .app-shell,
-  .main-content,
-  .screen,
-  .receipt-container {
-    display: block !important;
-    min-height: auto !important;
-    padding: 0 !important;
-    background: #fff !important;
-  }
-
-  .screen:not(#screen-receipt) {
-    display: none !important;
-  }
-
-  .receipt-paper {
-    width: 72mm;
-    max-width: 72mm;
-    margin: 0 auto;
-    border: none;
-    box-shadow: none;
-    color: #000;
-    background: #fff;
-    padding: 3mm 2mm 3.5mm;
-    font-size: 8.5pt;
-  }
-
-  .receipt-timbre-code {
-    width: 62mm;
-  }
-
-  .receipt-document-head {
-    padding: 2.2mm 1.8mm 1.8mm;
-    margin-bottom: 3mm;
-  }
-
-  .receipt-document-title {
-    font-size: 10pt;
-  }
-
-  .receipt-document-folio,
-  .receipt-total-row {
-    font-size: 9.5pt;
-  }
-}
-
 @media (max-width: 640px) {
   .receipt-paper {
     max-width: 100%;
@@ -2503,6 +2443,7 @@ body.app-booting .global-loading-panel {
   font: inherit;
   font-size: 1rem;
   font-weight: 700;
+  text-decoration: none;
   box-shadow: 0 10px 24px rgba(240, 185, 11, 0.25);
   cursor: pointer;
   transition: transform 0.1s;

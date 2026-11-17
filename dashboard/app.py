@@ -4,13 +4,11 @@ Provides dashboard, product management, sales history, user management,
 and tenant configuration via server-side rendered templates with HTMX.
 """
 
-import json
 import os
 import secrets
 from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
-from urllib.parse import quote, urljoin
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
@@ -32,7 +30,7 @@ api = APIClient(app.config["API_URL"])
 ALLOWED_CERTIFICATE_EXTENSIONS = {".pfx", ".p12"}
 OWNER_ROLE = "dueno"
 POS_ROLES = {"cajero", "vendedor"}
-POS_AUTH_COOKIE_MAX_AGE = 60
+POS_ONLY_IN_APP_MESSAGE = "El cajero ingresa desde la app Monay Market POS en el celular del negocio."
 try:
     DISPLAY_TIMEZONE = ZoneInfo("America/Santiago")
 except Exception:
@@ -47,64 +45,13 @@ def is_pos_operator(user):
     return (user or {}).get("role") in POS_ROLES
 
 
-def is_dashboard_dev_port():
-    return request.host in {"localhost:5000", "127.0.0.1:5000"}
-
-
-def get_pos_url():
-    pos_url = app.config["POS_URL"]
-    if pos_url.startswith(("http://", "https://")):
-        return pos_url
-    if is_dashboard_dev_port():
-        return urljoin(app.config["PUBLIC_APP_URL"].rstrip("/") + "/", pos_url.lstrip("/"))
-    return pos_url
-
-
-def get_login_url():
-    configured_url = app.config.get("LOGIN_URL")
-    if configured_url:
-        return configured_url
-    if is_dashboard_dev_port():
-        return urljoin(app.config["PUBLIC_APP_URL"].rstrip("/") + "/", "login")
-    return url_for("login")
-
-
 def redirect_for_authenticated_session():
-    token = session.get("jwt_token")
     user = session.get("user") or {}
     if user.get("role") == "superadmin":
         return redirect(url_for("admin_dashboard"))
     if is_owner(user):
         return redirect(url_for("dashboard"))
-    if token and is_pos_operator(user):
-        session.clear()
-        response = redirect(get_pos_url())
-        return set_pos_auth_cookies(response, token, user)
     return None
-
-
-def set_pos_auth_cookies(response, token, user):
-    cookie_options = {
-        "max_age": POS_AUTH_COOKIE_MAX_AGE,
-        "path": "/",
-        "secure": bool(app.config["POS_AUTH_COOKIE_SECURE"]),
-        "samesite": "Lax",
-    }
-    response.set_cookie("monay_pos_token", token, **cookie_options)
-    response.set_cookie(
-        "monay_pos_user",
-        quote(json.dumps(user, separators=(",", ":"))),
-        **cookie_options,
-    )
-    response.set_cookie("monay_login_url", quote(get_login_url()), **cookie_options)
-    return response
-
-
-def clear_pos_auth_cookies(response):
-    response.delete_cookie("monay_pos_token", path="/", samesite="Lax")
-    response.delete_cookie("monay_pos_user", path="/", samesite="Lax")
-    response.delete_cookie("monay_login_url", path="/", samesite="Lax")
-    return response
 
 
 def get_csrf_token() -> str:
@@ -137,14 +84,13 @@ def login_required(f):
         user = session.get("user") or {}
         if "jwt_token" not in session or not is_owner(user):
             session.clear()
-            login_url = get_login_url()
+            login_url = url_for("login")
             if request.headers.get("HX-Request") == "true" or request.path.startswith("/htmx/"):
                 response = Response(status=401)
                 response.headers["HX-Redirect"] = login_url
                 response.headers["X-Monay-Auth-Expired"] = "1"
-                return clear_pos_auth_cookies(response)
-            response = redirect(login_url)
-            return clear_pos_auth_cookies(response)
+                return response
+            return redirect(login_url)
         return f(*args, **kwargs)
 
     return decorated_function
@@ -330,19 +276,11 @@ def login():
                 session["jwt_token"] = result["accessToken"]
                 session["user"] = user
                 return redirect(url_for("dashboard"))
-            if is_pos_operator(user):
-                session.clear()
-                response = redirect(get_pos_url())
-                return set_pos_auth_cookies(response, result["accessToken"], user)
-
-            session["login_error"] = "Perfil no autorizado para esta aplicación"
+            # El token del cajero nunca se guarda en el panel: la caja es solo la app.
+            session["login_error"] = (
+                POS_ONLY_IN_APP_MESSAGE if is_pos_operator(user) else "Perfil no autorizado para esta aplicación"
+            )
             return redirect(url_for("login"))
-
-        if result.get("status_code") == 201:
-            user = result.get("user", {})
-            if is_pos_operator(user):
-                session["login_error"] = "No se recibió token de acceso para el punto de venta"
-                return redirect(url_for("login"))
 
         session["login_error"] = "Credenciales inválidas"
         return redirect(url_for("login"))
@@ -354,16 +292,7 @@ def login():
 def logout():
     """Clear session and redirect to login."""
     session.clear()
-    response = redirect(url_for("login"))
-    clear_pos_auth_cookies(response)
-    return response
-
-
-@app.route("/pos")
-@app.route("/pos/")
-def pos_redirect():
-    """Redirect direct dashboard-port POS requests to the unified POS route."""
-    return redirect(get_pos_url())
+    return redirect(url_for("login"))
 
 
 # --- Main routes ---

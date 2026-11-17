@@ -58,7 +58,7 @@ monay-market/
 
 ### Panel Admin (Flask + HTMX)
 - Login con JWT almacenado en sesión Flask
-- Login unificado en `/login`: si entra un `dueno` va al dashboard, si entra un `cajero` va al POS
+- Login en `/login` para el dueño (panel) y el superadmin; el cajero no entra por el sitio: se le indica usar la app
 - Dashboard con métricas auto-refresh vía HTMX: ventas del día, acumulado mensual, valorización inventario, gráfico diario (Chart.js), productos con stock crítico (paginado)
 - Gestión de productos: CRUD completo con soporte inteligente para productos a granel (decimales), búsqueda en tiempo real con HTMX, paginación server-side, barcode lookup con autocompletado, escáner de cámara
 - Asistente Inteligente de Compras: generación automática de lista de reposición optimizada para móviles, calculando faltantes y agrupada por categorías
@@ -69,8 +69,8 @@ monay-market/
 - Librerías frontend servidas localmente (`htmx`, `alpine`, `chart.js`) para no depender de CDN externos
 
 ### PWA Punto de Venta
-- En el navegador: funciona como página web (no se ofrece instalarla); en PC se usa con el login central del sitio
-- En Android: app nativa del cajero con Capacitor (ver `pwa/android/README.md`), con login propio que solo admite cajeros
+- Se usa **solo desde la app Android** del cajero (Capacitor, ver `pwa/android/README.md`), con login propio que solo admite cajeros
+- Abierta en un navegador muestra un aviso para usar la app (y un enlace al panel del dueño)
 - Service Worker: cache-first para assets, network-first para API, respuesta offline 503
 - Login con JWT efímero almacenado en `sessionStorage`
 - Búsqueda de productos por nombre o código de barras
@@ -161,7 +161,7 @@ URLs por defecto:
 | API dentro del acceso unificado | http://localhost:8080/api/ |
 | API, Dashboard y PostgreSQL | internos en Docker |
 
-El login unificado vive en `/login`. Si el usuario autenticado tiene rol `dueno`, entra al dashboard; si tiene rol `cajero`, entra al POS. Al cerrar sesión desde el POS, el cajero vuelve al login central. Las credenciales y roles salen desde la base de datos, no desde Docker ni desde archivos del frontend.
+El login del sitio vive en `/login` y es para el dueño (panel) y el superadmin. El cajero entra solo desde la app Android, que tiene su propio login de caja; si un cajero intenta entrar por el sitio, se le indica usar la app. Las credenciales y roles salen desde la base de datos, no desde Docker ni desde archivos del frontend.
 En Docker, solo el servicio `web` publica un puerto. El API (`3000`) y el dashboard Flask (`5000`) quedan internos en la red Docker para evitar entradas paralelas y logins duplicados. En VPS, publicar solo `web` detrás de HTTPS.
 
 Comandos útiles:
@@ -183,7 +183,7 @@ docker compose down
 docker compose down -v
 ```
 
-Para VPS, publicar solo el servicio `web` detrás de HTTPS y configurar `CORS_ORIGIN`, `WS_CORS_ORIGIN`, `PWA_LOGIN_URL`, `POS_URL`, `SESSION_COOKIE_SECURE=true`, `POS_AUTH_COOKIE_SECURE=true` y `STRICT_ENV_VALIDATION=true` según el dominio real. Mantener `postgres/.env`, `api/.env` y `dashboard/.env` fuera de git.
+Para VPS, publicar solo el servicio `web` detrás de HTTPS y configurar `CORS_ORIGIN`, `WS_CORS_ORIGIN`, `SESSION_COOKIE_SECURE=true` y `STRICT_ENV_VALIDATION=true` según el dominio real. Mantener `postgres/.env`, `api/.env` y `dashboard/.env` fuera de git.
 
 ### Backups automáticos de PostgreSQL
 
@@ -234,7 +234,7 @@ Para API Gateway eBoleta:
 4. Seleccionar `API Gateway eBoleta`, cargar el token, RUT emisor, razón social, giro y clave tributaria SII.
 5. Desactivar `Modo sandbox` para emitir contra el proveedor real.
 
-La clave tributaria SII se guarda por tenant desde la pantalla de configuración y no se debe definir en `.env`. El POS muestra el folio/PDF oficial cuando la boleta queda emitida y permite imprimir el comprobante local desde el navegador.
+La clave tributaria SII se guarda por tenant desde la pantalla de configuración y no se debe definir en `.env`. La caja muestra el folio/PDF oficial cuando la boleta queda emitida y la imprime por la impresora Bluetooth vinculada.
 
 ### Proxy opcional para API Gateway
 
@@ -289,7 +289,6 @@ Esto no reemplaza al stack principal de Monay Market; es un componente opcional 
 | `WS_CORS_ORIGIN` | Orígenes permitidos para WebSocket |
 | `WS_REDIS_URL` | Opcional. URL de Redis para escalar WebSocket a múltiples réplicas (ej: `redis://redis:6379`). Vacío = adapter en memoria (una sola instancia) |
 | `PWA_API_URL` | Override opcional expuesto a la PWA por `/runtime-config.js` |
-| `PWA_LOGIN_URL` | Override opcional para logout/login central de la PWA |
 | `LOGIN_RATE_LIMIT_*` | Ventana, intentos máximos y bloqueo del login |
 | `SII_APIGATEWAY_BASE_URL` | URL base de API Gateway V2 (default: `https://app.apigateway.cl/api/v2`) |
 | `BARCODE_LOOKUP_*` | Overrides opcionales para las URLs de lookup de código de barras |
@@ -302,9 +301,6 @@ Esto no reemplaza al stack principal de Monay Market; es un componente opcional 
 |----------|------------|
 | `API_URL` | URL interna del backend API dentro de Docker (ej: `http://api:3000`) |
 | `PUBLIC_APP_URL` | URL pública del acceso unificado (ej: `http://localhost:8080`) |
-| `LOGIN_URL` | URL opcional de retorno al login central cuando el cajero cierra sesión |
-| `POS_URL` | Ruta o URL del POS para usuarios cajeros (default: `/pos/`) |
-| `POS_AUTH_COOKIE_SECURE` | Usar `true` cuando el acceso esté servido por HTTPS |
 | `SECRET_KEY` | Secret para sesiones Flask |
 | `SESSION_COOKIE_SECURE` | Usar `true` cuando el dashboard esté servido por HTTPS |
 | `SESSION_COOKIE_SAMESITE` | Política SameSite de sesión Flask |

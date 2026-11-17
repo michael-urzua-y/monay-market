@@ -1,4 +1,4 @@
-const APP_ASSET_VERSION = '48';
+const APP_ASSET_VERSION = '49';
 const CACHE_NAME = `monay-pos-v${APP_ASSET_VERSION}`;
 const scopePath = new URL(self.registration.scope).pathname;
 const basePath = scopePath.endsWith('/') ? scopePath : scopePath + '/';
@@ -12,7 +12,6 @@ const APP_SHELL = [
   appPath('src/offline.js'),
   appPath(`src/printer.js?v=${APP_ASSET_VERSION}`),
   appPath(`src/receipt-escpos.js?v=${APP_ASSET_VERSION}`),
-  appPath(`src/sumup.js?v=${APP_ASSET_VERSION}`),
   appPath(`src/platform.js?v=${APP_ASSET_VERSION}`),
   appPath('src/fonts/plus-jakarta-sans.woff2'),
   appPath(`src/styles.css?v=${APP_ASSET_VERSION}`),

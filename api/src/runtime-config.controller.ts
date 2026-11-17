@@ -19,7 +19,6 @@ export class RuntimeConfigController {
   getRuntimeConfig(): string {
     const config: RuntimeConfig = {
       MONAY_API_URL: process.env.PWA_API_URL || '',
-      MONAY_LOGIN_URL: process.env.PWA_LOGIN_URL || '',
     };
 
     return [

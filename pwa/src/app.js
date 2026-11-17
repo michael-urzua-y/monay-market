@@ -1,22 +1,21 @@
 // ============================================================
 // Monay Market POS — Main Application
-// Vanilla JS PWA with screen routing and API client
+// Caja de la app Android (Capacitor): pantallas, cobro e impresión Bluetooth
 // ============================================================
 
-import { api, CONFIG } from './api.js';
+import { api } from './api.js';
 import { OfflineDB } from './offline.js';
 import { Cart } from './cart.js';
 // Módulos de impresión con versión en la URL: nginx los cachea 7 días como inmutables.
 // Al cambiarlos, subir este número junto con APP_ASSET_VERSION (y en printer.js / service-worker.js).
-import { ThermalPrinter } from './printer.js?v=48';
-import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=48';
-import { SumUp } from './sumup.js?v=48';
-import { isNativeApp } from './platform.js?v=48';
+import { ThermalPrinter } from './printer.js?v=49';
+import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=49';
+import { isNativeApp } from './platform.js?v=49';
 
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '48';
+  var APP_ASSET_VERSION = '49';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -147,7 +146,6 @@ import { isNativeApp } from './platform.js?v=48';
     lastSaleId: null,
   };
   var lastRenderedReceipt = null;
-  var authRedirectInFlight = false;
 
   function showToast(message, type) {
     type = type || 'error';
@@ -951,8 +949,6 @@ import { isNativeApp } from './platform.js?v=48';
   var selectedPaymentMethod = 'efectivo';
 
   function initPayment() {
-    disableCardPaymentsUntilReady();
-
     // Payment method selector
     document.querySelectorAll('.payment-method-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -968,7 +964,6 @@ import { isNativeApp } from './platform.js?v=48';
         } else {
           efectivoEl.classList.add('hidden');
           tarjetaEl.classList.remove('hidden');
-          updateTarjetaMessage();
         }
         updatePaymentState();
       });
@@ -1089,7 +1084,7 @@ import { isNativeApp } from './platform.js?v=48';
     var btnPay = document.getElementById('btn-pay');
     if (isButtonLoading(btnPay)) return;
     // La boleta se imprime al cobrar en efectivo: en el celular primero se asegura la impresora
-    if (selectedPaymentMethod === 'efectivo' && navigator.onLine && printerRequired() && !ThermalPrinter.isConnected()) {
+    if (selectedPaymentMethod === 'efectivo' && navigator.onLine && !ThermalPrinter.isConnected()) {
       connectPrinterThen(processSale, 'Conecte la impresora para cobrar en efectivo: la boleta se imprime al cobrar.');
       return;
     }
@@ -1116,66 +1111,17 @@ import { isNativeApp } from './platform.js?v=48';
 
       body.amount_received = enteredAmount > 0 ? enteredAmount : cartTotal;
       submitSale(body, { btnPay: btnPay });
-      return;
     }
-
-    // Tarjeta: cobro real con SumUp desde el celular, no solo un registro.
-    processCardPayment(body, btnPay);
+    // Tarjeta: deshabilitada hasta integrar el Tap-to-Pay SDK de SumUp en la app.
   }
 
-  // Cobro con tarjeta en pausa: Payment Switch de SumUp (sumupmerchant://) no
-  // garantiza volver a Monay y ya hubo cobros que no quedaron registrados. Se
-  // reactiva cuando la app nativa integre el Tap-to-Pay SDK (acceso pedido a
-  // integration@sumup.com). Mientras tanto la caja vende solo en efectivo.
-  var CARD_PAYMENTS_ENABLED = false;
-
-  function disableCardPaymentsUntilReady() {
-    if (CARD_PAYMENTS_ENABLED) return;
-    var cardBtn = document.querySelector('.payment-method-btn[data-method="tarjeta"]');
-    if (cardBtn) {
-      cardBtn.disabled = true;
-      cardBtn.setAttribute('aria-disabled', 'true');
-      cardBtn.title = 'Cobro con tarjeta disponible próximamente';
-    }
-    var sumupMenuItem = document.getElementById('btn-open-sumup');
-    if (sumupMenuItem) sumupMenuItem.hidden = true;
-  }
-
-  function processCardPayment(body, btnPay) {
-    // Defensa extra: aunque el botón esté deshabilitado, nunca abrir SumUp en pausa
-    if (!CARD_PAYMENTS_ENABLED) {
-      showToast('El cobro con tarjeta estará disponible próximamente', 'warning');
-      return;
-    }
-    if (!SumUp.isConfigured()) {
-      showToast('Configure SumUp antes de cobrar con tarjeta (menú ☰ → Cobro con tarjeta)', 'error');
-      return;
-    }
-    var total = Cart.getTotal();
-    setButtonLoading(btnPay, true, { label: 'Abriendo SumUp...' });
-    // El carrito queda guardado en el celular; SumUp abre otra app y vuelve
-    // sola a esta página con el resultado. La venta recién se crea al volver.
-    var started = SumUp.chargeAndRedirect(body, total);
-    if (!started.ok) {
-      setButtonLoading(btnPay, false);
-      showToast('No se pudo iniciar el cobro con SumUp', 'error');
-    }
-    // No hay "finally": la página navega fuera de Monay hacia la app de SumUp.
-  }
-
-  // Llamado al volver de SumUp (o directo, para efectivo) con el cuerpo de
-  // la venta ya armado. Único punto que efectivamente crea la venta en Monay.
+  /** Registra la venta en Monay (o la deja en cola si no hay conexión). */
   function submitSale(body, options) {
     options = options || {};
     var btnPay = options.btnPay || document.getElementById('btn-pay');
     setButtonLoading(btnPay, true, { label: 'Procesando...' });
-    var processingMessage =
-      body.payment_method === 'tarjeta'
-        ? 'Registrando venta y actualizando stock...'
-        : 'Registrando venta y emitiendo boleta...';
-
     var paymentActivity = startActivity('Procesando pago', {
-      message: processingMessage,
+      message: 'Registrando venta y emitiendo boleta...',
       blocking: true,
     });
 
@@ -1226,65 +1172,6 @@ import { isNativeApp } from './platform.js?v=48';
       setButtonLoading(btnPay, false);
       updatePaymentState();
     });
-  }
-
-  // Resuelve el cobro con SumUp al volver (si la URL trae smp-status/smp-tx).
-  // Se llama al arrancar el POS, antes de mostrar la pantalla de venta.
-  // Se llama SIEMPRE al arrancar, haya o no sesión activa: SumUp puede
-  // volver después de que Android descartó la sesión del cajero (vive en
-  // sessionStorage, que no sobrevive si Chrome recicla la pestaña mientras
-  // otra app estuvo encima). Si el dinero ya se cobró, no podemos perder
-  // ese resultado solo porque tocó volver a loguearse.
-  function resolvePendingCardPayment() {
-    // Primero: ¿hay un cobro ya aprobado esperando desde una sesión
-    // anterior (se perdió la sesión antes de poder crear la venta)?
-    // Esto solo se puede resolver con sesión activa.
-    if (isCashierSession() && SumUp.hasApprovedPending()) {
-      var approved = SumUp.takeApprovedPending();
-      if (approved) {
-        var approvedBody = approved.saleBody;
-        if (approved.transactionCode) {
-          approvedBody.card_transaction_ref = approved.transactionCode;
-        }
-        submitSale(approvedBody, {});
-        return;
-      }
-    }
-
-    var outcome = SumUp.consumePendingReturn();
-    if (!outcome) return;
-
-    if (outcome.status === 'orphan') {
-      // Volvimos de SumUp pero no había un cobro pendiente guardado
-      // (ej: se recargó la página antes). No hay nada que crear.
-      return;
-    }
-
-    if (outcome.status === 'declined') {
-      showToast('Pago con tarjeta no realizado' + (outcome.message ? ': ' + outcome.message : ''), 'error');
-      return;
-    }
-
-    // Pago aprobado.
-    if (!isCashierSession()) {
-      // Se perdió la sesión mientras SumUp estaba abierto. El cobro ya se
-      // hizo: no podemos dejarlo caer en silencio. Guardamos el resultado
-      // ya aprobado (con el código de transacción) para crear la venta
-      // apenas el cajero vuelva a entrar, y se lo avisamos de forma que no
-      // pueda ignorarlo por accidente.
-      SumUp.saveApprovedPending(outcome.saleBody, outcome.transactionCode);
-      window.alert(
-        'El cobro con tarjeta SÍ se realizó (' + formatCLP(outcome.amount) + ').\n\n' +
-        'Inicie sesión de nuevo para registrar la venta y emitir la boleta.'
-      );
-      return;
-    }
-
-    var body = outcome.saleBody;
-    if (outcome.transactionCode) {
-      body.card_transaction_ref = outcome.transactionCode;
-    }
-    submitSale(body, {});
   }
 
   function shouldQueueOfflineSale(err) {
@@ -1489,17 +1376,9 @@ import { isNativeApp } from './platform.js?v=48';
   }
 
   // ----------------------------------------------------------
-  // Impresión: Bluetooth directo (ESC/POS, sin diálogo ni apps intermedias) si hay
-  // una impresora vinculada; si no, window.print() como siempre (RawBT u otro driver).
-  // En el celular la impresora Bluetooth es obligatoria: nunca se abre window.print().
+  // Impresión: siempre por la impresora Bluetooth vinculada (ESC/POS directo,
+  // sin diálogo). Es obligatoria para cobrar en efectivo.
   // ----------------------------------------------------------
-
-  /** Celular o tablet con Bluetooth directo: ahí la boleta solo sale por la impresora vinculada. */
-  function printerRequired() {
-    if (!ThermalPrinter.isSupported()) return false;
-    var uaData = navigator.userAgentData;
-    return !!(uaData && uaData.mobile) || /Android|Mobile|Tablet/i.test(navigator.userAgent);
-  }
 
   /** Conecta la impresora y sigue con `next`; si no se puede sin el usuario, abre el panel para conectarla. */
   function connectPrinterThen(next, message) {
@@ -1519,43 +1398,26 @@ import { isNativeApp } from './platform.js?v=48';
   }
 
   function printReceipt(receipt) {
-    if (!ThermalPrinter.isSupported() || (!ThermalPrinter.isPaired() && !printerRequired())) {
-      return printWithSystemDialog();
-    }
     return buildTimbreRaster(receipt.boleta_timbre, ThermalPrinter.paperDots())
       .then(function (timbre) {
         return ThermalPrinter.printReceipt(mapReceiptForThermalPrinter(receipt), timbre);
       })
       .catch(function (err) {
-        // Si no alcanzó a salir nada, se usa la impresión de siempre. Si se cortó a
-        // mitad de camino no se reintenta solo, para no imprimir la boleta dos veces.
+        // Si se cortó a mitad de camino no se reintenta solo, para no imprimir la boleta dos veces.
         if (err && err.started) throw err;
-        if (printerRequired()) {
-          openPrinterModal({
-            message: 'No se pudo conectar con la impresora. Conéctela para imprimir la boleta.',
-            onReady: function () {
-              printReceipt(receipt).catch(function (retryErr) {
-                showToast(printErrorMessage(retryErr), 'error');
-              });
-            },
-          });
-          var gateErr = new Error('Impresora desconectada');
-          gateErr.printerGate = true;
-          throw gateErr;
-        }
-        console.warn('Impresión Bluetooth no disponible, se usa la del sistema', err);
-        return printWithSystemDialog();
+        // No alcanzó a salir nada: se pide conectar la impresora y se reimprime al conectar.
+        openPrinterModal({
+          message: 'No se pudo conectar con la impresora. Conéctela para imprimir la boleta.',
+          onReady: function () {
+            printReceipt(receipt).catch(function (retryErr) {
+              showToast(printErrorMessage(retryErr), 'error');
+            });
+          },
+        });
+        var gateErr = new Error('Impresora desconectada');
+        gateErr.printerGate = true;
+        throw gateErr;
       });
-  }
-
-  function printWithSystemDialog() {
-    return new Promise(function (resolve) {
-      // Pequeña pausa para que el navegador termine de pintar el timbre en pantalla
-      window.setTimeout(function () {
-        window.print();
-        resolve();
-      }, 80);
-    });
   }
 
   function printErrorMessage(err) {
@@ -1657,90 +1519,6 @@ import { isNativeApp } from './platform.js?v=48';
     }
 
     initPrinterModal();
-    initSumUpModal();
-  }
-
-  // ----------------------------------------------------------
-  // Panel de cobro con tarjeta (SumUp)
-  // ----------------------------------------------------------
-  function initSumUpModal() {
-    var modal = document.getElementById('sumup-modal');
-    if (!modal) return;
-
-    var keyInput = document.getElementById('sumup-affiliate-key');
-    var statusEl = document.getElementById('sumup-status');
-
-    function renderStatus() {
-      if (!statusEl) return;
-      if (SumUp.isConfigured()) {
-        statusEl.textContent = 'Clave configurada: ya puede cobrar con tarjeta desde este celular.';
-        statusEl.className = 'printer-status is-connected';
-      } else {
-        statusEl.textContent = 'Falta configurar la clave de afiliado de SumUp.';
-        statusEl.className = 'printer-status is-error';
-      }
-      updateSumUpHint();
-      updateTarjetaMessage();
-    }
-
-    var open = function () {
-      if (keyInput) keyInput.value = SumUp.getConfig().affiliateKey || '';
-      renderStatus();
-      modal.classList.remove('hidden');
-      modal.style.display = 'flex';
-    };
-    var close = function () {
-      modal.classList.add('hidden');
-      modal.style.display = 'none';
-    };
-
-    var btnOpen = document.getElementById('btn-open-sumup');
-    if (btnOpen) btnOpen.addEventListener('click', open);
-    var btnClose = document.getElementById('btn-close-sumup');
-    if (btnClose) btnClose.addEventListener('click', close);
-    modal.addEventListener('click', function (e) {
-      if (e.target === modal) close();
-    });
-
-    var form = document.getElementById('sumup-form');
-    if (form) {
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var value = keyInput ? keyInput.value.trim() : '';
-        if (!value) {
-          showToast('Ingrese la clave de afiliado', 'warning');
-          return;
-        }
-        SumUp.setAffiliateKey(value);
-        renderStatus();
-        showToast('Clave de SumUp guardada', 'success');
-      });
-    }
-
-    var btnForget = document.getElementById('btn-sumup-forget');
-    if (btnForget) {
-      btnForget.addEventListener('click', function () {
-        SumUp.clearConfig();
-        if (keyInput) keyInput.value = '';
-        renderStatus();
-        showToast('Clave de SumUp eliminada', 'success');
-      });
-    }
-
-    updateSumUpHint();
-  }
-
-  function updateSumUpHint() {
-    var hint = document.getElementById('nav-hint-sumup');
-    if (hint) hint.textContent = SumUp.isConfigured() ? 'Configurado' : 'SumUp';
-  }
-
-  function updateTarjetaMessage() {
-    var msg = document.getElementById('tarjeta-msg');
-    if (!msg) return;
-    msg.textContent = SumUp.isConfigured()
-      ? 'Al cobrar se abrirá SumUp para acercar la tarjeta al celular.'
-      : 'Configure SumUp (menú ☰ → Cobro con tarjeta) para cobrar con tarjeta desde este celular.';
   }
 
   // ----------------------------------------------------------
@@ -1773,10 +1551,6 @@ import { isNativeApp } from './platform.js?v=48';
     var indicator = document.getElementById('printer-indicator');
     var label = document.getElementById('printer-indicator-label');
     if (!indicator || !label) return;
-    if (!ThermalPrinter.isSupported()) {
-      indicator.classList.add('hidden');
-      return;
-    }
     var connected = ThermalPrinter.isConnected();
     indicator.classList.remove('hidden');
     indicator.classList.toggle('is-on', connected);
@@ -1789,12 +1563,8 @@ import { isNativeApp } from './platform.js?v=48';
     indicator.setAttribute('aria-label', connected ? 'Impresora conectada' : 'Impresora desconectada: toca para conectarla');
   }
 
-  /** Al entrar a la caja en el celular: deja la impresora conectada antes de la primera venta. */
+  /** Al entrar a la caja: deja la impresora conectada antes de la primera venta. */
   function checkPrinterAtStart() {
-    if (!printerRequired()) {
-      ThermalPrinter.warmUp();
-      return;
-    }
     if (ThermalPrinter.isConnected()) return;
     ThermalPrinter.connect().catch(function () {
       openPrinterModal({
@@ -1830,7 +1600,7 @@ import { isNativeApp } from './platform.js?v=48';
 
     document.getElementById('btn-printer-pair').addEventListener('click', function () {
       var firstTime = !ThermalPrinter.isPaired();
-      // Vinculada pero desconectada: se intenta reconectar sin abrir la lista de Chrome
+      // Vinculada pero desconectada: se intenta reconectar sin abrir la lista de impresoras
       var reconnect = !firstTime && !ThermalPrinter.isConnected() && !ThermalPrinter.needsReselect();
       var task = reconnect
         ? ThermalPrinter.connect().catch(function () { return ThermalPrinter.pair(); })
@@ -1854,7 +1624,7 @@ import { isNativeApp } from './platform.js?v=48';
         })
         .catch(function (err) {
           renderPrinterModal(err);
-          // Cerrar el selector de Chrome sin elegir no es un error
+          // Cerrar la lista de impresoras sin elegir no es un error
           if (err && err.name !== 'NotFoundError') showToast(err.message || 'No se pudo vincular', 'error');
         });
     });
@@ -1874,10 +1644,7 @@ import { isNativeApp } from './platform.js?v=48';
     });
 
     document.getElementById('btn-printer-forget').addEventListener('click', function () {
-      var question = printerRequired()
-        ? '¿Desvincular la impresora? Tendrá que vincularla de nuevo para cobrar en efectivo.'
-        : '¿Desvincular la impresora? Se volverá a imprimir con el diálogo del sistema (RawBT).';
-      if (!window.confirm(question)) return;
+      if (!window.confirm('¿Desvincular la impresora? Tendrá que vincularla de nuevo para cobrar en efectivo.')) return;
       ThermalPrinter.forget();
       renderPrinterModal();
       showToast('Impresora desvinculada', 'success');
@@ -1886,17 +1653,13 @@ import { isNativeApp } from './platform.js?v=48';
 
   function renderPrinterModal(error) {
     var status = document.getElementById('printer-status');
-    var supported = ThermalPrinter.isSupported();
     var paired = ThermalPrinter.isPaired();
     var connected = ThermalPrinter.isConnected();
     var name = ThermalPrinter.deviceName();
 
     var title;
     var detail;
-    if (!supported) {
-      title = 'Bluetooth directo no disponible';
-      detail = 'Use Chrome en Android. Mientras tanto se imprime con el diálogo del sistema (RawBT).';
-    } else if (error && paired) {
+    if (error && paired) {
       title = 'No se pudo conectar';
       detail = error.message || 'Revise que la impresora esté encendida y cerca.';
     } else if (paired && !connected && ThermalPrinter.needsReselect()) {
@@ -1907,9 +1670,7 @@ import { isNativeApp } from './platform.js?v=48';
       detail = connected ? 'Conectada y lista para imprimir.' : 'Se conectará sola al imprimir.';
     } else {
       title = 'Sin impresora vinculada';
-      detail = printerRequired()
-        ? 'Toque "Vincular impresora" para imprimir las boletas.'
-        : 'Hoy se imprime con el diálogo del sistema (RawBT).';
+      detail = 'Toque "Vincular impresora" para imprimir las boletas.';
     }
     var gate = document.getElementById('printer-gate');
     if (gate) {
@@ -1929,8 +1690,7 @@ import { isNativeApp } from './platform.js?v=48';
 
     var pairBtn = document.getElementById('btn-printer-pair');
     pairBtn.textContent = !paired ? 'Vincular impresora' : connected ? 'Cambiar impresora' : 'Conectar impresora';
-    pairBtn.disabled = !supported;
-    document.getElementById('btn-printer-test').disabled = !supported || !paired;
+    document.getElementById('btn-printer-test').disabled = !paired;
     document.getElementById('btn-printer-forget').classList.toggle('hidden', !paired);
   }
 
@@ -2425,168 +2185,18 @@ function initArqueo() {
     return token && isPosRole(getTokenRole(token));
   }
 
-  function readCookie(name) {
-    var prefix = name + '=';
-    var parts = document.cookie ? document.cookie.split('; ') : [];
-    for (var i = 0; i < parts.length; i++) {
-      if (parts[i].indexOf(prefix) === 0) {
-        return decodeURIComponent(parts[i].slice(prefix.length));
-      }
-    }
-    return '';
-  }
-
-  function clearCookie(name) {
-    document.cookie = name + '=; Max-Age=0; path=/; SameSite=Lax';
-    document.cookie = name + '=; Max-Age=0; path=/; SameSite=Lax; Secure';
-  }
-
-  function normalizeLoginUrl(value) {
-    if (!value) return '';
-    try {
-      var url = new URL(value, window.location.origin);
-      var isLocalhost = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
-      if (isLocalhost && (url.port === '3000' || url.port === '5000')) {
-        return '';
-      }
-      if (url.origin === window.location.origin) {
-        return url.pathname + url.search + url.hash;
-      }
-      return url.href;
-    } catch (err) {
-      return '';
-    }
-  }
-
-  function getCentralLoginUrl() {
-    var storedUrl = normalizeLoginUrl(sessionStorage.getItem('monay_login_url'));
-    if (storedUrl) return storedUrl;
-
-    sessionStorage.removeItem('monay_login_url');
-    return normalizeLoginUrl(CONFIG.LOGIN_URL) || '/login';
-  }
-
-  function redirectToCentralLogin() {
-    if (authRedirectInFlight) return;
-    authRedirectInFlight = true;
-    startActivity('Cerrando sesión', {
-      blocking: true,
-      message: 'Redirigiendo al inicio de sesion...',
-    });
-    window.location.replace(getCentralLoginUrl());
-  }
-
-  function clearPosClientState() {
-    api.clearToken();
-    Cart.clear();
-    sessionStorage.removeItem('monay_login_url');
-    clearCookie('monay_pos_token');
-    clearCookie('monay_pos_user');
-    clearCookie('monay_login_url');
-
-    var cacheClearPromise = Promise.resolve();
-    if ('caches' in window && typeof window.caches.keys === 'function') {
-      cacheClearPromise = window.caches.keys().then(function (keys) {
-        return Promise.all(
-          keys
-            .filter(function (key) {
-              return key.indexOf('monay-pos-') === 0;
-            })
-            .map(function (key) {
-              return window.caches.delete(key);
-            })
-        );
-      }).catch(function () {
-        return [];
-      });
-    }
-
-    var unregisterPromise = Promise.resolve();
-    if ('serviceWorker' in navigator && typeof navigator.serviceWorker.getRegistrations === 'function') {
-      unregisterPromise = navigator.serviceWorker.getRegistrations().then(function (registrations) {
-        return Promise.all(
-          registrations
-            .filter(function (registration) {
-              return registration.scope.indexOf('/pos/') !== -1;
-            })
-            .map(function (registration) {
-              return registration.unregister();
-            })
-        );
-      }).catch(function () {
-        return [];
-      });
-    }
-
-    return Promise.all([cacheClearPromise, unregisterPromise]);
-  }
-
-  function importRedirectSession() {
-    var token = readCookie('monay_pos_token');
-    if (!token) return;
-
-    var role = getTokenRole(token);
-    if (!isPosRole(role)) {
-      clearCookie('monay_pos_token');
-      clearCookie('monay_pos_user');
-      return;
-    }
-
-    api.setToken(token);
-
-    var rawUser = readCookie('monay_pos_user');
-    if (rawUser) {
-      try {
-        api.setUser(JSON.parse(rawUser));
-      } catch (err) {
-        api.setUser({ role: role });
-      }
-    }
-
-    var loginUrl = readCookie('monay_login_url');
-    var normalizedLoginUrl = normalizeLoginUrl(loginUrl);
-    if (normalizedLoginUrl) {
-      sessionStorage.setItem('monay_login_url', normalizedLoginUrl);
-    } else {
-      sessionStorage.removeItem('monay_login_url');
-    }
-
-    clearCookie('monay_pos_token');
-    clearCookie('monay_pos_user');
-    clearCookie('monay_login_url');
-  }
-
   function initLogout() {
     var btn = document.getElementById('btn-logout');
-    if (btn) {
-      btn.addEventListener('click', function () {
-        if (authRedirectInFlight) return;
-        if (isNativeApp()) {
-          // Sin recargar la página: la impresora queda conectada para el siguiente cajero.
-          endNativeSession();
-          return;
-        }
-        clearPosClientState().finally(function () {
-          redirectToCentralLogin();
-        });
-      });
-    }
+    // Sin recargar la página: la impresora queda conectada para el siguiente cajero.
+    if (btn) btn.addEventListener('click', endSession);
   }
 
   // ----------------------------------------------------------
-  // Login propio de la app nativa (solo cajeros)
+  // Login de la caja (solo cajeros; la caja se usa solo desde la app)
   // ----------------------------------------------------------
 
-  /** Sin sesión: en la app, su propio login; en el navegador, el login central del sitio. */
-  function goToLogin() {
-    if (isNativeApp()) {
-      endNativeSession();
-      return;
-    }
-    redirectToCentralLogin();
-  }
-
-  function endNativeSession() {
+  /** Cierra la sesión del cajero y vuelve al login de la caja. */
+  function endSession() {
     api.clearToken();
     Cart.clear();
     resetPaymentForm();
@@ -2800,26 +2410,21 @@ function initArqueo() {
 
   window.addEventListener('online', syncOfflineSales);
 
-  // Al volver atrás en el navegador sin sesión no debe quedar la caja a la vista.
-  window.addEventListener('pageshow', function () {
-    if (isCashierSession()) return;
-    if (isNativeApp()) {
-      goToLogin();
-      return;
-    }
-    clearPosClientState().finally(redirectToCentralLogin);
-  });
-
   // ----------------------------------------------------------
   // App Init
   // ----------------------------------------------------------
   function init() {
+    if (!isNativeApp()) {
+      // En un navegador la caja no se usa: el cajero trabaja solo desde la app.
+      document.getElementById('pos-app-only').classList.remove('hidden');
+      releaseBootState();
+      return;
+    }
     var startupActivity = startActivity('Validando acceso al POS', {
       blocking: true,
       message: 'Preparando la sesion del cajero.',
     });
     registerServiceWorker();
-    importRedirectSession();
     Cart.init(updateCartUI, showToast);
     initLogout();
     initNav();
@@ -2837,17 +2442,12 @@ function initArqueo() {
     initPosLogin();
 
     // Global auth expiration listener
-    window.addEventListener('monay-auth-expired', goToLogin);
+    window.addEventListener('monay-auth-expired', endSession);
 
     // Sync if online
     if (navigator.onLine) {
       syncOfflineSales();
     }
-
-    // Se resuelve siempre, haya o no sesión: si SumUp ya cobró y la sesión
-    // se perdió mientras tanto, hay que avisarlo antes de mandar al login,
-    // no dejarlo pasar en silencio.
-    resolvePendingCardPayment();
 
     // If we have a token, go to sale screen; otherwise login
     if (isCashierSession()) {
@@ -2859,7 +2459,7 @@ function initArqueo() {
       api.clearToken();
       finishActivity(startupActivity);
       releaseBootState();
-      goToLogin();
+      showPosLogin();
     }
   }
 
@@ -2867,7 +2467,6 @@ function initArqueo() {
   window.MonayPOS = {
     api: api,
     router: router,
-    CONFIG: CONFIG,
     loading: {
       start: startActivity,
       finish: finishActivity,
