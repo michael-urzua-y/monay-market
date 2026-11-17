@@ -8,15 +8,15 @@ import { OfflineDB } from './offline.js';
 import { Cart } from './cart.js';
 // Módulos de impresión con versión en la URL: nginx los cachea 7 días como inmutables.
 // Al cambiarlos, subir este número junto con APP_ASSET_VERSION (y en printer.js / service-worker.js).
-import { ThermalPrinter } from './printer.js?v=51';
-import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=51';
-import { isNativeApp } from './platform.js?v=51';
-import { CardPayment } from './card-payment.js?v=51';
+import { ThermalPrinter } from './printer.js?v=52';
+import { fitPdf417, toMonochrome } from './receipt-escpos.js?v=52';
+import { isNativeApp } from './platform.js?v=52';
+import { CardPayment } from './card-payment.js?v=52';
 
   // ----------------------------------------------------------
   // Helpers
   // ----------------------------------------------------------
-  var APP_ASSET_VERSION = '51';
+  var APP_ASSET_VERSION = '52';
   var RECEIPT_TIME_ZONE = 'America/Santiago';
   var bwipJsLoadPromise = null;
 
@@ -950,16 +950,37 @@ import { CardPayment } from './card-payment.js?v=51';
   var selectedPaymentMethod = 'efectivo';
   var selectedCardType = 'debit';
 
-  /** "Tarjeta" solo se puede elegir con el cobro listo y con internet (SumUp cobra en línea). */
+  var OFFLINE_CARD_MESSAGE = 'Sin internet: el cobro con tarjeta necesita conexión.';
+
+  /**
+   * "Tarjeta" solo se puede elegir con el cobro listo y con internet (SumUp
+   * cobra en línea). Si no está disponible se ve apagado, pero sigue
+   * respondiendo al toque para explicar el motivo (un botón disabled no lo hace).
+   */
   function updateCardAvailability() {
     var btn = document.querySelector('.payment-method-btn[data-method="tarjeta"]');
     if (!btn) return;
     var available = CardPayment.isReady() && navigator.onLine;
-    btn.disabled = !available;
-    btn.title = available ? '' : (CardPayment.isReady()
-      ? 'Sin internet: el cobro con tarjeta necesita conexión'
-      : 'El cobro con tarjeta no está activo en este negocio');
+    btn.classList.toggle('is-unavailable', !available);
+    btn.setAttribute('aria-disabled', available ? 'false' : 'true');
+    btn.title = available ? '' : (navigator.onLine ? CardPayment.unavailableReason() : OFFLINE_CARD_MESSAGE);
     if (!available && selectedPaymentMethod === 'tarjeta') selectPaymentMethod('efectivo');
+  }
+
+  /** Toque en "Tarjeta" sin cobro listo: se reintenta (p. ej. el dueño recién lo activó) o se explica por qué. */
+  function onUnavailableCardTap(btn) {
+    if (!navigator.onLine) {
+      showToast(OFFLINE_CARD_MESSAGE, 'warning');
+      return;
+    }
+    if (isButtonLoading(btn)) return;
+    setButtonLoading(btn, true, { label: 'Preparando...' });
+    CardPayment.prepare().then(function (ready) {
+      setButtonLoading(btn, false);
+      updateCardAvailability();
+      if (ready) selectPaymentMethod('tarjeta');
+      else showToast(CardPayment.unavailableReason(), 'warning');
+    });
   }
 
   function selectPaymentMethod(method) {
@@ -985,7 +1006,8 @@ import { CardPayment } from './card-payment.js?v=51';
     // Payment method selector
     document.querySelectorAll('.payment-method-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        if (!btn.disabled) selectPaymentMethod(btn.dataset.method);
+        if (btn.classList.contains('is-unavailable')) onUnavailableCardTap(btn);
+        else selectPaymentMethod(btn.dataset.method);
       });
     });
     document.querySelectorAll('.card-type-btn').forEach(function (btn) {

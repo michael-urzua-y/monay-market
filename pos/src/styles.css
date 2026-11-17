@@ -952,7 +952,8 @@ body.app-booting .global-loading-panel {
 }
 
 /* Tarjeta deshabilitada si el negocio no la activó, no hay internet o el celular no puede cobrar */
-.payment-method-btn:disabled {
+.payment-method-btn:disabled,
+.payment-method-btn.is-unavailable {
   opacity: 0.45;
   cursor: not-allowed;
 }

@@ -10,13 +10,16 @@
 // Quedan en memoria: nunca se guardan en el celular.
 
 import { api } from './api.js';
-import { isNativeApp, loadCapacitorCore } from './platform.js?v=51';
+import { isNativeApp, loadCapacitorCore } from './platform.js?v=52';
 
 var state = {
   ready: false,
   affiliateKey: null,
   preparing: null,
+  unavailableReason: 'El cobro con tarjeta no está activo en este negocio.',
 };
+
+var NOT_ENABLED = 'El cobro con tarjeta no está activo. El dueño debe activarlo en el panel: Configuración → Cobro con tarjeta.';
 var pluginPromise = null;
 
 function plugin() {
@@ -40,6 +43,11 @@ function isReady() {
   return state.ready;
 }
 
+/** Por qué no se puede cobrar con tarjeta (para explicárselo al cajero). */
+function unavailableReason() {
+  return state.unavailableReason;
+}
+
 /**
  * Pide las claves al servidor y prepara el SDK. Se llama al abrir la caja con
  * sesión; si el negocio no tiene el cobro con tarjeta activo, queda deshabilitado.
@@ -51,17 +59,26 @@ function prepare() {
   state.preparing = api.get('/tenant/card-payment', { label: 'Preparando cobro con tarjeta' })
     .then(function (config) {
       if (!config || !config.enabled || !config.access_token || !config.affiliate_key) {
+        state.unavailableReason = NOT_ENABLED;
         return false;
       }
       return plugin().then(function (SumUp) {
         return SumUp.init({ accessToken: config.access_token });
       }).then(function () {
         state.affiliateKey = config.affiliate_key;
+        state.unavailableReason = null;
         return true;
+      }, function (err) {
+        // SumUp no inició: se muestra su código para poder diagnosticarlo
+        state.unavailableReason = initFailureMessage(err);
+        console.warn('[Tarjeta] SumUp no inició:', err && err.code, err && err.message);
+        return false;
       });
     })
     .catch(function (err) {
-      // Sin configuración (404), sin internet o SumUp no inició: se cobra solo en efectivo
+      // Sin configuración (404) o sin internet: se cobra solo en efectivo
+      state.unavailableReason = err && err.status === 404 ? NOT_ENABLED
+        : 'No se pudo consultar el cobro con tarjeta. Revise internet y vuelva a tocar "Tarjeta".';
       console.warn('[Tarjeta] Cobro con tarjeta no disponible:', err && (err.message || err));
       return false;
     })
@@ -102,9 +119,25 @@ function reset() {
   var wasReady = state.ready;
   state.ready = false;
   state.affiliateKey = null;
+  state.unavailableReason = NOT_ENABLED;
   notifyChange();
   if (!wasReady) return Promise.resolve();
   return plugin().then(function (SumUp) { return SumUp.tearDown(); }).catch(function () {});
+}
+
+/** Error al preparar SumUp (init). El código va al final para diagnosticar. */
+function initFailureMessage(err) {
+  var code = Number(err && err.code);
+  var detail = ' (código ' + ((err && err.code) || '?') + ')';
+  if (code === 105 || code === 202) {
+    return 'SumUp rechazó la clave de API del negocio. Revise la clave en el panel' + detail + '.';
+  }
+  if (code >= 301 && code <= 305) {
+    return 'SumUp bloqueó este celular por seguridad: desactive la Depuración USB y las Opciones de desarrollador y abra la app de nuevo' + detail + '.';
+  }
+  if (code === 103 || code === 110) return 'SumUp no pudo registrar este celular. Intente de nuevo en unos minutos' + detail + '.';
+  if (code >= 201 && code <= 206) return 'Sin conexión con SumUp. Revise internet y vuelva a tocar "Tarjeta"' + detail + '.';
+  return 'No se pudo preparar el cobro con tarjeta: ' + ((err && err.message) || 'error de SumUp') + detail + '.';
 }
 
 /** Mensaje para el cajero según el código de error del SDK (docs: Exceptions and Error Codes). */
@@ -122,6 +155,7 @@ function failureMessage(result) {
 
 export var CardPayment = {
   isReady: isReady,
+  unavailableReason: unavailableReason,
   prepare: prepare,
   charge: charge,
   reset: reset,
