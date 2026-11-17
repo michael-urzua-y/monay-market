@@ -12,7 +12,7 @@
 // Bluetooth "clásico" no aparecen al vincular.
 // ============================================================
 
-import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=49'; // misma versión que en app.js
+import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=50'; // misma versión que en app.js
 
 // Servicios BLE "serial" de las térmicas chinas más comunes (Xprinter, Goojprt, Zjiang, MTP…)
 var SERVICES = [
@@ -133,7 +133,9 @@ function loadBleClient() {
 function ble() {
   return loadBleClient().then(function (BleClient) {
     if (!bleInitPromise) {
-      bleInitPromise = BleClient.initialize().catch(function (err) {
+      // neverForLocation: en Android 12+ solo pide "Dispositivos cercanos", no la
+      // ubicación (va junto con el permiso BLUETOOTH_SCAN del AndroidManifest).
+      bleInitPromise = BleClient.initialize({ androidNeverForLocation: true }).catch(function (err) {
         bleInitPromise = null;
         throw err;
       });
@@ -204,7 +206,9 @@ function forget() {
 /** Vincula una impresora (abre la lista de dispositivos; requiere un toque del cajero). */
 function pair() {
   return ble().then(function (BleClient) {
-    return BleClient.requestDevice({ optionalServices: SERVICES }).then(function (device) {
+    return readyToScan(BleClient).then(function () {
+      return BleClient.requestDevice({ optionalServices: SERVICES });
+    }).then(function (device) {
       disconnect();
       state.deviceId = device.deviceId;
       state.deviceName = device.name || '';
@@ -214,6 +218,39 @@ function pair() {
   }).catch(function (err) {
     throw pairError(err);
   });
+}
+
+/**
+ * Antes de buscar: si el Bluetooth está apagado, Android muestra "¿Activar
+ * Bluetooth?" y solo se busca si el cajero acepta. Así la lista no sale vacía.
+ */
+function ensureBluetoothOn(BleClient) {
+  return BleClient.isEnabled().then(function (enabled) {
+    if (enabled) return;
+    return BleClient.requestEnable()
+      .catch(function () {}) // rechazado: se vuelve a consultar abajo
+      .then(function () { return BleClient.isEnabled(); })
+      .then(function (on) {
+        if (!on) throw PrinterError('Active el Bluetooth del celular para buscar la impresora.');
+      });
+  });
+}
+
+/**
+ * En Android 11 (el mínimo de la app) Android solo encuentra dispositivos
+ * Bluetooth con la ubicación del celular encendida; desde Android 12 no hace falta.
+ */
+function ensureLocationForScan(BleClient) {
+  if (!/Android 11\b/.test(navigator.userAgent)) return Promise.resolve();
+  return BleClient.isLocationEnabled().then(function (on) {
+    if (on) return;
+    BleClient.openLocationSettings().catch(function () {});
+    throw PrinterError('En este celular Android exige la ubicación encendida para buscar la impresora. Actívela y vuelva a intentar.');
+  });
+}
+
+function readyToScan(BleClient) {
+  return ensureBluetoothOn(BleClient).then(function () { return ensureLocationForScan(BleClient); });
 }
 
 /** Traduce los errores del plugin Bluetooth (en inglés) a instrucciones para el cajero. */
@@ -270,7 +307,9 @@ function ensureConnected() {
     return Promise.reject(PrinterError('Toque "Conectar impresora" y elíjala en la lista'));
   }
   return ble().then(function (BleClient) {
-    return connect(BleClient, state.deviceId);
+    return ensureBluetoothOn(BleClient).then(function () {
+      return connect(BleClient, state.deviceId);
+    });
   });
 }
 

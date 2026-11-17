@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -39,6 +40,17 @@
          instalar en equipos sin cámara (el código se escribe en el buscador). -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+    <!-- Impresora Bluetooth. La app no usa el Bluetooth para ubicar a nadie
+         (neverForLocation): en Android 12+ solo pide "Dispositivos cercanos",
+         sin ubicación. En Android 11 (el mínimo de la app) Android sí exige la
+         ubicación para buscar Bluetooth, por eso se mantiene hasta la API 30.
+         Va junto con initialize({ androidNeverForLocation: true }) en printer.js. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation"
+        tools:targetApi="s" />
 
     <!-- Para el cobro con tarjeta vía SumUp Tap to Pay (SDK nativo, pendiente
          de acceso de SumUp). required="false" porque hoy la app también se

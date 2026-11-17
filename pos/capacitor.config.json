@@ -8,5 +8,15 @@
   },
   "android": {
     "allowMixedContent": false
+  },
+  "plugins": {
+    "BluetoothLe": {
+      "displayStrings": {
+        "scanning": "Buscando impresoras…",
+        "cancel": "Cancelar",
+        "availableDevices": "Impresoras disponibles",
+        "noDeviceFound": "No se encontró ninguna impresora. ¿Está encendida y cerca?"
+      }
+    }
   }
 }
