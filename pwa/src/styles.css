@@ -16,6 +16,13 @@
 }
 
 /* Reset & Base */
+
+/* El atributo hidden oculta siempre, aunque la clase del elemento fije un display
+   (p. ej. .nav-btn es flex: sin esto, "Cobro con tarjeta" seguía visible). */
+[hidden] {
+  display: none !important;
+}
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -2474,10 +2481,6 @@ body.app-booting .global-loading-panel {
   color: #ffb4ab;
   font-size: 0.85rem;
   line-height: 1.4;
-}
-
-.pos-login-error[hidden] {
-  display: none;
 }
 
 .pos-login-error svg {

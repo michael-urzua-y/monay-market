@@ -17,8 +17,8 @@
 // sigue usando window.print() + RawBT (fuera de este módulo).
 // ============================================================
 
-import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=45'; // misma versión que en app.js
-import { isNativeApp } from './platform.js?v=45';
+import { buildReceipt, buildTestTicket } from './receipt-escpos.js?v=46'; // misma versión que en app.js
+import { isNativeApp } from './platform.js?v=46';
 
 // Servicios BLE "serial" de las térmicas chinas más comunes (Xprinter, Goojprt, Zjiang, MTP…)
 var SERVICES = [
