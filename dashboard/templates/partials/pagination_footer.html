@@ -1,4 +1,5 @@
-{% if total_pages and total_pages > 1 %}
+{# Siempre visible si hay registros (aunque sea una sola página), con los botones apagados #}
+{% if total_pages and (total is not defined or total > 0) %}
 <div class="pagination table-footer">
     <span class="pagination-info">{{ pagination_label }}</span>
     <div class="pagination-buttons">

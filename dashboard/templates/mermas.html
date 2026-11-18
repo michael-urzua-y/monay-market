@@ -33,18 +33,16 @@
 {% endblock %}
 
 {% block content %}
-{% set products_list = [] if not (products is iterable and products is not string and products is not mapping) else products %}
 {% set mermas_list = [] if not (mermas is iterable and mermas is not string and mermas is not mapping) else mermas %}
 {% set mermas_stats = stats if stats is mapping else {} %}
 {% set monthly = mermas_stats.get('monthly', 0) %}
 {% set weekly = mermas_stats.get('weekly', 0) %}
 
-{% set per_page = 5 %}
+{# La página ya viene recortada desde la API (app.load_mermas_page) #}
 {% set page = page|default(1)|int %}
-{% set total = mermas_list|length %}
-{% set total_pages = ((total + per_page - 1) / per_page)|int %}
-{% set start = (page - 1) * per_page %}
-{% set paginated = mermas_list[start:start + per_page] %}
+{% set total = total|default(mermas_list|length)|int %}
+{% set total_pages = total_pages|default(1)|int %}
+{% set paginated = mermas_list %}
 
 <div x-data="{
     searchQuery: '',

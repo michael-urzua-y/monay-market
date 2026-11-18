@@ -5,6 +5,7 @@ import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { UserRole } from '../entities/enums';
 import { MermasService } from './mermas.service';
 import { CreateMermaDto } from './dto/create-merma.dto';
+import { FilterMermasDto } from './dto/filter-mermas.dto';
 
 @Controller('mermas')
 @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
@@ -18,8 +19,8 @@ export class MermasController {
   }
 
   @Get()
-  async findAll(@CurrentUser() user: JwtPayload) {
-    return this.mermasService.findAll(user.tenant_id);
+  async findAll(@CurrentUser() user: JwtPayload, @Query() filters: FilterMermasDto) {
+    return this.mermasService.findAll(user.tenant_id, filters);
   }
 
   @Get('stats')

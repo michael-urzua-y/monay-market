@@ -653,3 +653,57 @@ class TestCardPaymentSettings:
 
         assert resp.status_code == 302
         mock_api.patch.assert_not_called()
+
+
+class TestMermasPagination:
+    """Historial de mermas paginado desde la API (8 por página)."""
+
+    @staticmethod
+    def fake_api(total, page_items):
+        def get(path, params=None, **kwargs):
+            if path == "/mermas/stats":
+                return {"monthly": 0, "weekly": 0}
+            if path == "/mermas":
+                return {"data": page_items, "total": total, "page": params["page"], "limit": params["limit"]}
+            raise AssertionError(f"llamada inesperada a la API: {path}")
+        return get
+
+    @staticmethod
+    def merma(name):
+        return {"created_at": "2026-11-18T10:00:00Z", "product": {"name": name}, "quantity": 1,
+                "cause": "vencido", "value_loss": 1000}
+
+    @patch("app.api")
+    def test_requests_only_one_page_and_not_the_whole_catalog(self, mock_api, client):
+        """Pide a la API solo la página (8) y ya no carga todos los productos."""
+        login_owner_session(client)
+        mock_api.get.side_effect = self.fake_api(17, [self.merma("Pan")])
+
+        resp = client.get("/mermas?page=2")
+
+        assert resp.status_code == 200
+        mock_api.get.assert_any_call("/mermas", params={"page": 2, "limit": 8})
+        assert not any(c.args and c.args[0] == "/products" for c in mock_api.get.call_args_list)
+        html = resp.get_data(as_text=True)
+        assert "17 mermas · página 2 de 3" in html
+
+    @patch("app.api")
+    def test_single_page_still_shows_paginator(self, mock_api, client):
+        """Con una sola página el paginador se muestra igual (botones apagados)."""
+        login_owner_session(client)
+        mock_api.get.side_effect = self.fake_api(1, [self.merma("Pan")])
+
+        html = client.get("/mermas").get_data(as_text=True)
+
+        assert "1 merma · página 1 de 1" in html
+
+    @patch("app.api")
+    def test_page_out_of_range_shows_last_page(self, mock_api, client):
+        """?page=99 muestra la última página en vez de una tabla vacía."""
+        login_owner_session(client)
+        mock_api.get.side_effect = self.fake_api(17, [self.merma("Pan")])
+
+        html = client.get("/mermas?page=99").get_data(as_text=True)
+
+        mock_api.get.assert_any_call("/mermas", params={"page": 3, "limit": 8})
+        assert "página 3 de 3" in html

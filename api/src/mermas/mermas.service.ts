@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, DataSource, MoreThanOrEqual } from 'typeorm';
 import { Merma } from '../entities/merma.entity';
 import { Product } from '../entities/product.entity';
+import { FilterMermasDto } from './dto/filter-mermas.dto';
 import { CreateMermaDto } from './dto/create-merma.dto';
 
 @Injectable()
@@ -86,12 +87,32 @@ export class MermasService {
     });
   }
 
-  async findAll(tenantId: string): Promise<Merma[]> {
-    return this.mermasRepository.find({
+  /**
+   * Historial de mermas, la más reciente primero. Con page/limit devuelve solo
+   * esa página y el total (el panel la usa así); sin ellos, la lista completa.
+   */
+  async findAll(
+    tenantId: string,
+    filters: FilterMermasDto = {},
+  ): Promise<Merma[] | { data: Merma[]; total: number; page: number; limit: number }> {
+    const query = {
       where: { tenant_id: tenantId },
       relations: ['product'],
-      order: { created_at: 'DESC' },
-    });
+      order: { created_at: 'DESC' as const },
+    };
+
+    if (filters.page || filters.limit) {
+      const page = filters.page || 1;
+      const limit = filters.limit || 50;
+      const [data, total] = await this.mermasRepository.findAndCount({
+        ...query,
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+      return { data, total, page, limit };
+    }
+
+    return this.mermasRepository.find(query);
   }
 
   async getStats(tenantId: string): Promise<{

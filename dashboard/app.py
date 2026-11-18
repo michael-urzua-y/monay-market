@@ -1395,18 +1395,46 @@ def htmx_dashboard_last_sale():
 
 # --- Mermas routes ---
 
+# Filas del historial de mermas por página: caben en el alto del formulario de
+# al lado, así ambas tarjetas miden lo mismo y el paginador queda abajo.
+MERMAS_PER_PAGE = 8
+
+
+def load_mermas_page(page):
+    """Trae solo una página del historial de mermas desde la API."""
+    data = api.get("/mermas", params={"page": page, "limit": MERMAS_PER_PAGE})
+    if isinstance(data, dict) and "data" in data:
+        items = data["data"] if isinstance(data["data"], list) else []
+        total = int(data.get("total", len(items)) or 0)
+    else:
+        items = data if isinstance(data, list) else []
+        total = len(items)
+    total_pages = max(1, (total + MERMAS_PER_PAGE - 1) // MERMAS_PER_PAGE)
+    if page > total_pages:
+        # Página fuera de rango (p. ej. ?page=99): se muestra la última
+        return load_mermas_page(total_pages) if total else {
+            "mermas": [], "total": 0, "page": 1, "total_pages": 1,
+        }
+    return {"mermas": items, "total": total, "page": page, "total_pages": total_pages}
+
+
 @app.route("/mermas", methods=["GET", "POST"])
 @login_required
 def mermas():
     """Render merma registration page (GET) or create merma (POST)."""
-    products_data = api.get("/products", params={})
-    product_list = products_data if isinstance(products_data, list) else []
-
-    # Get current month for stats
+    # La búsqueda de productos del formulario va por /htmx/products/search:
+    # no hace falta cargar aquí el catálogo completo.
     from datetime import datetime
     current_month = datetime.now().strftime("%Y-%m")
     stats_data = api.get("/mermas/stats", params={"month": current_month})
     stats = stats_data if isinstance(stats_data, dict) else {"monthly": 0, "weekly": 0}
+
+    def render(error=None):
+        try:
+            page = max(1, int(request.args.get("page", 1)))
+        except (TypeError, ValueError):
+            page = 1
+        return render_template("mermas.html", stats=stats, error=error, **load_mermas_page(page))
 
     if request.method == "POST":
         product_id = request.form.get("product_id", "").strip()
@@ -1415,13 +1443,7 @@ def mermas():
         note = request.form.get("note", "").strip() or None
 
         if not product_id or not quantity or not cause:
-            return render_template(
-                "mermas.html",
-                products=product_list,
-                mermas=api.get("/mermas") or [],
-                stats=stats,
-                error="Complete todos los campos requeridos",
-            )
+            return render("Complete todos los campos requeridos")
 
         data = {
             "product_id": product_id,
@@ -1433,20 +1455,11 @@ def mermas():
         result = api.post("/mermas", data=data)
 
         if isinstance(result, dict) and result.get("status_code", 200) >= 400:
-            error_msg = result.get("message", "Error al registrar merma")
-            return render_template(
-                "mermas.html",
-                products=product_list,
-                mermas=api.get("/mermas") or [],
-                stats=stats,
-                error=str(error_msg),
-            )
+            return render(str(result.get("message", "Error al registrar merma")))
 
         return redirect(url_for("mermas"))
 
-    mermas_list = api.get("/mermas") or []
-    page = int(request.args.get("page", 1))
-    return render_template("mermas.html", products=product_list, mermas=mermas_list, stats=stats, page=page)
+    return render()
 
 
 # --- Super Admin routes ---
