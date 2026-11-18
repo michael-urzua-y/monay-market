@@ -10,7 +10,7 @@
 // Quedan en memoria: nunca se guardan en el celular.
 
 import { api } from './api.js';
-import { isNativeApp, loadCapacitorCore } from './platform.js?v=57';
+import { isNativeApp, loadCapacitorCore } from './platform.js?v=58';
 
 var state = {
   ready: false,
@@ -164,7 +164,8 @@ function failureMessage(result) {
   var code = Number(result && result.code);
   // Siempre con el código y el detalle de SumUp: es lo que permite diagnosticar
   var detail = ' (código ' + ((result && result.code) || '?') +
-    (result && result.message ? ': ' + result.message : '') + ')';
+    (result && result.message ? ': ' + result.message : '') +
+    (result && result.detail ? ' — ' + result.detail : '') + ')';
   if (code === 1025 || code === 1029) return 'Tarjeta rechazada. Pida otro medio de pago' + detail + '.';
   if (code === 1003) return 'Se acabó el tiempo para acercar la tarjeta' + detail + '.';
   if (code === 201) return 'Sin conexión con SumUp. Revise internet y vuelva a intentar' + detail + '.';

@@ -170,7 +170,11 @@ class SumUpTapToPayPlugin : Plugin() {
                             is PaymentEvent.TransactionResultUnknown -> settle(result("unknown", event.paymentOutput))
                             is PaymentEvent.TransactionFailed -> settle(
                                 result("failed", event.paymentOutput).apply {
-                                    event.tapToPayException?.let { put("code", it.code); put("message", it.message) }
+                                    event.tapToPayException?.let {
+                                        put("code", it.code)
+                                        put("message", it.message)
+                                        put("detail", describe(it))
+                                    }
                                 },
                             )
                             else -> notifyListeners("paymentProgress", JSObject().put("event", event.javaClass.simpleName))
@@ -211,6 +215,22 @@ class SumUpTapToPayPlugin : Plugin() {
     private fun failed(error: Throwable): JSObject = result("failed", null).apply {
         put("code", (error as? TapToPayException)?.code)
         put("message", error.message)
+        put("detail", describe(error))
+    }
+
+    /**
+     * Cadena de causas del error (tipo y mensaje de cada una). El código de
+     * SumUp solo dice la categoría (p. ej. 202 = autenticación); el detalle
+     * interno es lo que permite a SumUp diagnosticar el problema.
+     */
+    private fun describe(error: Throwable): String {
+        val parts = mutableListOf<String>()
+        var current: Throwable? = error
+        while (current != null && parts.size < 5) {
+            parts += listOfNotNull(current.javaClass.simpleName, current.message?.take(200)).joinToString(": ")
+            current = current.cause?.takeIf { it !== current }
+        }
+        return parts.joinToString(" ← ")
     }
 
     private fun errorCode(error: Throwable): String =
