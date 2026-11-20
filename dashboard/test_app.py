@@ -587,6 +587,8 @@ class TestAdminTenantConfig:
         body = client.get(f"/admin/tenants/{TENANT_ID}/config").data.decode("utf-8")
 
         assert 'name="sii_mode" value="real" checked' in body
+        assert "Emitir boletas REALES ante el SII?" in body
+        assert "form.requestSubmit()" in body
 
     @patch("app.api")
     def test_owner_cannot_open_admin_config(self, mock_api, client):

@@ -136,7 +136,7 @@
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
     </form>
 
-    <form method="post" action="{{ url_for('admin_tenant_config_sii', tenant_id=tenant.id) }}" class="card config-form">
+    <form method="post" action="{{ url_for('admin_tenant_config_sii', tenant_id=tenant.id) }}" class="card config-form" id="sii-form">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
 
         <div class="config-form-head">
@@ -250,4 +250,25 @@
         </div>
     </form>
 </div>
+<script>
+// Elegir el tipo de boletas pide confirmación y se guarda al tiro: así no
+// queda marcado «Reales» sin guardar (el botón está al final del formulario).
+(function () {
+    var form = document.getElementById('sii-form');
+    var saved = form.querySelector('input[name="sii_mode"]:checked');
+    var messages = {
+        real: '¿Emitir boletas REALES ante el SII?\n\nCada venta emitirá una boleta válida y usará créditos de API Gateway.',
+        pruebas: '¿Pasar a boletas de PRUEBA?\n\nLas boletas serán simuladas y no tendrán validez ante el SII.'
+    };
+    form.querySelectorAll('input[name="sii_mode"]').forEach(function (radio) {
+        radio.addEventListener('change', function () {
+            if (confirm(messages[radio.value])) {
+                form.requestSubmit();
+            } else if (saved) {
+                saved.checked = true;
+            }
+        });
+    });
+})();
+</script>
 {% endblock %}
