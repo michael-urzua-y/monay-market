@@ -6,10 +6,12 @@ import { Tenant } from '../entities/tenant.entity';
 import { User } from '../entities/user.entity';
 import { Subscription } from '../entities/subscription.entity';
 import { TenantConfig } from '../entities/tenant-config.entity';
+import { TenantsModule } from '../tenants/tenants.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Tenant, User, Subscription, TenantConfig]),
+    TenantsModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],

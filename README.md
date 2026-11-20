@@ -215,10 +215,9 @@ El POS usa la API nativa `BarcodeDetector` cuando está disponible (Chrome/Edge)
 
 - El API valida secrets críticos cuando `STRICT_ENV_VALIDATION=true`.
 - `JWT_SECRET`, `SECRET_KEY` y `APP_DATA_ENCRYPTION_KEY` deben ser reales y largos en VPS/producción.
-- Los secretos sensibles del módulo SII no van en el frontend ni en `docker-compose.yml`; se guardan por tenant desde Configuración.
+- Los secretos sensibles del módulo SII no van en el frontend ni en `docker-compose.yml`; se guardan cifrados por tenant; solo el superadmin los ve y cambia (Admin → negocio → Configuración).
 - El POS usa `sessionStorage` para el token del cajero y el dashboard usa sesión Flask.
-- El endpoint `GET /tenant/config` quedó restringido a `dueno`.
-- El certificado cargado por el dueño se guarda con permisos restringidos en el contenedor (`0600`).
+- La configuración del negocio (boleta SII y cobro con tarjeta) es solo del superadmin: el dueño no la ve.
 - Las dependencias JS del dashboard se sirven localmente, sin depender de CDNs de terceros.
 
 ## Flujo productivo de boleta electrónica
@@ -335,11 +334,12 @@ PATCH  /products/:id                  → Editar producto (dueño)
 DELETE /products/:id                  → Soft-delete producto (dueño, sin ventas recientes)
 POST   /products/import-excel         → Importar productos desde Excel (dueño)
 
-# Configuración del tenant
-GET    /tenant/config                 → Ver configuración
-PATCH  /tenant/config/sii             → Configurar módulo SII (dueño)
-PATCH  /tenant/config/printer         → Configurar impresora (dueño)
-GET    /tenant/subscription           → Ver estado de suscripción (dueño)
+# Configuración del tenant (solo superadmin)
+GET    /admin/tenants/:id/config              → Ver configuración (claves enmascaradas)
+PATCH  /admin/tenants/:id/config/sii          → Boleta SII: token, clave, RUT, sucursal, modo reales/pruebas
+PATCH  /admin/tenants/:id/config/card-payment → Cobro con tarjeta (SumUp)
+GET    /tenant/card-payment                   → Claves SumUp para la caja (cajero/dueño)
+GET    /tenant/subscription                   → Ver estado de suscripción (dueño)
 
 # Carrito
 POST   /cart/validate                 → Validar carrito (stock, subtotales, total)

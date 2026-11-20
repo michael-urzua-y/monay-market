@@ -4,19 +4,15 @@ Provides dashboard, product management, sales history, user management,
 and tenant configuration via server-side rendered templates with HTMX.
 """
 
-import os
 import secrets
 from datetime import datetime, timezone
 from functools import wraps
-from pathlib import Path
-from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 import requests
 
 from flask import Flask, Response, abort, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
-from werkzeug.utils import secure_filename
 
 from api_client import APIClient
 from config import Config
@@ -27,7 +23,6 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_port=1)
 
 api = APIClient(app.config["API_URL"])
 
-ALLOWED_CERTIFICATE_EXTENSIONS = {".pfx", ".p12"}
 OWNER_ROLE = "dueno"
 POS_ROLES = {"cajero", "vendedor"}
 POS_ONLY_IN_APP_MESSAGE = "El cajero ingresa desde la app Monay Market POS en el celular del negocio."
@@ -144,23 +139,6 @@ def apply_no_store_headers(response):
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     return response
-
-
-def save_certificate_upload(cert_file, tenant_id):
-    """Persist an uploaded SII certificate with a safe generated filename."""
-    original_name = secure_filename(cert_file.filename or "")
-    suffix = Path(original_name).suffix.lower()
-    if suffix not in ALLOWED_CERTIFICATE_EXTENSIONS:
-        raise ValueError("Solo se permiten certificados .pfx o .p12")
-
-    upload_dir = Path(app.config["CERT_UPLOAD_DIR"])
-    upload_dir.mkdir(parents=True, exist_ok=True)
-
-    filename = f"{tenant_id}_{uuid4().hex}{suffix}"
-    filepath = upload_dir / filename
-    cert_file.save(filepath)
-    os.chmod(filepath, 0o600)
-    return str(filepath)
 
 
 def parse_decimal_field(name, default=0.0):
@@ -930,144 +908,6 @@ def users_reset_password(user_id):
     return redirect(url_for("users", success="Contraseña actualizada correctamente"))
 
 
-@app.route("/settings")
-@login_required
-def settings():
-    """Render tenant configuration page (dueño only)."""
-    user = session.get("user", {})
-    if user.get("role") != "dueno":
-        return redirect(url_for("dashboard"))
-
-    if request.args.get("clear_sii_key") == "1":
-        api.patch("/tenant/config/sii", data={"sii_api_key": ""})
-        return redirect(url_for("settings"))
-    if request.args.get("clear_sii_rut") == "1":
-        api.patch("/tenant/config/sii", data={"sii_rut_emisor": ""})
-        return redirect(url_for("settings"))
-    if request.args.get("clear_sii_auth_rut") == "1":
-        api.patch("/tenant/config/sii", data={"sii_rut_autenticador": ""})
-        return redirect(url_for("settings"))
-    if request.args.get("clear_sii_codigo_sucursal") == "1":
-        api.patch("/tenant/config/sii", data={"sii_codigo_sucursal": None})
-        return redirect(url_for("settings"))
-    if request.args.get("clear_sii_clave") == "1":
-        api.patch("/tenant/config/sii", data={"sii_clave_tributaria": ""})
-        return redirect(url_for("settings"))
-
-    config_data = api.get("/tenant/config")
-    subscription_data = api.get("/tenant/subscription")
-
-    error = request.args.get("error")
-    success = request.args.get("success")
-
-    return render_template(
-        "settings.html",
-        config=config_data if isinstance(config_data, dict) else {},
-        subscription=subscription_data if isinstance(subscription_data, dict) else {},
-        error=error,
-        success=success,
-    )
-
-
-@app.route("/settings/sii", methods=["POST"])
-@login_required
-def settings_sii():
-    """Update SII configuration via API."""
-    user = session.get("user", {})
-    if user.get("role") != "dueno":
-        return redirect(url_for("dashboard"))
-
-    certificado_file = request.files.get("certificado")
-    certificado_path = None
-
-    if certificado_file and certificado_file.filename:
-        try:
-            tenant_id = session.get("user", {}).get("tenant_id", "tenant")
-            certificado_path = save_certificate_upload(certificado_file, tenant_id)
-        except ValueError as exc:
-            return redirect(url_for("settings", error=str(exc)))
-
-    data = {
-        "sii_enabled": request.form.get("sii_enabled") == "on",
-        "sii_sandbox_mode": request.form.get("sii_sandbox_mode") == "on",
-    }
-
-    # Los datos de la empresa solo llegan cuando el bloque está en edición;
-    # si no vienen, se conservan los guardados.
-    if "sii_razon_social" in request.form:
-        data["sii_razon_social"] = request.form.get("sii_razon_social", "").strip() or None
-    if "sii_giro" in request.form:
-        data["sii_giro"] = request.form.get("sii_giro", "").strip() or None
-
-    if "sii_api_key" in request.form:
-        data["sii_api_key"] = request.form.get("sii_api_key", "").strip() or None
-    if "sii_rut_emisor" in request.form:
-        data["sii_rut_emisor"] = request.form.get("sii_rut_emisor", "").strip() or None
-    if "sii_rut_autenticador" in request.form:
-        data["sii_rut_autenticador"] = request.form.get("sii_rut_autenticador", "").strip() or None
-    if "sii_codigo_sucursal" in request.form:
-        codigo_sucursal = request.form.get("sii_codigo_sucursal", "").strip()
-        data["sii_codigo_sucursal"] = int(codigo_sucursal) if codigo_sucursal else None
-    if "sii_clave_tributaria" in request.form:
-        data["sii_clave_tributaria"] = request.form.get("sii_clave_tributaria", "").strip() or None
-
-    if certificado_path:
-        data["sii_certificado_path"] = certificado_path
-        data["sii_certificado_password"] = request.form.get("certificado_password", "").strip() or None
-
-    result = api.patch("/tenant/config/sii", data=data)
-
-    if isinstance(result, dict) and result.get("status_code", 200) >= 400:
-        error_msg = result.get("message", "Error al actualizar configuración SII")
-        if isinstance(error_msg, list):
-            error_msg = ", ".join(error_msg)
-        return redirect(url_for("settings", error=error_msg))
-
-    return redirect(url_for("settings", success="Configuración SII actualizada"))
-
-
-SUMUP_KEY_FIELDS = ("sumup_api_key", "sumup_affiliate_key")
-
-
-@app.route("/settings/card-payment", methods=["POST"])
-@login_required
-def settings_card_payment():
-    """Actualiza el cobro con tarjeta (SumUp Tap to Pay) vía API.
-
-    Las claves nunca vuelven al panel: la API solo indica si están
-    configuradas. Quitar una clave también va por POST (con CSRF), nunca
-    por parámetros GET.
-    """
-    user = session.get("user", {})
-    if user.get("role") != "dueno":
-        return redirect(url_for("dashboard"))
-
-    clear_key = request.form.get("clear_key", "")
-    if clear_key:
-        if clear_key not in SUMUP_KEY_FIELDS:
-            return redirect(url_for("settings", error="Clave no válida"))
-        data = {clear_key: ""}
-        success_msg = "Clave de SumUp eliminada"
-    else:
-        data = {"card_payment_enabled": request.form.get("card_payment_enabled") == "on"}
-        # Un campo vacío no borra la clave guardada: para eso está «Quitar».
-        for field in SUMUP_KEY_FIELDS:
-            value = request.form.get(field, "").strip()
-            if value:
-                data[field] = value
-        success_msg = "Cobro con tarjeta actualizado"
-
-    result = api.patch("/tenant/config/card-payment", data=data)
-
-    if isinstance(result, dict) and result.get("status_code", 200) >= 400:
-        error_msg = result.get("message", "Error al actualizar el cobro con tarjeta")
-        if isinstance(error_msg, list):
-            error_msg = ", ".join(error_msg)
-        return redirect(url_for("settings", error=error_msg))
-
-    return redirect(url_for("settings", success=success_msg))
-
-
 @app.route("/settings/change-password", methods=["POST"])
 @login_required
 def settings_change_password():
@@ -1562,6 +1402,108 @@ def admin_tenant_create():
         error = result.get("message", "Error al crear tenant") if isinstance(result, dict) else "Error"
         return render_template("admin/tenant_new.html", error=error, form=data)
     return render_template("admin/tenant_new.html", form={})
+
+
+# --- Configuración de cada negocio (boleta y tarjeta), solo superadmin ---
+
+SII_SECRET_FIELDS = ("sii_api_key", "sii_clave_tributaria")
+SUMUP_KEY_FIELDS = ("sumup_api_key", "sumup_affiliate_key")
+CLEARABLE_KEYS = {
+    **{field: "sii" for field in SII_SECRET_FIELDS},
+    **{field: "card-payment" for field in SUMUP_KEY_FIELDS},
+}
+
+
+def api_error_message(result, default):
+    """Mensaje de error de una respuesta de la API, o None si salió bien."""
+    if isinstance(result, dict) and result.get("status_code", 200) >= 400:
+        message = result.get("message", default)
+        return ", ".join(message) if isinstance(message, list) else str(message)
+    return None
+
+
+def redirect_tenant_config(tenant_id, **params):
+    return redirect(url_for("admin_tenant_config", tenant_id=tenant_id, **params))
+
+
+@app.route("/admin/tenants/<tenant_id>/config")
+@superadmin_required
+def admin_tenant_config(tenant_id):
+    """Boleta electrónica y cobro con tarjeta de un negocio."""
+    tenant = api.get(f"/admin/tenants/{tenant_id}")
+    if not isinstance(tenant, dict) or tenant.get("status_code", 200) >= 400 or not tenant.get("id"):
+        return redirect(url_for("admin_dashboard"))
+    config = api.get(f"/admin/tenants/{tenant_id}/config")
+    return render_template(
+        "admin/tenant_config.html",
+        tenant=tenant,
+        config=config if isinstance(config, dict) and config.get("status_code", 200) < 400 else {},
+        error=request.args.get("error"),
+        success=request.args.get("success"),
+    )
+
+
+@app.route("/admin/tenants/<tenant_id>/config/sii", methods=["POST"])
+@superadmin_required
+def admin_tenant_config_sii(tenant_id):
+    """Guarda la boleta electrónica del negocio.
+
+    Las claves secretas vacías no se tocan (para borrarlas está «Quitar»);
+    los demás campos vacíos se borran.
+    """
+    data = {
+        "sii_enabled": request.form.get("sii_enabled") == "on",
+        "sii_sandbox_mode": request.form.get("sii_mode") == "pruebas",
+    }
+    for field in ("sii_rut_emisor", "sii_rut_autenticador", "sii_razon_social", "sii_giro"):
+        data[field] = request.form.get(field, "").strip() or None
+    codigo_sucursal = request.form.get("sii_codigo_sucursal", "").strip()
+    if codigo_sucursal and not codigo_sucursal.isdigit():
+        return redirect_tenant_config(tenant_id, error="El código de sucursal debe ser un número")
+    data["sii_codigo_sucursal"] = int(codigo_sucursal) if codigo_sucursal else None
+    for field in SII_SECRET_FIELDS:
+        value = request.form.get(field, "").strip()
+        if value:
+            data[field] = value
+
+    result = api.patch(f"/admin/tenants/{tenant_id}/config/sii", data=data)
+    error = api_error_message(result, "Error al guardar la boleta electrónica")
+    if error:
+        return redirect_tenant_config(tenant_id, error=error)
+    return redirect_tenant_config(tenant_id, success="Boleta electrónica actualizada")
+
+
+@app.route("/admin/tenants/<tenant_id>/config/card-payment", methods=["POST"])
+@superadmin_required
+def admin_tenant_config_card_payment(tenant_id):
+    """Guarda el cobro con tarjeta (SumUp). Las claves vacías no se tocan."""
+    data = {"card_payment_enabled": request.form.get("card_payment_enabled") == "on"}
+    for field in SUMUP_KEY_FIELDS:
+        value = request.form.get(field, "").strip()
+        if value:
+            data[field] = value
+
+    result = api.patch(f"/admin/tenants/{tenant_id}/config/card-payment", data=data)
+    error = api_error_message(result, "Error al guardar el cobro con tarjeta")
+    if error:
+        return redirect_tenant_config(tenant_id, error=error)
+    return redirect_tenant_config(tenant_id, success="Cobro con tarjeta actualizado")
+
+
+@app.route("/admin/tenants/<tenant_id>/config/clear", methods=["POST"])
+@superadmin_required
+def admin_tenant_config_clear(tenant_id):
+    """Quita una clave secreta guardada (solo por POST, con CSRF)."""
+    key = request.form.get("clear_key", "")
+    section = CLEARABLE_KEYS.get(key)
+    if not section:
+        return redirect_tenant_config(tenant_id, error="Clave no válida")
+
+    result = api.patch(f"/admin/tenants/{tenant_id}/config/{section}", data={key: ""})
+    error = api_error_message(result, "Error al quitar la clave")
+    if error:
+        return redirect_tenant_config(tenant_id, error=error)
+    return redirect_tenant_config(tenant_id, success="Clave eliminada")
 
 
 if __name__ == "__main__":

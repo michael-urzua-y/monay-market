@@ -1,0 +1,253 @@
+{% extends "admin/base_admin.html" %}
+{% from "partials/icons.html" import icon %}
+{% block title %}Configuración · {{ tenant.name }} — Admin{% endblock %}
+{% block page_title %}Configuración{% endblock %}
+
+{% block content %}
+{% set sii_ready = config.get('sii_api_key') and config.get('sii_rut_emisor') and config.get('sii_clave_tributaria') and config.get('sii_codigo_sucursal') is not none %}
+{% set sandbox = config.get('sii_sandbox_mode') %}
+{% set card_ready = config.get('card_payment_enabled') and config.get('sumup_api_key') and config.get('sumup_affiliate_key') %}
+
+{# Una clave secreta guardada nunca vuelve al panel: solo se ve «Configurada».
+   Dejar el campo vacío la conserva; «Quitar» la borra con su propio POST. #}
+{% macro secret_field(name, label, placeholder, help, confirm_msg) -%}
+<div class="form-group">
+    <label for="{{ name }}">{{ label }}</label>
+    {% if config.get(name) %}
+    <div class="config-secret">
+        <span class="config-secret-value">{{ icon('candado', 16) }} Configurada</span>
+        <button type="submit" class="config-secret-remove" form="config-clear-form" name="clear_key" value="{{ name }}" formnovalidate onclick="return confirm('{{ confirm_msg }}')">Quitar</button>
+    </div>
+    <input type="password" id="{{ name }}" name="{{ name }}" value="" placeholder="Escribe una nueva solo para reemplazarla" autocomplete="off" maxlength="512">
+    {% else %}
+    <input type="password" id="{{ name }}" name="{{ name }}" value="" placeholder="{{ placeholder }}" autocomplete="off" maxlength="512">
+    {% endif %}
+    {% if help %}<small class="config-muted">{{ help|safe }}</small>{% endif %}
+</div>
+{%- endmacro %}
+
+<style>
+    .config-shell { display: flex; flex-direction: column; gap: 20px; max-width: 960px; }
+    .config-status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+    .config-status { display: flex; align-items: center; gap: 14px; padding: 18px 20px; border-radius: var(--radius-lg); background: var(--color-white); border: 1px solid var(--color-border-soft); box-shadow: var(--shadow-sm); }
+    .config-status-icon { width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; background: #f1f0e8; color: var(--color-text-soft); }
+    .config-status-icon.is-ok { background: var(--color-success-bg); color: var(--color-success); }
+    .config-status-icon.is-warn { background: #fff4cc; color: #8a6a00; }
+    .config-status-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .config-status-text strong { font-size: 0.9375rem; }
+    .config-status-text span { font-size: 0.8125rem; color: var(--color-text-muted); }
+    .config-form { overflow: hidden; }
+    .config-form-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 20px 24px; border-bottom: 1px solid var(--color-border-soft); }
+    .config-form-head h2 { margin: 0; font-size: 1.0625rem; font-weight: 700; }
+    .config-form-head p { margin: 4px 0 0; font-size: 0.8125rem; color: var(--color-text-muted); }
+    .config-switch { display: inline-flex; align-items: center; gap: 10px; font-size: 0.875rem; font-weight: 600; cursor: pointer; }
+    .config-switch input { width: 20px; height: 20px; accent-color: var(--color-primary); }
+    .config-group { padding: 22px 24px; border-bottom: 1px solid var(--color-border-soft); }
+    .config-group:last-of-type { border-bottom: 0; }
+    .config-group h3 { margin: 0 0 16px; font-size: 0.8125rem; font-weight: 700; color: var(--color-text-soft); text-transform: uppercase; letter-spacing: 0.05em; }
+    .config-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .config-fields .form-group { margin: 0; }
+    .config-muted { display: block; margin-top: 6px; font-size: 0.78rem; color: var(--color-text-muted); }
+    .config-secret { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; margin-bottom: 8px; padding: 0 6px 0 14px; border-radius: var(--radius); background: #f1f0e8; }
+    .config-secret-value { display: inline-flex; align-items: center; gap: 8px; font-size: 0.875rem; font-weight: 600; }
+    .config-secret-value .icon { color: var(--color-success); }
+    .config-secret-remove { min-height: 30px; padding: 0 12px; border: 0; border-radius: 9px; background: var(--color-white); color: var(--color-text); font: inherit; font-size: 0.8125rem; font-weight: 600; cursor: pointer; }
+    .config-secret-remove:hover { color: var(--color-error); }
+    .config-mode { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; border: 0; }
+    .config-mode label { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--color-border); background: var(--color-white); cursor: pointer; }
+    .config-mode input { position: absolute; opacity: 0; pointer-events: none; }
+    .config-mode strong { font-size: 0.875rem; }
+    .config-mode span { font-size: 0.75rem; color: var(--color-text-muted); }
+    .config-mode label:has(input:checked) { border: 1.5px solid var(--color-primary); background: #FFF8DB; }
+    .config-mode label:has(input:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+    .config-help { margin: 0; padding-left: 18px; font-size: 0.8125rem; color: var(--color-text-muted); line-height: 1.55; }
+    .config-form-footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 18px 24px; background: var(--color-surface-2); }
+    @media (max-width: 520px) {
+        .config-form-head, .config-group, .config-form-footer { padding-left: 18px; padding-right: 18px; }
+        .config-mode { grid-template-columns: 1fr; }
+        .config-form-footer .btn { width: 100%; }
+    }
+</style>
+
+<a href="{{ url_for('admin_tenant_detail', tenant_id=tenant.id) }}" class="back-link">{{ icon('volver', 16) }} {{ tenant.name }}</a>
+
+<div class="config-shell">
+    <div>
+        <h1 style="margin: 0; font-size: 1.6rem; font-weight: 800; letter-spacing: -0.02em;">Configuración de {{ tenant.name }}</h1>
+        <p class="page-subtitle">Boleta electrónica y cobro con tarjeta. El dueño del negocio no ve esta página.</p>
+    </div>
+
+    {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+    {% if success %}<div class="alert alert-success">{{ success }}</div>{% endif %}
+
+    <div class="config-status-grid">
+        <div class="config-status">
+            {% if not config.get('sii_enabled') %}
+            <span class="config-status-icon">{{ icon('documento', 22) }}</span>
+            <div class="config-status-text">
+                <strong>Boleta electrónica: desactivada</strong>
+                <span>Las ventas se registran sin boleta</span>
+            </div>
+            {% elif sandbox %}
+            <span class="config-status-icon is-warn">{{ icon('alerta', 22) }}</span>
+            <div class="config-status-text">
+                <strong>Boleta electrónica: modo pruebas</strong>
+                <span>Boletas simuladas, sin validez ante el SII</span>
+            </div>
+            {% elif sii_ready %}
+            <span class="config-status-icon is-ok">{{ icon('documento', 22) }}</span>
+            <div class="config-status-text">
+                <strong>Boleta electrónica: reales ante el SII</strong>
+                <span>Cada venta emite una boleta y usa créditos de API Gateway</span>
+            </div>
+            {% else %}
+            <span class="config-status-icon is-warn">{{ icon('alerta', 22) }}</span>
+            <div class="config-status-text">
+                <strong>Boleta electrónica: faltan datos</strong>
+                <span>Completa token, clave, RUT y sucursal</span>
+            </div>
+            {% endif %}
+        </div>
+        <div class="config-status">
+            {% if card_ready %}
+            <span class="config-status-icon is-ok">{{ icon('tarjeta', 22) }}</span>
+            <div class="config-status-text">
+                <strong>Cobro con tarjeta: activo</strong>
+                <span>SumUp Tap to Pay en la app de la caja</span>
+            </div>
+            {% elif config.get('card_payment_enabled') %}
+            <span class="config-status-icon is-warn">{{ icon('alerta', 22) }}</span>
+            <div class="config-status-text">
+                <strong>Cobro con tarjeta: faltan claves</strong>
+                <span>Ingresa ambas claves de SumUp</span>
+            </div>
+            {% else %}
+            <span class="config-status-icon">{{ icon('tarjeta', 22) }}</span>
+            <div class="config-status-text">
+                <strong>Cobro con tarjeta: desactivado</strong>
+                <span>La caja cobra solo en efectivo</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# «Quitar» de cualquier clave va en este formulario aparte: «Enter» en los formularios principales nunca borra una clave. #}
+    <form method="post" action="{{ url_for('admin_tenant_config_clear', tenant_id=tenant.id) }}" id="config-clear-form" hidden>
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+    </form>
+
+    <form method="post" action="{{ url_for('admin_tenant_config_sii', tenant_id=tenant.id) }}" class="card config-form">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+        <div class="config-form-head">
+            <div>
+                <h2>Boleta electrónica (SII)</h2>
+                <p>Se emite con API Gateway eBoleta y se imprime sola al cobrar.</p>
+            </div>
+            <label class="config-switch">
+                <input type="checkbox" name="sii_enabled" {% if config.get('sii_enabled') %}checked{% endif %}>
+                Emitir boletas
+            </label>
+        </div>
+
+        <section class="config-group">
+            <h3>Tipo de boletas</h3>
+            <fieldset class="config-mode">
+                <label>
+                    <input type="radio" name="sii_mode" value="real" {% if not sandbox %}checked{% endif %}>
+                    <strong>Reales (SII)</strong>
+                    <span>Válidas ante el SII · usa créditos de API Gateway</span>
+                </label>
+                <label>
+                    <input type="radio" name="sii_mode" value="pruebas" {% if sandbox %}checked{% endif %}>
+                    <strong>Pruebas</strong>
+                    <span>Folio simulado · no llama a API Gateway ni al SII</span>
+                </label>
+            </fieldset>
+        </section>
+
+        <section class="config-group">
+            <h3>Credenciales</h3>
+            <div class="config-fields">
+                {{ secret_field('sii_api_key', 'Token de API Gateway', 'Token entregado por API Gateway', '', '¿Quitar el token de API Gateway? El negocio dejará de emitir boletas reales.') }}
+                {{ secret_field('sii_clave_tributaria', 'Clave tributaria SII', 'Clave del RUT autenticador en el SII', '', '¿Quitar la clave tributaria? El negocio dejará de emitir boletas reales.') }}
+            </div>
+        </section>
+
+        <section class="config-group">
+            <h3>Identidad tributaria</h3>
+            <div class="config-fields">
+                <div class="form-group">
+                    <label for="sii_rut_emisor">RUT emisor</label>
+                    <input type="text" id="sii_rut_emisor" name="sii_rut_emisor" value="{{ config.get('sii_rut_emisor') or '' }}" placeholder="Ej: 12.345.678-5" autocomplete="off" maxlength="12" data-rut>
+                    <small class="config-muted">RUT del negocio que emite la boleta.</small>
+                </div>
+                <div class="form-group">
+                    <label for="sii_rut_autenticador">RUT autenticador SII</label>
+                    <input type="text" id="sii_rut_autenticador" name="sii_rut_autenticador" value="{{ config.get('sii_rut_autenticador') or '' }}" placeholder="Ej: 11.111.111-1" autocomplete="off" maxlength="12" data-rut>
+                    <small class="config-muted">Persona que inicia sesión en el SII. Vacío = el RUT emisor.</small>
+                </div>
+                <div class="form-group">
+                    <label for="sii_codigo_sucursal">Código de sucursal SII</label>
+                    <input type="text" id="sii_codigo_sucursal" name="sii_codigo_sucursal" value="{{ config.get('sii_codigo_sucursal') if config.get('sii_codigo_sucursal') is not none else '' }}" placeholder="Ej: 12345678" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+                    <small class="config-muted">Sucursal activa en e-Boleta/SII.</small>
+                </div>
+            </div>
+        </section>
+
+        <section class="config-group">
+            <h3>Datos de la empresa</h3>
+            <div class="config-fields">
+                <div class="form-group">
+                    <label for="sii_razon_social">Razón social</label>
+                    <input type="text" id="sii_razon_social" name="sii_razon_social" value="{{ config.get('sii_razon_social') or '' }}" placeholder="Nombre de la empresa" maxlength="200" autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="sii_giro">Giro</label>
+                    <input type="text" id="sii_giro" name="sii_giro" value="{{ config.get('sii_giro') or '' }}" placeholder="Ej: Venta al por menor de alimentos" maxlength="200" autocomplete="off">
+                </div>
+            </div>
+        </section>
+
+        <div class="config-form-footer">
+            <button type="submit" class="btn btn-dark">Guardar boleta electrónica</button>
+        </div>
+    </form>
+
+    <form method="post" action="{{ url_for('admin_tenant_config_card_payment', tenant_id=tenant.id) }}" class="card config-form">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+        <div class="config-form-head">
+            <div>
+                <h2>Cobro con tarjeta (SumUp)</h2>
+                <p>El cajero cobra acercando la tarjeta al celular (SumUp Tap to Pay), desde la app de la caja.</p>
+            </div>
+            <label class="config-switch">
+                <input type="checkbox" name="card_payment_enabled" {% if config.get('card_payment_enabled') %}checked{% endif %}>
+                Activar cobro con tarjeta
+            </label>
+        </div>
+
+        <section class="config-group">
+            <h3>Claves de SumUp</h3>
+            <div class="config-fields">
+                {{ secret_field('sumup_api_key', 'Clave secreta de API (sup_sk_…)', 'sup_sk_…', 'En SumUp: Ajustes → API keys.', '¿Quitar la clave secreta de API? La caja dejará de cobrar con tarjeta.') }}
+                {{ secret_field('sumup_affiliate_key', 'Clave de afiliado', 'Clave de afiliado de SumUp', 'En SumUp: Ajustes → Affiliate keys, para el app id <code>cl.monaymarket.pos</code>.', '¿Quitar la clave de afiliado? La caja dejará de cobrar con tarjeta.') }}
+            </div>
+        </section>
+
+        <section class="config-group">
+            <h3>Antes de cobrar</h3>
+            <ul class="config-help">
+                <li>Las dos claves salen del panel de SumUp de la cuenta del negocio.</li>
+                <li>La clave de afiliado debe crearse para el app id <code>cl.monaymarket.pos</code>.</li>
+                <li>En el celular de la caja deben estar desactivadas las «Opciones de desarrollador».</li>
+            </ul>
+        </section>
+
+        <div class="config-form-footer">
+            <button type="submit" class="btn btn-dark">Guardar cobro con tarjeta</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

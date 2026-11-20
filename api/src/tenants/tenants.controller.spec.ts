@@ -12,10 +12,10 @@ describe('TenantsController', () => {
   describe('GET /tenant/card-payment', () => {
     const handler = proto.getCardPaymentCredentials;
 
-    it('es un GET en card-payment, distinto de config y subscription', () => {
+    it('es un GET en card-payment, distinto de subscription', () => {
       expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.GET);
       expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe('card-payment');
-      expect(Reflect.getMetadata(PATH_METADATA, proto.getConfig)).toBe('config');
+      expect(Reflect.getMetadata(PATH_METADATA, proto.getSubscription)).toBe('/subscription');
     });
 
     it('lo pueden usar el cajero y el dueño', () => {
@@ -37,13 +37,16 @@ describe('TenantsController', () => {
     });
   });
 
-  describe('PATCH /tenant/config/card-payment', () => {
-    const handler = proto.updateCardPaymentConfig;
-
-    it('es un PATCH solo para el dueño', () => {
-      expect(Reflect.getMetadata(METHOD_METADATA, handler)).toBe(RequestMethod.PATCH);
-      expect(Reflect.getMetadata(PATH_METADATA, handler)).toBe('config/card-payment');
-      expect(Reflect.getMetadata(ROLES_KEY, handler)).toEqual([UserRole.DUENO]);
+  describe('configuración del negocio', () => {
+    it('el dueño no puede verla ni cambiarla: /tenant no expone config', () => {
+      const routes = Object.getOwnPropertyNames(proto)
+        .filter((name) => name !== 'constructor')
+        .map((name) => ({
+          method: Reflect.getMetadata(METHOD_METADATA, (proto as any)[name]),
+          path: Reflect.getMetadata(PATH_METADATA, (proto as any)[name]),
+        }));
+      expect(routes.map((r) => r.method)).not.toContain(RequestMethod.PATCH);
+      expect(routes.map((r) => r.path)).not.toContain('config');
     });
   });
 });

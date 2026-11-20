@@ -19,6 +19,7 @@
         </div>
     </div>
     <div class="tenant-hero-actions">
+        <a href="{{ url_for('admin_tenant_config', tenant_id=tenant.id) }}" class="btn btn-dark">{{ icon('configuracion', 18) }} Configuración</a>
         {% if any_active %}
         <form method="post" action="{{ url_for('admin_tenant_block', tenant_id=tenant.id) }}">
             <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">

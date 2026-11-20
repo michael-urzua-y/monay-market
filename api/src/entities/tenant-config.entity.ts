@@ -74,7 +74,7 @@ export class TenantConfig {
   })
   sii_certificado_password: string | null;
 
-  @Column({ name: 'sii_sandbox_mode', type: 'boolean', default: true })
+  @Column({ name: 'sii_sandbox_mode', type: 'boolean', default: false })
   sii_sandbox_mode: boolean;
 
   /** La boleta se imprime siempre al cobrar: se mantiene la columna por compatibilidad. */

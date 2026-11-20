@@ -92,7 +92,7 @@
             <span class="sidebar-badge">Administración</span>
 
             <nav class="sidebar-nav">
-                <a href="{{ url_for('admin_dashboard') }}" class="nav-item {% if request.endpoint in ('admin_dashboard', 'admin_tenant_detail') %}active{% endif %}">
+                <a href="{{ url_for('admin_dashboard') }}" class="nav-item {% if request.endpoint in ('admin_dashboard', 'admin_tenant_detail', 'admin_tenant_config') %}active{% endif %}">
                     <span class="nav-icon">{{ icon('negocios') }}</span>
                     <span class="nav-label">Negocios</span>
                 </a>

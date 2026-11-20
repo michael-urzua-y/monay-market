@@ -16,11 +16,17 @@ import { CreateTenantDto } from './dto/create-tenant.dto';
 import { UpdateTenantDto } from './dto/update-tenant.dto';
 import { UpdateSubscriptionDto } from './dto/update-subscription.dto';
 import { UpdateUserAdminDto } from './dto/update-user-admin.dto';
+import { TenantsService } from '../tenants/tenants.service';
+import { UpdateSiiConfigDto } from '../tenants/dto/update-sii-config.dto';
+import { UpdateCardPaymentConfigDto } from '../tenants/dto/update-card-payment-config.dto';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, SuperAdminGuard)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly tenantsService: TenantsService,
+  ) {}
 
   @Get('tenants')
   findAllTenants() {
@@ -60,6 +66,28 @@ export class AdminController {
     @Body() dto: UpdateUserAdminDto,
   ) {
     return this.adminService.updateUser(tenantId, userId, dto);
+  }
+
+  /** Configuración del negocio (boleta y tarjeta): solo la ve y cambia el superadmin. */
+  @Get('tenants/:id/config')
+  getTenantConfig(@Param('id', ParseUUIDPipe) id: string) {
+    return this.tenantsService.getConfig(id);
+  }
+
+  @Patch('tenants/:id/config/sii')
+  updateTenantSiiConfig(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateSiiConfigDto,
+  ) {
+    return this.tenantsService.updateSiiConfig(id, dto);
+  }
+
+  @Patch('tenants/:id/config/card-payment')
+  updateTenantCardPaymentConfig(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCardPaymentConfigDto,
+  ) {
+    return this.tenantsService.updateCardPaymentConfig(id, dto);
   }
 
   @Delete('tenants/:id')

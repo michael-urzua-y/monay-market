@@ -495,163 +495,214 @@ class TestSearchAndAi:
         assert 'property="og:image"' in body
 
 
-class TestCardPaymentSettings:
-    """Cobro con tarjeta (SumUp): el panel guarda claves sin volver a mostrarlas."""
+TENANT_ID = "7c9e6679-7425-40de-944b-e07fc1f90ae7"
 
-    def post_card_payment(self, client, data):
+
+def login_superadmin_session(client):
+    with client.session_transaction() as sess:
+        sess["jwt_token"] = "valid-token"
+        sess["user"] = {"username": "michael", "role": "superadmin"}
+        sess["_csrf_token"] = CSRF_TOKEN
+
+
+class TestOwnerHasNoSettings:
+    """La configuración del negocio ya no es del dueño: la maneja el superadmin."""
+
+    @patch("app.api")
+    def test_settings_page_no_longer_exists(self, mock_api, client):
+        login_owner_session(client)
+        resp = client.get("/settings")
+        assert resp.status_code == 404
+        mock_api.patch.assert_not_called()
+
+    @patch("app.api")
+    def test_owner_menu_has_no_settings_link(self, mock_api, client):
+        login_owner_session(client)
+        mock_api.get.return_value = {}
+        body = client.get("/mermas").data.decode("utf-8")
+        assert 'data-tooltip="Configuración"' not in body
+
+    @patch("app.api")
+    def test_old_owner_post_routes_are_gone(self, mock_api, client):
+        login_owner_session(client)
+        seed_csrf(client)
+        for path in ("/settings/sii", "/settings/card-payment"):
+            resp = client.post(
+                path,
+                data={"_csrf_token": CSRF_TOKEN},
+                base_url="http://localhost:5000",
+                headers={"Origin": "http://localhost:5000"},
+            )
+            assert resp.status_code in (404, 405)
+        mock_api.patch.assert_not_called()
+
+
+class TestAdminTenantConfig:
+    """Boleta y tarjeta de cada negocio: solo el superadmin, claves nunca visibles."""
+
+    def post(self, client, path, data):
         return client.post(
-            "/settings/card-payment",
+            f"/admin/tenants/{TENANT_ID}/config/{path}",
             data={"_csrf_token": CSRF_TOKEN, **data},
             base_url="http://localhost:5000",
             headers={"Origin": "http://localhost:5000"},
         )
 
-    @patch("app.api")
-    def test_settings_shows_card_section_with_configured_keys(self, mock_api, client):
-        """Con claves guardadas se muestra «Configurada» y nunca la clave misma."""
-        login_owner_session(client)
-        mock_api.get.side_effect = lambda endpoint, *a, **k: (
-            {
-                "card_payment_enabled": True,
-                "sumup_api_key": "configured",
-                "sumup_affiliate_key": "configured",
-            }
-            if endpoint == "/tenant/config"
-            else {}
-        )
+    @staticmethod
+    def fake_get(config):
+        def get(endpoint, *args, **kwargs):
+            if endpoint == f"/admin/tenants/{TENANT_ID}":
+                return {"id": TENANT_ID, "name": "Almacén Primo", "users": []}
+            if endpoint == f"/admin/tenants/{TENANT_ID}/config":
+                return config
+            raise AssertionError(f"llamada inesperada a la API: {endpoint}")
+        return get
 
-        resp = client.get("/settings")
+    @patch("app.api")
+    def test_page_shows_sandbox_warning_and_hides_keys(self, mock_api, client):
+        login_superadmin_session(client)
+        mock_api.get.side_effect = self.fake_get({
+            "sii_enabled": True,
+            "sii_sandbox_mode": True,
+            "sii_api_key": "configured",
+            "sumup_api_key": "configured",
+            "sii_rut_emisor": "76.123.456-7",
+        })
+
+        resp = client.get(f"/admin/tenants/{TENANT_ID}/config")
 
         assert resp.status_code == 200
         body = resp.data.decode("utf-8")
-        assert "Cobro con tarjeta (SumUp)" in body
-        assert "Activar cobro con tarjeta en la caja" in body
-        assert "Cobro con tarjeta: activo" in body
-        assert body.count("Configurada") >= 2
-        assert 'value="sumup_api_key"' in body
-        assert 'value="sumup_affiliate_key"' in body
-        assert "cl.monaymarket.pos" in body
-        assert "Opciones de desarrollador" in body
+        assert "Boleta electrónica: modo pruebas" in body
+        assert 'name="sii_mode" value="pruebas" checked' in body
+        assert "configured" not in body
+        assert body.count("Configurada") == 2
+        assert 'value="76.123.456-7"' in body
 
     @patch("app.api")
-    def test_settings_without_keys_shows_inputs(self, mock_api, client):
-        """Sin claves se muestran los campos para ingresarlas."""
-        login_owner_session(client)
-        mock_api.get.return_value = {}
+    def test_real_mode_is_selected_when_sandbox_off(self, mock_api, client):
+        login_superadmin_session(client)
+        mock_api.get.side_effect = self.fake_get({"sii_enabled": True, "sii_sandbox_mode": False})
 
-        resp = client.get("/settings")
+        body = client.get(f"/admin/tenants/{TENANT_ID}/config").data.decode("utf-8")
 
-        body = resp.data.decode("utf-8")
-        assert 'name="sumup_api_key"' in body
-        assert 'name="sumup_affiliate_key"' in body
-        assert "Cobro con tarjeta: desactivado" in body
+        assert 'name="sii_mode" value="real" checked' in body
 
     @patch("app.api")
-    def test_save_sends_toggle_and_new_keys(self, mock_api, client):
-        """Guardar envía el interruptor y solo las claves escritas."""
+    def test_owner_cannot_open_admin_config(self, mock_api, client):
         login_owner_session(client)
-        seed_csrf(client)
-        mock_api.patch.return_value = {"card_payment_enabled": True}
+        resp = client.get(f"/admin/tenants/{TENANT_ID}/config")
+        assert resp.status_code == 302
+        assert "/login" in resp.headers["Location"]
+        mock_api.get.assert_not_called()
 
-        resp = self.post_card_payment(client, {
+    @patch("app.api")
+    def test_save_sii_real_mode_keeps_blank_secrets(self, mock_api, client):
+        login_superadmin_session(client)
+        mock_api.patch.return_value = {}
+
+        resp = self.post(client, "sii", {
+            "sii_enabled": "on",
+            "sii_mode": "real",
+            "sii_api_key": "",
+            "sii_clave_tributaria": "  clave123  ",
+            "sii_rut_emisor": "76.123.456-7",
+            "sii_rut_autenticador": "",
+            "sii_codigo_sucursal": "81234567",
+            "sii_razon_social": "Almacén Primo SpA",
+            "sii_giro": "",
+        })
+
+        assert resp.status_code == 302
+        assert "success=Boleta" in resp.headers["Location"]
+        mock_api.patch.assert_called_once_with(
+            f"/admin/tenants/{TENANT_ID}/config/sii",
+            data={
+                "sii_enabled": True,
+                "sii_sandbox_mode": False,
+                "sii_rut_emisor": "76.123.456-7",
+                "sii_rut_autenticador": None,
+                "sii_razon_social": "Almacén Primo SpA",
+                "sii_giro": None,
+                "sii_codigo_sucursal": 81234567,
+                "sii_clave_tributaria": "clave123",
+            },
+        )
+
+    @patch("app.api")
+    def test_save_sii_test_mode(self, mock_api, client):
+        login_superadmin_session(client)
+        mock_api.patch.return_value = {}
+
+        self.post(client, "sii", {"sii_mode": "pruebas"})
+
+        data = mock_api.patch.call_args.kwargs["data"]
+        assert data["sii_sandbox_mode"] is True
+        assert data["sii_enabled"] is False
+
+    @patch("app.api")
+    def test_invalid_branch_code_is_rejected(self, mock_api, client):
+        login_superadmin_session(client)
+
+        resp = self.post(client, "sii", {"sii_mode": "real", "sii_codigo_sucursal": "12a"})
+
+        assert "error=" in resp.headers["Location"]
+        mock_api.patch.assert_not_called()
+
+    @patch("app.api")
+    def test_save_card_payment_sends_only_typed_keys(self, mock_api, client):
+        login_superadmin_session(client)
+        mock_api.patch.return_value = {}
+
+        self.post(client, "card-payment", {
             "card_payment_enabled": "on",
             "sumup_api_key": "  sup_sk_nueva  ",
             "sumup_affiliate_key": "",
         })
 
-        assert resp.status_code == 302
-        assert "success=Cobro+con+tarjeta+actualizado" in resp.headers["Location"]
         mock_api.patch.assert_called_once_with(
-            "/tenant/config/card-payment",
+            f"/admin/tenants/{TENANT_ID}/config/card-payment",
             data={"card_payment_enabled": True, "sumup_api_key": "sup_sk_nueva"},
         )
 
     @patch("app.api")
-    def test_save_without_toggle_disables(self, mock_api, client):
-        """Sin el interruptor marcado se desactiva y no se tocan las claves."""
-        login_owner_session(client)
-        seed_csrf(client)
+    def test_clear_key_goes_to_its_section(self, mock_api, client):
+        login_superadmin_session(client)
         mock_api.patch.return_value = {}
 
-        self.post_card_payment(client, {})
+        self.post(client, "clear", {"clear_key": "sii_api_key"})
+        self.post(client, "clear", {"clear_key": "sumup_affiliate_key"})
 
-        mock_api.patch.assert_called_once_with(
-            "/tenant/config/card-payment",
-            data={"card_payment_enabled": False},
-        )
-
-    @patch("app.api")
-    def test_remove_key_via_post_only_clears_that_key(self, mock_api, client):
-        """«Quitar» borra solo esa clave y no cambia el interruptor."""
-        login_owner_session(client)
-        seed_csrf(client)
-        mock_api.patch.return_value = {}
-
-        resp = self.post_card_payment(client, {"clear_key": "sumup_affiliate_key"})
-
-        assert resp.status_code == 302
-        assert "success=Clave+de+SumUp+eliminada" in resp.headers["Location"]
-        mock_api.patch.assert_called_once_with(
-            "/tenant/config/card-payment",
-            data={"sumup_affiliate_key": ""},
-        )
+        assert mock_api.patch.call_args_list[0].args == (f"/admin/tenants/{TENANT_ID}/config/sii",)
+        assert mock_api.patch.call_args_list[0].kwargs == {"data": {"sii_api_key": ""}}
+        assert mock_api.patch.call_args_list[1].args == (f"/admin/tenants/{TENANT_ID}/config/card-payment",)
+        assert mock_api.patch.call_args_list[1].kwargs == {"data": {"sumup_affiliate_key": ""}}
 
     @patch("app.api")
-    def test_remove_unknown_key_is_rejected(self, mock_api, client):
-        """No se puede usar «Quitar» para otros campos."""
-        login_owner_session(client)
-        seed_csrf(client)
+    def test_clear_rejects_other_fields(self, mock_api, client):
+        login_superadmin_session(client)
 
-        resp = self.post_card_payment(client, {"clear_key": "sii_api_key"})
+        resp = self.post(client, "clear", {"clear_key": "sii_rut_emisor"})
 
-        assert resp.status_code == 302
         assert "error=" in resp.headers["Location"]
         mock_api.patch.assert_not_called()
 
     @patch("app.api")
-    def test_get_query_params_never_clear_keys(self, mock_api, client):
-        """Un GET con parámetros no borra claves de SumUp."""
-        login_owner_session(client)
-        mock_api.get.return_value = {}
+    def test_api_error_is_shown(self, mock_api, client):
+        login_superadmin_session(client)
+        mock_api.patch.return_value = {"status_code": 400, "message": ["El RUT emisor no es válido"]}
 
-        client.get("/settings?clear_key=sumup_api_key&clear_sumup_api_key=1")
+        resp = self.post(client, "sii", {"sii_mode": "real", "sii_rut_emisor": "1-1"})
 
-        mock_api.patch.assert_not_called()
-
-    @patch("app.api")
-    def test_api_error_redirects_with_message(self, mock_api, client):
-        """Un error de la API se muestra en la página de configuración."""
-        login_owner_session(client)
-        seed_csrf(client)
-        mock_api.patch.return_value = {
-            "status_code": 400,
-            "message": ["sumup_api_key must be shorter than or equal to 512 characters"],
-        }
-
-        resp = self.post_card_payment(client, {"sumup_api_key": "x"})
-
-        assert resp.status_code == 302
-        assert "error=sumup_api_key" in resp.headers["Location"]
+        assert "error=El+RUT+emisor" in resp.headers["Location"]
 
     @patch("app.api")
     def test_requires_csrf(self, mock_api, client):
-        """Sin token CSRF el POST se rechaza."""
-        login_owner_session(client)
-        resp = client.post("/settings/card-payment", data={"clear_key": "sumup_api_key"})
-        assert resp.status_code == 403
-        mock_api.patch.assert_not_called()
-
-    @patch("app.api")
-    def test_cashier_cannot_update(self, mock_api, client):
-        """Un cajero no puede cambiar el cobro con tarjeta desde el panel."""
+        login_superadmin_session(client)
         with client.session_transaction() as sess:
-            sess["jwt_token"] = "valid-token"
-            sess["user"] = {"username": "juan.perez", "role": "cajero"}
-            sess["_csrf_token"] = CSRF_TOKEN
-
-        resp = self.post_card_payment(client, {"card_payment_enabled": "on"})
-
-        assert resp.status_code == 302
+            sess.pop("_csrf_token")
+        resp = client.post(f"/admin/tenants/{TENANT_ID}/config/clear", data={"clear_key": "sumup_api_key"})
+        assert resp.status_code == 403
         mock_api.patch.assert_not_called()
 
 
