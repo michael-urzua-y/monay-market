@@ -123,7 +123,9 @@ export class ApiGatewayProvider implements ISiiProvider {
         },
       },
       dte: {
-        vendedor: rutEmisor,
+        // El SII exige que el vendedor sea la persona que autentica (no la empresa):
+        // https://www.apigateway.cl/faq/eboleta/contribuyente-no-se-encuentra-autorizado
+        vendedor: rutAutenticador,
         Encabezado: {
           IdDoc: {
             TipoDTE: 39,

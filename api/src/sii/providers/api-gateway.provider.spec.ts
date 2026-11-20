@@ -103,7 +103,8 @@ describe('ApiGatewayProvider', () => {
       rut: '11111111-1',
       clave: 'clave-sii',
     });
-    expect(body.dte.vendedor).toBe('76123456-7');
+    // vendedor = quien autentica en el SII; RUTEmisor = la empresa
+    expect(body.dte.vendedor).toBe('11111111-1');
     expect(body.dte.Encabezado.IdDoc).toEqual({
       TipoDTE: 39,
       MedioPago: 2,
